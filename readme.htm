@@ -1,0 +1,388 @@
+<!DOCTYPE html> 
+<html lang="en-us"> 
+	<head> 
+		<title>SAE - Scripted Amiga Emulator</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+		<link rel="icon" type="image/x-icon" href="http://scriptedamigaemulator.net/favicon.ico" />
+		<link rel="stylesheet" type="text/css" href="index.css" />
+		<script type="text/javascript">
+			function openNewTab(url) {
+				window.open(url, '_blank');
+				window.focus();
+			}
+		</script>
+	</head>
+	<body>  
+		<div class="head">
+			<div style="height:8px"></div> 		
+			<img src="images/logo.png" alt="Scripted Amiga Emulator" />
+			<noscript>
+				<div class="noscript">This site does require javascript, obviously :)</div>  	
+			</noscript>
+			<div class="hr"></div>	
+		</div>	  	
+		<div style="height:20px"></div> 		
+		<div class="readme">	
+			<table>
+				<tr>
+					<td>
+						<ul>
+							<li><span class="fwb">Requirements</span>
+								<ul>
+									<li>A very fast computer</li>
+									<li>A browser capable of HTML5 with:
+										<ul>
+											<li>WegGL</li>
+											<li>WebAudio</li>
+											<li>Typed arrays</li>
+											<li>FileReader (GUI)</li>
+										</ul>
+									</li>
+									<li>A ROM:
+										<ul>
+											<li>Amiga Kickstart 1.x-2.04 (not included for copyright reasons)</li>
+											<li>AROS Kickstart (included)</li>
+										</ul>
+									</li>
+									<li style="list-style-type:none"><br /></li>
+									<li>And a bunch of ADF-files to test (optional)</li>
+								</ul>
+							</li>
+						</ul>
+					</td>
+					<td>
+						<table>
+							<tr><td colspan="2"><span class="fwb">Supported browsers</span></td></tr>
+							<tr><td class="armb" style="color:green">Chrome</td><td>Fastest</td></tr>
+							<tr><td class="armb" style="color:green">Firefox</td><td>Medium speed</td></tr>
+							<tr><td class="armb" style="color:orange">Opera</td><td>Slow speed, no audio</td></tr>
+							<tr><td class="armb" style="color:red">IE</td><td>No support</td></tr>
+							<tr><td class="armb">Other</td><td>Untested</td></tr>
+						</table>						
+					</td>
+				</tr>			
+			</table>
+			<div class="hr"></div>
+			<ul>
+				<li><span class="fwb">Goals</span>
+					<ul>
+						<li>Make Amiga Classic Emulation available for browsers.</li>
+						<li>Easy integration into websites.</li>
+						<li>API for control from background, useful e.g. for a demo-player.</li>
+						<li>Browsers-plugins should not be required, just HTML5 and javascript.</li>
+					</ul>
+				</li>
+			</ul>
+			<ul>
+				<li><span class="fwb">Possible usage</span>
+					<ul>
+						<li>Demo/Intro/Mod-player</li>
+						<li>Playing games</li>
+						<li>Browser benchmark</li>
+					</ul>
+				</li>
+			</ul>
+			<ul>
+				<li><span class="fwb">Usage/Hints</span>
+					<ul>
+						<li>Press F11 for fullscreen. Most browsers support that.</li>
+						<li>If something does crash, try another memory setting or a different ROM. The original kickstart (1.3) work's best.</li>
+					</ul>
+				</li>
+			</ul>
+			<ul>
+				<li><span class="fwb">Known bugs/problems</span>
+					<ul>
+						<li>Fast blinking sprites are not displayed if 'Frameskip' is active.</li>
+						<li>Copper initiated color-changes within a scanline are not recognized.</li>
+						<li>Left/right shift/alt/ctrl are the same. That's a browser 'feature' and can't be fixed for now.</li>
+					</ul>
+				</li>
+			</ul>
+			<ul>
+				<li><span class="fwb">Missing features</span>
+					<ul>
+						<li>User-config</li>
+						<li>Maybe ECS support</li>
+					</ul>
+				</li>
+			</ul>
+			<ul>
+				<li><span class="fwb">Written and ported by</span>
+					<ul>
+						<li>Rupert Hausberger &lt;<a href="mailto:rupert_hausberger@gmx.net">rupert_hausberger@gmx.net</a>&gt; (<a href="javascript:openNewTab('https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&amp;hosted_button_id=ZJA3YVT6EP55A')">donate</a>)</li>
+					</ul>
+				</li>
+			</ul>
+			<ul>
+				<li><span class="fwb">Source code</span>
+					<ul>
+						<li><a href="javascript:openNewTab('https://github.com/naTmeg/ScriptedAmigaEmulator')">github.com/naTmeg/ScriptedAmigaEmulator</a></li>
+					</ul>
+				</li>
+			</ul>
+			<ul>
+				<li><span class="fwb">Thanks</span>
+					<ul>
+						<li>Bernd Schmidt</li>
+						<li>WinUAE and AROS team.</li>
+					</ul>
+				</li>
+			</ul>
+			<ul>
+				<li><span class="fwb">License</span>
+					<ul>
+						<li>This is a <b>free</b> project.</li>
+						<li>You may use the emulator in your own website.</li>
+						<li>If you use the emulator in your own website, you <b>must</b> provide a link to this homepage.</li>
+						<li>If you use the emulator in your own website, you <b>must not</b> change the copyright header in the source-files.</li>
+						<li>Commercial use <b>in any form</b> is prohibited. This includes donations.</li>
+						<li>No warranty expressed or implied. Use at your own risk.</li>
+					</ul>
+				</li>
+			</ul>
+			<div class="hr"></div>
+			<table>
+				<tr><td colspan="3" class="acm"><span class="fwb">Fully working...</span></td></tr>
+				<tr>
+					<td>
+						<ul>
+							<li><span class="fwb">Games</span>
+								<ul>
+									<li>Alien Breed</li>
+									<li>Alien Breed Special Edition 92<span class="fwb"> (0.7)</span></li>
+									<li>Alien Breed Tower Assault<span class="fwb"> (0.6)</span></li>
+									<li>Alien Breed II - The horror continues<span class="fwb"> (0.7)</span></li>
+									<li>Boby Blows Galactic<span class="fwb"> (0.7)</span></li>
+									<li>Agony<span class="fwb"> (0.6.1)</span></li>
+									<li>Another World</li>
+									<li>Barbarian<span class="fwb"> (0.7)</span></li>
+									<li>Battle Chess</li>
+									<li>Blood Money</li>
+									<li>Crystal Hammer</li>
+									<li>Dynablaster<span class="fwb"> (0.7)</span></li>
+									<li>Firepower</li>
+									<li>Lotus Turbo Challenge 1/2<span class="fwb"> (0.6)</span></li>
+									<li>NorthPrince of Persia<span class="fwb"> (0.7)</span></li>
+									<li>Pinball Dreams</li>
+									<li>Pinball Fantasies (the demo with 1 desk)</li>
+									<li>Prince of Persia<span class="fwb"> (0.7)</span></li>
+									<li>Project-X<span class="fwb"> (0.7)</span></li>
+									<li>Project-X Special Edition '92<span class="fwb"> (0.6)</span></li>
+									<li>P.O.W.</li>
+									<li>Rubicon<span class="fwb"> (0.6)</span></li>
+									<li>R-Type 2</li>
+									<li>Shadow of the Beast 2<span class="fwb"> (0.6)</span></li>
+									<li>Terminator 2<span class="fwb"> (0.7)</span></li>
+									<li>Turrican 1/2</li>
+									<li>Turrican 3<span class="fwb"> (0.6)</span></li>
+									<li>Wings<span class="fwb"> (0.6)</span></li>
+									<li>Wings of Death<span class="fwb"> (0.6.1)</span></li>
+								</ul>
+							</li>
+						</ul>
+					</td>
+					<td>
+						<ul>
+							<li><span class="fwb">Demos</span>
+								<ul>
+									<li>Deja Vu</li>
+									<li>How to skin a cat</li>
+									<li>Project-X (demo-rolling)<span class="fwb"> (0.6)</span></li>
+									<li>State of the Art</li>
+								</ul>
+							</li>
+						</ul>
+					</td>
+					<td>
+						<ul>
+							<li><span class="fwb">Apps</span>
+								<ul>
+									<li>Devpak 2.14</li>
+									<li>DPaint 4.1</li>
+									<li>Protracker 3.61</li>
+									<li>SysInfo 3.24</li>
+									<li>Workbench 1.x</li>
+									<li>Workbench 2.04<span class="fwb"> (0.6)</span></li>
+								</ul>
+							</li>
+						</ul>
+					</td>
+				</tr>
+				<tr><td colspan="3" class="acm"><span class="fwb">Note:</span> The lists corresponds to Kickstart 1.3</td></tr>
+			</table>
+			<div class="hr"></div>
+			<ul>
+				<li><span class="fwb">History</span>
+					<ul>
+						<li>0.7.0 (24.12.2012):
+							<ul>
+								<li>Common
+									<ul>
+										<li>Chaned the project-name from 'Janus' to 'SAE' (Scripted Amiga Emulator).<br /> 
+											This step is necessary because i did'nt enough research before the initial release.<br />
+											There is already a project with that name in it. (<a href="javascript:openNewTab('http://janus-uae.sourceforge.net')">janus-uae</a>)
+											I'm sorry for that, that was kinda stupid :)</li>
+										<li>Separated the GUI form the core and rewrote most of it.</li>
+										<li>Simplified the whole code. This means, that functions are called faster.</li>
+										<li>Ported new Copper-, Blitter-, Audio-, Disk- and event-handling code from WinUAE 2.5.0</li>
+										<li>Moved all "beam-functions" to events.js, for faster access.</li>
+										<li>Added "CPU-usage" to the GUI.</li>
+										<li>Added "Hall of Fame".</li>
+									</ul>
+								</li>			
+								<li>CPU
+									<ul>
+										<li>Added support for exact cycling. The CPU have now 7.09 MHz on PAL and 7.16 MHz on NTSC resp.</li>
+										<li>Added option for "Original"- and "Maximum"-speed.</li>
+									</ul>
+								</li>	
+								<li>Audio
+									<ul>
+										<li>Added a ring-buffer before output. No more "bagpipe"-like audio.</li>
+										<li>Added a option to just emulate the hardware, but not to play any sound, e.g. "Agony" was not starting, if audio was disabled.</li>
+									</ul>
+								</li>			
+								<li>Display
+									<ul>
+										<li>Switched from the RGB to the 565 texture-format-encoding in WebGL, which gives a little more speed.</li>
+										<li>Added support and a option for 4x scaling.</li>
+										<li>Fixed screen-draging in lo-/hires-modes.</li>
+										<li>Added a option to disable the output. Can be used to better play music-demos.</li>
+									</ul>
+								</li>			
+								<li>Disk
+									<ul>
+										<li>Added support for different speed-modes.</li>
+										<li>Added support for extended ADF-files.</li>
+										<li>Enabled write support. (to memory)</li>
+									</ul>
+								</li>			
+								<li>Input
+									<ul>
+										<li>The F-keys does work normaly now, i.e F5 does'nt reload the emulator, backspace does'nt go to the last page, etc...</li>
+										<li>Fixed bug in the joystick-emulation.</li>
+									</ul>
+								</li>			
+							</ul>
+						</li>                                                                               
+						<li style="list-style-type:none"><br/></li>
+						<li>0.6.1 (05.11.2012):
+							<ul>
+								<li>CPU
+									<ul>
+										<li>Added missing TAS command. ('Wings of Death' game does use it)</li>
+									</ul>
+								</li>	
+								<li>ROM
+									<ul>
+										<li>Added a crc32-checksum test after download. (AROS)</li>
+										<li>Changed transfer-mode from syncronous to asyncronous. (AROS)</li>
+									</ul>
+								</li>			
+								<li>Display
+									<ul>
+										<li>Optimized the line-drawing code of the blitter.</li>
+										<li>Fixed decision whether the resulting image is scaled or not. ('Agony' game)</li>
+										<li>Disabled 'Framedrop' in interlace-mode.</li>
+									</ul>
+								</li>			
+								<li>Misc
+									<ul>
+										<li>Fixed HTML5 doctype.</li>
+										<li>Added ver/rev to the title.</li>
+										<li>Changed revision to 3 digits.</li>
+									</ul>
+								</li>			
+							</ul>
+						</li>
+						<li style="list-style-type:none"><br/></li>
+						<li>0.6 (25.10.2012):
+							<ul>
+								<li>ROM
+									<ul>
+										<li>Added support for extended-roms.</li>
+										<li>AROS kickstart replacement is now the default-rom, and will be downloaded and used on the fly.</li>
+									</ul>
+								</li>															
+								<li>RAM
+									<ul>
+										<li>Changed internal memory alignment from 8 to 16 bit.</li>
+										<li>Added fast-ram support, through a emulated Commodore A2058 in Zorro2-mode.</li>
+										<li>Removed the D8DC-memory-option from the GUI. This memory space is now always allocated.</li>
+										<li>Sorted access of the memory-routines by priority.</li>
+									</ul>
+								</li>															
+								<li>CPU
+									<ul>
+										<li>Fixed sign-extension for memory to address-register transfers in MOVEM.</li>
+										<li>Fixed sign-extension for absolute-word addresses in exEA.</li>
+										<li>Fixed wrong address when writing a byte to the stack in ldEA.</li>
+										<li>Fixed 32bit calculations for address-regsiters in ADDQ/SUBQ.</li>
+										<li>Fixed remainder calculation in DIVU.</li>
+										<li>Optimized integer-arithmetic functions. Size depending calcalations are now used.</li>
+										<li>Improved exception 2/3 handling.</li>
+										<li>More small cleanups not listed here.</li>
+									</ul>
+								</li>	
+								<li>Disk
+									<ul>
+										<li>Ported latest disk-code from WinUAE. Disk-based problems should be gone now, e.g. floopy shown as BAD or read errors.</li>
+										<li>Diskchange does now work.</li>
+										<li>Drives can be disabled now.</li>
+										<li>DD/HD types are now supported.</li>
+									</ul>
+								</li>															
+								<li>Display
+									<ul>
+										<li>Added missing support for HAM6.</li>
+										<li>Fixed horizontal and vertical screen-centering.</li>
+										<li>Fixed screen-draging, almost, read the "Known bugs" section.</li>
+										<li>Added better screen-scrolling.</li>
+									</ul>
+								</li>															
+								<li>Input
+									<ul>
+										<li>Fixed key-mapping to the amiga key-layout, at least in Chrome. Firefox does not like "öäü", it seems.</li>
+										<li>Added support for individual configurations of joystick-movement and fire-buttons.</li>
+										<li>Fixed bug, that made the fire 1 button on joystick 0 not working.</li>
+										<li>Fixed bug in the mouse-movement function, that calculates the wrong coordinates in some cases.</li>
+									</ul>
+								</li>		
+								<li>GUI
+									<ul>
+										<li>Added eject-button in the disk-change requester.</li>
+										<li>Removed the CPU and OCS/ECS options. They are useless so far.</li>
+										<li>The "Pause" and "Resume" buttons are once now.</li>
+										<li>Made some options to only apear when selected.</li>
+										<li>Did some cosmetics.</li>
+									</ul>
+								</li>			
+								<li>Misc
+									<ul>
+										<li>Added support for Zorro2-expansion cards.</li>
+										<li>Added a more precise event-handling. This makes the audio-output a little smoother.</li>
+										<li>Changed the ratio of CPU-/Chipset-time from 1:8 to 1:4</li>
+										<li>Fixed a bug in the RTC. "Year" is now calculated correctly.</li>
+										<li>Fixed incorrect response of serial.device. Now crashed programms does reset (and show the guru), instead of idle.</li>
+										<li>Any output on the serial.device is now redirected to the debug-log. (dev only)</li>
+										<li>Kickstart/Workbench 2.04 and AROS does now work.</li>
+										<li>Overall about 10-30% more speed, as long as the blitter is not used too much.</li>
+									</ul>
+								</li>			
+							</ul>
+						</li>
+						<li style="list-style-type:none"><br/></li>
+						<li>0.5 (01.09.2012):
+							<ul>
+								<li>Initial.</li>
+							</ul>
+						</li>
+					</ul>
+				</li>
+			</ul>
+		</div>
+		<div style="height:20px"></div> 		
+	</body>
+</html>
+
