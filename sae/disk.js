@@ -1104,7 +1104,7 @@ function Disk() {
 	}
 
 	this.update_read_nothing = function(floppybits) {
-		BUG.info('Disk.update_read_nothing() floppybits %d', floppybits);
+		//BUG.info('Disk.update_read_nothing() floppybits %d', floppybits);
 	
 		while (floppybits >= get_floppy_speed()) {
 			word <<= 1;
