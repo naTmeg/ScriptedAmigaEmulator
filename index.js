@@ -116,13 +116,13 @@ const db = [
 			[true, 16, 17, false],
 			['Change the disks manualy when asked.'], [] 
 		],
-		['Terminator 2 - Judgment Day', 'Ocean', '1991',
+		/*['Terminator 2 - Judgment Day', 'Ocean', '1991',
 			['Terminator 2 - Judgment Day (Disk 1).adf',
 			'Terminator 2 - Judgment Day (Disk 2).adf',
 			false, false], true,
 			[true, 16, 17, false],
 			['Press the LMB to skip the intro<br />and insert the 2nd disk manualy.'], [] 
-		],
+		],*/
 		['Turrican II - The Final Fight', 'Rainbow Arts', '1991',
 			['Turrican II - The Final Fight (Disk 1).adf',
 			'Turrican II - The Final Fight (Disk 2).adf',
@@ -601,6 +601,7 @@ function getSimpleConfig() {
 	var e, num;
 
 	config.cpu.speed = SAEV_Config_CPU_Speed_Original;
+	//config.cpu.speed = SAEV_Config_Floppy_Speed_Turbo;
 
 	//config.chipset.type = SAEV_Config_Chipset_Type_OCS;
 	config.chipset.colLevel = SAEV_Config_Chipset_ColLevel_None;
@@ -1033,7 +1034,7 @@ function advandedStart2() {
 		start();
 	else {
 		disabled('cfg_start', 0);				
-		document.getElementById('cfg_start').innerHTML = 'Play';
+		document.getElementById('cfg_start').innerHTML = 'Start';
 	}	
 }	
 function advandedStart() {
@@ -1057,7 +1058,7 @@ function stop() {
 	disabled('cfg_simple_start', 0);				
 	disabled('cfg_start', 0);				
 	document.getElementById('cfg_simple_start').innerHTML = 'Play';
-	document.getElementById('cfg_start').innerHTML = 'Play';
+	document.getElementById('cfg_start').innerHTML = 'Start';
 
 	if (mode == 1)
 		setConfig();

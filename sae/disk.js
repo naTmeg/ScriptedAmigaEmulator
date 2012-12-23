@@ -1104,7 +1104,7 @@ function Disk() {
 	}
 
 	this.update_read_nothing = function(floppybits) {
-		//BUG.info('Disk.update_read_nothing() floppybits %d', floppybits);
+		BUG.info('Disk.update_read_nothing() floppybits %d', floppybits);
 	
 		while (floppybits >= get_floppy_speed()) {
 			word <<= 1;
@@ -1241,7 +1241,7 @@ function Disk() {
 		//BUG.info('Disk.doupdate_predict() startcycle %d', startcycle);
 		var finaleventcycle = AMIGA.events.maxhpos << 8;
 		var finaleventflag = 0;
-
+		
 		for (var dr = 0; dr < MAX_FLOPPY_DRIVES; dr++) {
 			if (selected & (1 << dr))
 				continue;

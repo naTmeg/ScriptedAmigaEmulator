@@ -93,7 +93,7 @@ function Events() {
 			for (var i = 0; i < EV2_MAX; i++)
 				this.eventtab2[i] = new Event2();
 
-			//this.eventtab[EV2_BLITTER].handler = function() { AMIGA.blitter.handler(); }
+			//this.eventtab[EV2_BLITTER].handler = function(data) { AMIGA.blitter.handler(data); }
 			//this.eventtab[EV2_DISK].handler = function(data) { AMIGA.disk.handler(data); }
 
 			BUG.info('Events.setup() set %d event2 handlers', EV2_MAX);
