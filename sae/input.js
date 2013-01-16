@@ -666,9 +666,10 @@ function Keyboard() {
 	}
 
 	this.keyReq = function() {
-		this.lostsynccnt = 8 * AMIGA.events.maxvpos * 8; /* 8 frames * 8 bits */
+		this.lostsynccnt = 8 * AMIGA.playfield.maxvpos * 8; /* 8 frames * 8 bits */
 
-		AMIGA.cia.setICR(CIA_A, 8, code);
+		//AMIGA.cia.setICR(CIA_A, 8, code);
+		AMIGA.cia.SetICRA(8, code);
 	}
 
 	this.hsync = function() {
@@ -696,7 +697,7 @@ function Keyboard() {
 
 	this.vsync = function() {
 		if (this.lostsynccnt > 0) {
-			this.lostsynccnt -= AMIGA.events.maxvpos;
+			this.lostsynccnt -= AMIGA.playfield.maxvpos;
 			if (this.lostsynccnt <= 0) {
 				this.lostsynccnt = 0;
 				this.keyReq();

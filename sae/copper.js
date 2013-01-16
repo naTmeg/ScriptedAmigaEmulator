@@ -6,6 +6,9 @@
 * ©2012 Rupert Hausberger
 * Commercial use is prohibited.
 *
+***************************************************************************
+* Notes: Ported from WinUAE 2.5.0
+* 
 **************************************************************************/
 
 //copper_states
@@ -27,11 +30,31 @@ const COP_strobe_extra = 14;
 const COP_start_delay = 15;
 
 function Copper() {
+	const customdelay = [
+		1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,1,1,0,0,0,0,0,0,0,0, /* 32 0x00 - 0x3e */
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, /* 0x40 - 0x5e */
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, /* 0x60 - 0x7e */
+		0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0, /* 0x80 - 0x9e */
+		1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, /* 32 0xa0 - 0xde */
+		/* BPLxPTH/BPLxPTL */
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, /* 16 */
+		/* BPLCON0-3,BPLMOD1-2 */
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, /* 16 */
+		/* SPRxPTH/SPRxPTL */
+		1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, /* 16 */
+		/* SPRxPOS/SPRxCTL/SPRxDATA/SPRxDATB */
+		1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+		/* COLORxx */
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+		/* RESERVED */
+		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+	];
 	this.cop1lc = 0;
 	this.cop2lc = 0,
 	this.copcon = 0;
 	this.enabled_thisline = false;
 	this.access = false;
+	this.last_copper_hpos = 0;
 
 	var cop_state = {
 		/* The current instruction words.  */
@@ -48,8 +71,6 @@ function Copper() {
 		last_write:0, last_write_hpos:0,
 		moveaddr:0, movedata:0, movedelay:0
 	};
-	var last_copper_hpos = 0;
-
 
 	this.reset = function () {
 		this.copcon = 0;
@@ -59,7 +80,7 @@ function Copper() {
 	this.reset2 = function () {
 		cop_state.hpos = 0;
 		cop_state.last_write = 0;
-		this.compute_spcflag_copper(AMIGA.events.maxhpos);		
+		this.compute_spcflag_copper(AMIGA.playfield.maxhpos);		
 	}
 
 	this.COPCON = function (v) {
@@ -96,18 +117,18 @@ function Copper() {
 
 		//BUG.info('COPJMP(%d) %d', num, cop_state.state);
 		
-		cop_state.vpos = AMIGA.events.vpos;
-		cop_state.hpos = AMIGA.events.hpos() & ~1;
-		this.enabled_thisline = false;
+		cop_state.vpos = AMIGA.playfield.vpos;
+		cop_state.hpos = AMIGA.playfield.hpos() & ~1;
 		cop_state.strobe = num;
-
+		this.enabled_thisline = false;
+		
 		if (0) {
 			this.immediate_copper(num);
 			return;
 		}
 
 		if (AMIGA.dmaen(DMAF_COPEN))
-			this.compute_spcflag_copper(AMIGA.events.hpos());
+			this.compute_spcflag_copper(AMIGA.playfield.hpos());
 		else if (oldstrobe > 0 && oldstrobe != num && cop_state.state_prev == COP_wait) {
 			/* dma disabled, copper idle and accessed both COPxJMPs -> copper stops! */
 			cop_state.state = COP_stop;
@@ -126,7 +147,7 @@ function Copper() {
 
 	this.test_copper_dangerous = function (address) {
 		var addr = address & 0x1fe;
-		if (addr < ((this.copcon & 2) ? ((AMIGA.config.chipset.type == SAEV_Config_Chipset_Type_ECS) ? 0 : 0x40) : 0x80)) {
+		if (addr < ((this.copcon & 2) ? ((AMIGA.config.chipset.mask & CSMASK_ECS_AGNUS) ? 0 : 0x40) : 0x80)) {
 			cop_state.state = COP_stop;
 			this.enabled_thisline = false;
 			clr_special(SPCFLAG_COPPER);
@@ -140,11 +161,11 @@ function Copper() {
 		var oldpos = 0;
 
 		cop_state.state = COP_stop;
-		cop_state.vpos = AMIGA.events.vpos;
-		cop_state.hpos = AMIGA.events.hpos() & ~1;
+		cop_state.vpos = AMIGA.playfield.vpos;
+		cop_state.hpos = AMIGA.playfield.hpos() & ~1;
 		cop_state.ip = num == 1 ? this.cop1lc : this.cop2lc;
 
-		while (pos < (AMIGA.events.maxvpos << 5)) {
+		while (pos < (AMIGA.playfield.maxvpos << 5)) {
 			if (oldpos > pos)
 				pos = oldpos;
 			if (!AMIGA.dmaen(DMAF_COPEN))
@@ -153,8 +174,11 @@ function Copper() {
 				break;
 			pos++;
 			oldpos = pos;
-			cop_state.i1 = AMIGA.mem.load16_chip(cop_state.ip);
-			cop_state.i2 = AMIGA.mem.load16_chip(cop_state.ip + 2);
+			//cop_state.i1 = AMIGA.mem.load16_chip(cop_state.ip);
+			//cop_state.i2 = AMIGA.mem.load16_chip(cop_state.ip + 2);
+			cop_state.i1 = AMIGA.mem.chip.data[cop_state.ip >>> 1];
+			cop_state.i2 = AMIGA.mem.chip.data[(cop_state.ip + 2) >>> 1];
+			AMIGA.custom.last_value = cop_state.i2;
 			cop_state.ip += 4;
 			if (!(cop_state.i1 & 1)) { // move
 				cop_state.i1 &= 0x1fe;
@@ -181,25 +205,18 @@ function Copper() {
 	}
 
 	this.copper_cant_read = function (hpos, alloc) {
-		//BUG.info('copper_cant_read2() hpos %d / %d', hpos, AMIGA.events.maxhpos);
-		if (hpos + 1 >= AMIGA.events.maxhpos) // first refresh slot
+		//BUG.info('copper_cant_read2() hpos %d / %d', hpos, AMIGA.playfield.maxhpos);
+		if (hpos + 1 >= AMIGA.playfield.maxhpos) // first refresh slot
 			return 1;
-		if ((hpos == AMIGA.events.maxhpos - 3) && (AMIGA.events.maxhpos & 1) && alloc >= 0) {
-			//if (alloc) alloc_cycle (hpos, CYCLE_COPPER);
+		if ((hpos == AMIGA.playfield.maxhpos - 3) && (AMIGA.playfield.maxhpos & 1) && alloc >= 0) {
 			return -1;
 		}
 		return AMIGA.playfield.is_bitplane_dma(hpos);
 	}
 
-	/*this.copper_cant_read = function (hpos, alloc) {
-		var cant = this.copper_cant_read2(hpos, alloc);
-		//if (cant && debug_dma) record_dma_event (DMA_EVENT_COPPERWANTED, hpos, vpos);
-		return cant;
-	}*/
-
 	this.custom_store16_copper = function (hpos, addr, value, noget) {
 		//if (addr == 0x88 || addr == 0x8a)
-		//BUG.info('custom_store16_copper() addr %08x, value %04x | vpos %d hpos %d %d cvcmp %d chcmp %d chpos %d cvpos %d', addr, value, AMIGA.events.vpos, AMIGA.events.hpos(), hpos, cop_state.vcmp, cop_state.hcmp, cop_state.hpos, cop_state.vpos);
+		//BUG.info('custom_store16_copper() addr %08x, value %04x | vpos %d hpos %d %d cvcmp %d chcmp %d chpos %d cvpos %d', addr, value, AMIGA.playfield.vpos, AMIGA.playfield.hpos(), hpos, cop_state.vcmp, cop_state.hcmp, cop_state.hpos, cop_state.vpos);
 		//value = debug_wputpeekdma (0xdff000 + addr, value);
 		this.access = true;
 		var v = AMIGA.custom.store16_real(hpos, addr, value, noget);
@@ -209,44 +226,17 @@ function Copper() {
 
 	this.dump_copper = function (error, until_hpos) {
 		BUG.info('\n');
-		BUG.info('%s: vpos=%d until_hpos=%d vp=%d', error, AMIGA.events.vpos, until_hpos, AMIGA.events.vpos & (((cop_state.saved_i2 >> 8) & 0x7f) | 0x80));
+		BUG.info('%s: vpos=%d until_hpos=%d vp=%d', error, AMIGA.playfield.vpos, until_hpos, AMIGA.playfield.vpos & (((cop_state.saved_i2 >> 8) & 0x7f) | 0x80));
 		BUG.info('cvcmp=%d chcmp=%d chpos=%d cvpos=%d ci1=%04X ci2=%04X', cop_state.vcmp, cop_state.hcmp, cop_state.hpos, cop_state.vpos, cop_state.saved_i1, cop_state.saved_i2);
 		BUG.info('cstate=%d ip=%x SPCFLAGS=%x iscline=%d', cop_state.state, cop_state.ip, AMIGA.spcflags, this.enabled_thisline?1:0);
 		BUG.info('\n');
 	}
 
-	// 'emulate' chip internal delays, not the right place but fast and 99.9% programs
-	// use only copper to write BPLCON1 etc.. (exception is HulkaMania/TSP..)
-	// this table should be filled with zeros and done somewhere else..
-	var customdelay = [
-		1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,1,1,0,0,0,0,0,0,0,0, /* 32 0x00 - 0x3e */
-		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, /* 0x40 - 0x5e */
-		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, /* 0x60 - 0x7e */
-		0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0, /* 0x80 - 0x9e */
-		1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, /* 32 0xa0 - 0xde */
-		/* BPLxPTH/BPLxPTL */
-		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, /* 16 */
-		/* BPLCON0-3,BPLMOD1-2 */
-		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, /* 16 */
-		/* SPRxPTH/SPRxPTL */
-		1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, /* 16 */
-		/* SPRxPOS/SPRxCTL/SPRxDATA/SPRxDATB */
-		1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-		/* COLORxx */
-		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-		/* RESERVED */
-		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
-	];
-
-	/*this.copper_write = function (v) {
-		this.custom_store16_copper(AMIGA.events.hpos(), v >> 16, v & 0xffff, 0);
-	}*/
-
-	this.update_copper = function (until_hpos) {
-		var vp = AMIGA.events.vpos & (((cop_state.saved_i2 >> 8) & 0x7f) | 0x80);
+	this.update = function (until_hpos) {
+		var vp = AMIGA.playfield.vpos & (((cop_state.saved_i2 >> 8) & 0x7f) | 0x80);
 		var c_hpos = cop_state.hpos;
 
-		//BUG.info('update_copper() until_hpos %d, vp %d', until_hpos, vp);
+		//BUG.info('update() until_hpos %d, vp %d', until_hpos, vp);
 
 		if (cop_state.state == COP_wait && vp < cop_state.vcmp) {
 			this.dump_copper('error2', until_hpos);
@@ -256,11 +246,11 @@ function Copper() {
 			return;
 		}
 
-		if (until_hpos <= last_copper_hpos)
+		if (until_hpos <= this.last_copper_hpos)
 			return;
 
-		if (until_hpos > (AMIGA.events.maxhpos & ~1))
-			until_hpos = AMIGA.events.maxhpos & ~1;
+		if (until_hpos > (AMIGA.playfield.maxhpos & ~1))
+			until_hpos = AMIGA.playfield.maxhpos & ~1;
 
 		for (;;) {
 			var old_hpos = c_hpos;
@@ -270,8 +260,8 @@ function Copper() {
 				break;
 
 			/* So we know about the fetch state.  */
-			//decide_line (c_hpos);
-			//decide_fetch (c_hpos);
+			AMIGA.playfield.decide_line(c_hpos);
+			AMIGA.playfield.decide_fetch(c_hpos);
 
 			if (cop_state.movedelay > 0) {
 				cop_state.movedelay--;
@@ -280,7 +270,7 @@ function Copper() {
 				}
 			}
 
-			if ((c_hpos == AMIGA.events.maxhpos - 3) && (AMIGA.events.maxhpos & 1))
+			if ((c_hpos == AMIGA.playfield.maxhpos - 3) && (AMIGA.playfield.maxhpos & 1))
 				c_hpos += 1;
 			else
 				c_hpos += 2;
@@ -309,8 +299,6 @@ function Copper() {
 					if (this.copper_cant_read(old_hpos, 1))
 						continue;
 					cop_state.state = COP_strobe_delay2;
-					//alloc_cycle(old_hpos, CYCLE_COPPER);
-					//if (debug_dma) record_dma (0x8c, AMIGA.mem.load16_chip(cop_state.ip), cop_state.ip, old_hpos, vpos, DMARECORD_COPPER);
 					cop_state.ip += 2;
 					break;
 				}
@@ -318,10 +306,6 @@ function Copper() {
 					// Second cycle after COPJMP. This is the strange one.
 					// This cycle does not need to be free
 					// But it still gets allocated by copper if it is free = CPU and blitter can't use it.
-					/*if (this.copper_cant_read(old_hpos, 1)) {
-						alloc_cycle (old_hpos, CYCLE_COPPER);
-						if (debug_dma) record_dma (0x1fe, AMIGA.mem.load16_chip(cop_state.ip), cop_state.ip, old_hpos, vpos, DMARECORD_COPPER);
-					}*/
 					cop_state.state = COP_read1;
 					// Next cycle finally reads from new pointer
 					if (cop_state.strobe == 1)
@@ -343,8 +327,6 @@ function Copper() {
 					// but is not allocated, blitter or cpu can still use it.
 					if (this.copper_cant_read(old_hpos, 1))
 						continue;
-					//cycle_line[old_hpos] |= CYCLE_COPPER_SPECIAL;
-					//if (debug_dma) record_dma (0x1fe, AMIGA.mem.load16_chip(cop_state.ip), cop_state.ip, old_hpos, vpos, DMARECORD_COPPER);
 					cop_state.state = COP_read1;
 					// Next cycle finally reads from new pointer
 					if (cop_state.strobe == 1)
@@ -358,8 +340,6 @@ function Copper() {
 					if (this.copper_cant_read(old_hpos, 1))
 						continue;
 					cop_state.state = COP_read1;
-					//alloc_cycle(old_hpos, CYCLE_COPPER);
-					//if (debug_dma) record_dma (0x1fe, 0, 0xffffffff, old_hpos, vpos, DMARECORD_COPPER);
 					cop_state.ip = this.cop1lc;
 					break;
 				}
@@ -374,9 +354,8 @@ function Copper() {
 						clr_special(SPCFLAG_COPPER);
 						return;
 					}	
-					cop_state.i1 = AMIGA.mem.load16_chip(cop_state.ip);
-					//alloc_cycle(old_hpos, CYCLE_COPPER);
-					//if (debug_dma) record_dma (0x8c, cop_state.i1, cop_state.ip, old_hpos, vpos, DMARECORD_COPPER);
+					//cop_state.i1 = AMIGA.mem.load16_chip(cop_state.ip);
+					cop_state.i1 = AMIGA.custom.last_value = AMIGA.mem.chip.data[cop_state.ip >>> 1];
 					cop_state.ip += 2;
 					cop_state.state = COP_read2;
 					break;
@@ -384,8 +363,8 @@ function Copper() {
 				case COP_read2: {
 					if (this.copper_cant_read(old_hpos, 1))
 						continue;
-					cop_state.i2 = AMIGA.mem.load16_chip(cop_state.ip);
-					//alloc_cycle(old_hpos, CYCLE_COPPER);
+					//cop_state.i2 = AMIGA.mem.load16_chip(cop_state.ip);
+					cop_state.i2 = AMIGA.custom.last_value = AMIGA.mem.chip.data[cop_state.ip >>> 1];
 					cop_state.ip += 2;					
 					cop_state.saved_i1 = cop_state.i1;
 					cop_state.saved_i2 = cop_state.i2;
@@ -397,18 +376,16 @@ function Copper() {
 							cop_state.state = COP_skip_in2;
 						else
 							cop_state.state = COP_wait_in2;
-						//if (debug_dma) record_dma (0x8c, cop_state.i2, cop_state.ip - 2, old_hpos, vpos, DMARECORD_COPPER);
 					} else { // MOVE
 						//uaecptr debugip = cop_state.ip;
 						var reg = cop_state.i1 & 0x1fe;
 						var data = cop_state.i2;
 						cop_state.state = COP_read1;
-						//if (debug_dma) record_dma (reg, data, cop_state.ip - 2, old_hpos, vpos, DMARECORD_COPPER);
 						this.test_copper_dangerous(reg);
 						if (!this.enabled_thisline) {
 							//goto out; // was 'dangerous' register -> copper stopped
 							cop_state.hpos = c_hpos;
-							last_copper_hpos = until_hpos;
+							this.last_copper_hpos = until_hpos;
 							return;
 						}
 						if (cop_state.ignore_next)
@@ -423,37 +400,41 @@ function Copper() {
 							cop_state.strobe = 2;
 							cop_state.state = COP_strobe_delay1;
 						} else {
-							/*#if 0
-							event2_newevent2 (1, (reg << 16) | data, copper_write);
-							#else*/
-							// FIX: all copper writes happen 1 cycle later than CPU writes
-							if (customdelay[reg >> 1]) {
-								cop_state.moveaddr = reg;
-								cop_state.movedata = data;
-								cop_state.movedelay = customdelay[cop_state.moveaddr >> 1];
-							} else {
-								var hpos2 = old_hpos;
-								this.custom_store16_copper(hpos2, reg, data, 0);
-								hpos2++;
-								//if (reg >= 0x140 && reg < 0x180 && hpos2 >= SPR0_HPOS && hpos2 < SPR0_HPOS + 4 * MAX_SPRITES) do_sprites(hpos2);
+							/*if (0) {
+								AMIGA.events.newevent2(1, (reg << 16) | data, function(v) { //copper_write);
+									AMIGA.copper.custom_store16_copper(AMIGA.playfield.hpos(), v >>> 16, v & 0xffff, 0);
+								});
+								//this.custom_store16_copper(old_hpos, reg, data, 0);	
+							} else*/ 
+							{
+								// FIX: all copper writes happen 1 cycle later than CPU writes
+								if (customdelay[reg >> 1]) {
+									cop_state.moveaddr = reg;
+									cop_state.movedata = data;
+									cop_state.movedelay = customdelay[cop_state.moveaddr >> 1];
+								} else {
+									var hpos2 = old_hpos;
+									this.custom_store16_copper(hpos2, reg, data, 0);
+									hpos2++;
+									if (reg >= 0x140 && reg < 0x180 && hpos2 >= SPR0_HPOS && hpos2 < SPR0_HPOS + 4 * MAX_SPRITES)
+										AMIGA.playfield.do_sprites(hpos2);
+								}
 							}
-							//#endif
 						}
-						//if (debug_copper && !cop_state.ignore_next) record_copper (debugip - 4, old_hpos, vpos);
 						cop_state.ignore_next = 0;
 					}
 					break;
 				}
 				case COP_wait1: {
-					/*#if 0
-					if (c_hpos >= (AMIGA.events.maxhpos & ~1) || (c_hpos & 1)) break;
-					#endif*/
+/*#if 0
+					if (c_hpos >= (AMIGA.playfield.maxhpos & ~1) || (c_hpos & 1)) break;
+#endif*/
 					cop_state.state = COP_wait;
 
 					cop_state.vcmp = (cop_state.saved_i1 & (cop_state.saved_i2 | 0x8000)) >> 8;
 					cop_state.hcmp = (cop_state.saved_i1 & cop_state.saved_i2 & 0xfe);
 
-					vp = AMIGA.events.vpos & (((cop_state.saved_i2 >> 8) & 0x7f) | 0x80);
+					vp = AMIGA.playfield.vpos & (((cop_state.saved_i2 >> 8) & 0x7f) | 0x80);
 
 					if (cop_state.saved_i1 == 0xffff && cop_state.saved_i2 == 0xfffe) {
 						cop_state.state = COP_waitforever;
@@ -461,7 +442,7 @@ function Copper() {
 						clr_special(SPCFLAG_COPPER);
 						//goto out;
 						cop_state.hpos = c_hpos;
-						last_copper_hpos = until_hpos;
+						this.last_copper_hpos = until_hpos;
 						return;
 					}
 					if (vp < cop_state.vcmp) {
@@ -469,7 +450,7 @@ function Copper() {
 						clr_special(SPCFLAG_COPPER);
 						//goto out;
 						cop_state.hpos = c_hpos;
-						last_copper_hpos = until_hpos;
+						this.last_copper_hpos = until_hpos;
 						return;
 					}
 				}
@@ -488,7 +469,6 @@ function Copper() {
 
 					/* Now we know that the comparisons were successful.  We might still have to wait for the blitter though.  */
 					if ((cop_state.saved_i2 & 0x8000) == 0) {
-						//decide_blitter (old_hpos);
 						if (AMIGA.blitter.getState() != BLT_done) {
 							//We need to wait for the blitter.
 							cop_state.state = COP_bltwait;
@@ -496,20 +476,17 @@ function Copper() {
 							clr_special(SPCFLAG_COPPER);
 							//goto out;
 							cop_state.hpos = c_hpos;
-							last_copper_hpos = until_hpos;
+							this.last_copper_hpos = until_hpos;
 							return;
-						} /*else {
-							if (debug_dma) record_dma_event (DMA_EVENT_COPPERWAKE, old_hpos, vp);
-						}*/
+						} 
 					}
-					//if (debug_copper) record_copper (cop_state.ip - 4, old_hpos, vpos);
 					cop_state.state = COP_read1;
 					break;
 				}
 				case COP_skip1: {
 					var vcmp, hcmp, vp1, hp1;
 
-					if (c_hpos >= (AMIGA.events.maxhpos & ~1) || (c_hpos & 1))
+					if (c_hpos >= (AMIGA.playfield.maxhpos & ~1) || (c_hpos & 1))
 						break;
 
 					if (this.copper_cant_read(old_hpos, 0))
@@ -517,14 +494,13 @@ function Copper() {
 
 					vcmp = (cop_state.saved_i1 & (cop_state.saved_i2 | 0x8000)) >> 8;
 					hcmp = (cop_state.saved_i1 & cop_state.saved_i2 & 0xfe);
-					vp1 = AMIGA.events.vpos & (((cop_state.saved_i2 >> 8) & 0x7f) | 0x80);
+					vp1 = AMIGA.playfield.vpos & (((cop_state.saved_i2 >> 8) & 0x7f) | 0x80);
 					hp1 = c_hpos & (cop_state.saved_i2 & 0xfe);
 
 					if ((vp1 > vcmp || (vp1 == vcmp && hp1 >= hcmp)) && ((cop_state.saved_i2 & 0x8000) != 0 || AMIGA.blitter.getState() == BLT_done))
 						cop_state.ignore_next = 1;
 
 					cop_state.state = COP_read1;
-					//if (debug_copper) record_copper (cop_state.ip - 4, old_hpos, vpos);
 					break;
 				}
 			}
@@ -532,7 +508,7 @@ function Copper() {
 
 		//out:
 		cop_state.hpos = c_hpos;
-		last_copper_hpos = until_hpos;
+		this.last_copper_hpos = until_hpos;
 	}
 
 	this.compute_spcflag_copper = function (hpos) {
@@ -545,18 +521,19 @@ function Copper() {
 			return;
 
 		if (cop_state.state == COP_wait) {
-			var vp = AMIGA.events.vpos & (((cop_state.saved_i2 >> 8) & 0x7f) | 0x80);
+			var vp = AMIGA.playfield.vpos & (((cop_state.saved_i2 >> 8) & 0x7f) | 0x80);
 
 			if (vp < cop_state.vcmp)
 				return;
 		}
 		// do not use past cycles if starting for the first time in this line
 		// (write to DMACON for example) hpos+1 for long lines
-		if (!wasenabled && cop_state.hpos < hpos && hpos < AMIGA.events.maxhpos) {
+		if (!wasenabled && cop_state.hpos < hpos && hpos < AMIGA.playfield.maxhpos) {
 			hpos = (hpos + 2) & ~1;
-			if (hpos > 226)
-				hpos = 226;
+			if (hpos > AMIGA.playfield.maxhpos_short)
+				hpos = AMIGA.playfield.maxhpos_short;
 			cop_state.hpos = hpos;
+			//BUG.info('compute_spcflag_copper() hpos %d %d', hpos, AMIGA.playfield.maxhpos_short);
 		}
 
 		// if COPJMPx was written while DMA was disabled, advance to next state,
@@ -575,40 +552,39 @@ function Copper() {
 
 		//BUG.info('blitter_done_notify() hpos %d', hpos);
 
-		var vp = AMIGA.events.vpos;
+		var vp = AMIGA.playfield.vpos;
 		hpos += 3;
 		hpos &= ~1;
-		if (hpos >= AMIGA.events.maxhpos) {
-			hpos -= AMIGA.events.maxhpos;
+		if (hpos >= AMIGA.playfield.maxhpos) {
+			hpos -= AMIGA.playfield.maxhpos;
 			vp++;
 		}
 		cop_state.hpos = hpos;
 		cop_state.vpos = vp;
 		cop_state.state = COP_read1;
-		//if (debug_dma) record_dma_event (DMA_EVENT_COPPERWAKE, hpos, vp);
 
-		if (AMIGA.dmaen(DMAF_COPEN) && vp == AMIGA.events.vpos) {
+		if (AMIGA.dmaen(DMAF_COPEN) && vp == AMIGA.playfield.vpos) {
 			this.enabled_thisline = true;
 			set_special(SPCFLAG_COPPER);
 		}
 	}
 
 	this.cycle = function () {
-		this.update_copper(AMIGA.events.hpos());
+		this.update(AMIGA.playfield.hpos());
 	}
 
 	this.sync_copper_with_cpu = function (hpos, do_schedule) {
 		/* Need to let the copper advance to the current position.  */
 		if (this.enabled_thisline)
-			this.update_copper(hpos);
+			this.update(hpos);
 	}
 
 	this.check = function (n) {
 		if (cop_state.state == COP_wait) {
-			var vp = AMIGA.events.vpos & (((cop_state.saved_i2 >> 8) & 0x7f) | 0x80);
+			var vp = AMIGA.playfield.vpos & (((cop_state.saved_i2 >> 8) & 0x7f) | 0x80);
 			if (vp < cop_state.vcmp) {
 				if (this.enabled_thisline)
-					BUG.info('COPPER BUG %d: vp=%d vpos=%d vcmp=%d thisline=%d', n, vp, AMIGA.events.vpos, cop_state.vcmp, this.enabled_thisline?1:0);
+					BUG.info('COPPER BUG %d: vp=%d vpos=%d vcmp=%d thisline=%d', n, vp, AMIGA.playfield.vpos, cop_state.vcmp, this.enabled_thisline?1:0);
 			}
 		}
 	}

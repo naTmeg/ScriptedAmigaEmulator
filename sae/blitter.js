@@ -3,27 +3,79 @@
 *
 * https://github.com/naTmeg/ScriptedAmigaEmulator
 *
-* ©2012 Rupert Hausberger
+* ©2012 Rupert Hausberger        
 * Commercial use is prohibited.
 *
+***************************************************************************
+* Notes: Ported from WinUAE 2.5.0
+* 
 **************************************************************************/
 
 function Blitter() {	
+	const FAST = true;
 	const BLITTER_MAX_WORDS = 2048;
 
-	/*const BLITTER_STARTUP_CYCLES = 2;
-	const BLIT_MODE_IMMEDIATE = -1;
-	const BLIT_MODE_APPROXIMATE = 0;
-	const BLIT_MODE_COMPATIBLE = 1;
-	const BLIT_MODE_EXACT = 2;*/
+	const blit_cycle_diagram = [
+		[2, 0,0,     0,0    ], /* 0   -- */
+		[2, 0,0,     0,4    ], /* 1   -D */
+		[2, 0,3,     0,3    ], /* 2   -C */
+		[3, 0,3,0,   0,3,4  ], /* 3  -CD */
+		[3, 0,2,0,   0,2,0  ], /* 4  -B- */
+		[3, 0,2,0,   0,2,4  ], /* 5  -BD */
+		[3, 0,2,3,   0,2,3  ], /* 6  -BC */
+		[4, 0,2,3,0, 0,2,3,4], /* 7 -BCD */
+		[2, 1,0,     1,0    ], /* 8   A- */
+		[2, 1,0,     1,4    ], /* 9   AD */
+		[2, 1,3,	    1,3    ], /* A   AC */
+		[3, 1,3,0,   1,3,4  ], /* B  ACD */
+		[3, 1,2,0,   1,2,0  ], /* C  AB- */
+		[3, 1,2,0,   1,2,4  ], /* D  ABD */
+		[3, 1,2,3,   1,2,3  ], /* E  ABC */
+		[4, 1,2,3,0, 1,2,3,4]  /* F ABCD */
+	];
+	const blit_cycle_diagram_fill = [
+		[0                  ], /* 0 */
+		[3, 0,0,0,   0,4,0  ], /* 1 */
+		[0                  ], /* 2 */
+		[0                  ], /* 3 */
+		[0                  ], /* 4 */
+		[4, 0,2,0,0, 0,2,4,0], /* 5 */
+		[0                  ], /* 6 */
+		[0                  ], /* 7 */
+		[0                  ], /* 8 */
+		[3, 1,0,0,   1,4,0  ], /* 9 */
+		[0                  ], /* A */
+		[0                  ], /* B */
+		[0                  ], /* C */
+		[4, 1,2,0,0, 1,2,4,0], /* D */
+		[0                  ], /* E */
+		[0                  ]  /* F */
+	];
+	const blit_cycle_diagram_line = [4, 0,3,5,4, 0,3,5,4];
+	const blit_cycle_diagram_finald = [2, 0,4, 0,4];
+	const blit_cycle_diagram_finalld = [2, 0,0, 0,0];
 	
 	var blit_filltable = [];
 	var blit_masktable = [];
+	var blit_interrupt = true;
+	var blit_ch = 0;
+	var blit_slowdown = 0;
+	var blit_stuck = 0;
+	var blit_cyclecounter = 0;
+	var blit_firstline_cycles = 0;
+	var blit_first_cycle = 0;
+	var blit_last_cycle = 0, blit_dmacount = 0, blit_dmacount2 = 0;	
+	var blit_nod = 0;
+	var blit_diag = [];
+	var blit_faulty = 0;
+	var original_ch = 0, original_fill = 0, original_line = 0;	
+	
+ 	var bltstate = BLT_done;
 
 	var bltcon0 = 0;
 	var bltcon1 = 0;
 	var bltapt = 0;
-	var bltapt_line = 0;
+	var bltapt_line = null;
 	var bltbpt = 0;
 	var bltcpt = 0;	
 	var bltdpt = 0;	
@@ -32,10 +84,11 @@ function Blitter() {
 	var blinea = 0, blineb = 0;
 	var blitline = 0, blitfc = 0, blitfill = 0, blitife = 0, blitsing = 0, blitdesc = 0;
 	var blitonedot = 0, blitsign = 0, blitlinepixel = 0;
-	//var blit_add = 0;
-	//var blit_modadda = 0, blit_modaddb = 0, blit_modaddc = 0, blit_modaddd = 0;
-	var blit_ch = 0;
-
+	
+	var ddat1 = 0, ddat2 = 0;
+	var ddat1use = 0, ddat2use = 0;
+	var last_blitter_hpos = 0;
+	
 	var blt_info = {	
 		blitzero:0,
 		blitashift:0, blitbshift:0, blitdownashift:0, blitdownbshift:0,
@@ -45,75 +98,6 @@ function Blitter() {
 		bltamod:0, bltbmod:0, bltcmod:0, bltdmod:0,
 		got_cycle:0
 	};
-
- 	var bltstate = BLT_done;
-
-	var original_ch = 0, original_fill = 0, original_line = 0;	
-	var blit_interrupt = true;
-	var blitter_cycle_exact = false;
-
-	var blit_cyclecounter = 0;
-	//var blit_waitcyclecounter = 0;
-	//var blit_maxcyclecounter = 0;
-	//var blit_totalcyclecounter = 0;
-	//var blit_startcycles = 0;
-	//var blit_misscyclecounter = 0;
-	var blit_slowdown = 0;
-	//var last_blitter_hpos = 0;
-	var blit_stuck = 0;
-
-	var blit_firstline_cycles = 0;
-	var blit_first_cycle = 0;
-	var blit_last_cycle = 0, blit_dmacount = 0, blit_dmacount2 = 0;
-	//var blit_linecycles = 0, blit_extracycles = 0
-	var blit_nod = 0;
-	var blit_diag = [];
-	//var blit_frozen = 0;
-	var blit_faulty = 0;
-	var blit_final = 0;
-	//var blt_delayed_irq = 0;
-	var ddat1 = 0, ddat2 = 0;
-	var ddat1use = 0, ddat2use = 0;
-	
-	const blit_cycle_diagram = [
-		[ 2, 0,0,	    0,0 ],		/* 0   -- */
-		[ 2, 0,0,	    0,4 ],		/* 1   -D */
-		[ 2, 0,3,	    0,3 ],		/* 2   -C */
-		[ 3, 0,3,0,	    0,3,4 ],	/* 3  -CD */
-		[ 3, 0,2,0,	    0,2,0 ],	/* 4  -B- */
-		[ 3, 0,2,0,	    0,2,4 ],	/* 5  -BD */
-		[ 3, 0,2,3,	    0,2,3 ],	/* 6  -BC */
-		[ 4, 0,2,3,0,   0,2,3,4 ], /* 7 -BCD */
-		[ 2, 1,0,	    1,0 ],		/* 8   A- */
-		[ 2, 1,0,	    1,4 ],		/* 9   AD */
-		[ 2, 1,3,	    1,3 ],		/* A   AC */
-		[ 3, 1,3,0,	    1,3,4, ],	/* B  ACD */
-		[ 3, 1,2,0,	    1,2,0 ],	/* C  AB- */
-		[ 3, 1,2,0,	    1,2,4 ],	/* D  ABD */
-		[ 3, 1,2,3,	    1,2,3 ],	/* E  ABC */
-		[ 4, 1,2,3,0,   1,2,3,4 ]	/* F ABCD */
-	];
-	const blit_cycle_diagram_fill = [
-		[ 0 ],							/* 0 */
-		[ 3, 0,0,0,	    0,4,0 ],	/* 1 */
-		[ 0 ],							/* 2 */
-		[ 0 ],							/* 3 */
-		[ 0 ],							/* 4 */
-		[ 4, 0,2,0,0,   0,2,4,0 ],	/* 5 */
-		[ 0 ],							/* 6 */
-		[ 0 ],							/* 7 */
-		[ 0 ],							/* 8 */
-		[ 3, 1,0,0,	    1,4,0 ],	/* 9 */
-		[ 0 ],							/* A */
-		[ 0 ],							/* B */
-		[ 0 ],							/* C */
-		[ 4, 1,2,0,0,   1,2,4,0 ],	/* D */
-		[ 0 ],							/* E */
-		[ 0 ]								/* F */
-	];
-	const blit_cycle_diagram_line =		[4, 0,3,5,4, 0,3,5,4];
-	const blit_cycle_diagram_finald = 	[2, 0,4,	    0,4];
-	const blit_cycle_diagram_finalld =	[2, 0,0,	    0,0];
 
 	//function build_blitfilltable()
 	{
@@ -165,12 +149,9 @@ function Blitter() {
 
 	function get_ch() {
 		if (blit_faulty) {
-			console.log('get_ch() blit_faulty');
-			//FIXME
+			console.log('get_ch() blit_faulty');			
 			return blit_cycle_diagram[0]; //&blit_diag[0];
 		} 
-		if (blit_final)
-			return blitline ? blit_cycle_diagram_finalld : blit_cycle_diagram_finald;
 		return blit_diag;
 	}
 
@@ -186,7 +167,7 @@ function Blitter() {
 		return diag[1 + diag[0] + cycles];
 	}
 	
-	/*function channel_pos(cycles) {
+	function channel_pos(cycles) {
 		if (cycles < 0)
 			return 0;
 		var diag = get_ch();
@@ -195,58 +176,45 @@ function Blitter() {
 		cycles -= diag[0];
 		cycles %= diag[0];
 		return cycles;
-	}*/
+	}
 
-	/*function canblit(hpos) {
-		if (is_bitplane_dma (hpos))
-			return 0;
-		if (cycle_line[hpos] & CYCLE_MASK) return 0;
-		return 1;
-	}*/
-
-	function blitter_interrupt(hpos, done) {
+	function blitter_interrupt() {
 		if (blit_interrupt)
 			return;
-		if (!done && (!AMIGA.config.blitter.exact || AMIGA.config.cpu.model >= 68020))
-			return;
 		blit_interrupt = true;
-		AMIGA.send_interrupt(6, 3 * CYCLE_UNIT);
-		//if (debug_dma) record_dma_event (DMA_EVENT_BLITIRQ, hpos, vpos);
+		AMIGA.INTREQ_0(INT_BLIT);
 	}
 
 	function blitter_done(hpos) {
 		ddat1use = ddat2use = 0;
-		//bltstate = blit_startcycles == 0 || !AMIGA.config.blitter.exact ? BLT_done : BLT_init;
-		bltstate = !AMIGA.config.blitter.exact ? BLT_done : BLT_init;
-		blitter_interrupt(hpos, 1);
+		bltstate = BLT_done;
+		blitter_interrupt();
 		AMIGA.copper.blitter_done_notify(hpos);
-		//if (debug_dma) record_dma_event (DMA_EVENT_BLITFINISHED, hpos, vpos);
-		AMIGA.events.event2_remevent(EV2_BLITTER);
-		clr_special (SPCFLAG_BLTNASTY);
-		//BUG.info('blitter_done() cycles %d, missed %d, total %d', blit_totalcyclecounter, blit_misscyclecounter, blit_totalcyclecounter + blit_misscyclecounter);
+		AMIGA.events.remevent(EV2_BLITTER);
+		clr_special(SPCFLAG_BLTNASTY);
 	}
 	
 	/*---------------------------------*/
-	/* ~1500 lines of auto-generated functions are folling... */
+	/* ~1500 lines of auto-generated functions are follwing... */
 	/*---------------------------------*/
 			
 	function blitdofast_0(pta, ptb, ptc, ptd, b) {
 		var i,j;
 		var totald = 0;
-		var dstd=0;
+		var dstd = 0;
 		var dstp = 0;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
 
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = (0) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd += 2; }
 			}
 			if (ptd) ptd += b.bltdmod;
 		}
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -258,14 +226,14 @@ function Blitter() {
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = (0) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd -= 2; }
 			}
 			if (ptd) ptd -= b.bltdmod;
 		}
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -274,18 +242,18 @@ function Blitter() {
 		var totald = 0;
 		var preva = 0;
 		var srcc = b.bltcdat;
-		var dstd=0;
+		var dstd = 0;
 		var dstp = 0;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
 
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc += 2; }
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc += 2; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((preva << 16) | bltadat) >>> 0) >>> b.blitashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((~srca & srcc)) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd += 2; }
@@ -295,7 +263,7 @@ function Blitter() {
 			if (ptd) ptd += b.bltdmod;
 		}
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -309,12 +277,12 @@ function Blitter() {
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc -= 2; }
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc -= 2; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((~srca & srcc)) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd -= 2; }
@@ -324,7 +292,7 @@ function Blitter() {
 			if (ptd) ptd -= b.bltdmod;
 		}
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -334,23 +302,23 @@ function Blitter() {
 		var preva = 0;
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
-		var dstd=0;
+		var dstd = 0;
 		var dstp = 0;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
 
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc += 2; }
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc += 2; }
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb += 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb += 2;
 					srcb = ((((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((preva << 16) | bltadat) >>> 0) >>> b.blitashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srcc & ~(srca & srcb))) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd += 2; }
@@ -362,7 +330,7 @@ function Blitter() {
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -377,17 +345,17 @@ function Blitter() {
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc -= 2; }
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc -= 2; }
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb -= 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb -= 2;
 					srcb = ((((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srcc & ~(srca & srcb))) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd -= 2; }
@@ -399,7 +367,7 @@ function Blitter() {
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -408,22 +376,22 @@ function Blitter() {
 		var totald = 0;
 		var preva = 0;
 		var prevb = 0, srcb = b.bltbhold;
-		var dstd=0;
+		var dstd = 0;
 		var dstp = 0;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
 
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb += 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb += 2;
 					srcb = ((((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((preva << 16) | bltadat) >>> 0) >>> b.blitashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srca & ~srcb)) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd += 2; }
@@ -433,7 +401,7 @@ function Blitter() {
 			if (ptd) ptd += b.bltdmod;
 		}
 		b.bltbhold = srcb;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -448,15 +416,15 @@ function Blitter() {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb -= 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb -= 2;
 					srcb = ((((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srca & ~srcb)) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd -= 2; }
@@ -466,7 +434,7 @@ function Blitter() {
 			if (ptd) ptd -= b.bltdmod;
 		}
 		b.bltbhold = srcb;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -476,23 +444,23 @@ function Blitter() {
 		var preva = 0;
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
-		var dstd=0;
+		var dstd = 0;
 		var dstp = 0;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
 
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc += 2; }
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc += 2; }
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb += 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb += 2;
 					srcb = ((((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((preva << 16) | bltadat) >>> 0) >>> b.blitashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srcb ^ (srca | (srcb ^ srcc)))) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd += 2; }
@@ -504,7 +472,7 @@ function Blitter() {
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -519,17 +487,17 @@ function Blitter() {
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc -= 2; }
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc -= 2; }
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb -= 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb -= 2;
 					srcb = ((((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srcb ^ (srca | (srcb ^ srcc)))) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd -= 2; }
@@ -541,7 +509,7 @@ function Blitter() {
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -550,22 +518,22 @@ function Blitter() {
 		var totald = 0;
 		var preva = 0;
 		var prevb = 0, srcb = b.bltbhold;
-		var dstd=0;
+		var dstd = 0;
 		var dstp = 0;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
 
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb += 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb += 2;
 					srcb = ((((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((preva << 16) | bltadat) >>> 0) >>> b.blitashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srca ^ srcb)) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd += 2; }
@@ -575,7 +543,7 @@ function Blitter() {
 			if (ptd) ptd += b.bltdmod;
 		}
 		b.bltbhold = srcb;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -590,15 +558,15 @@ function Blitter() {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb -= 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb -= 2;
 					srcb = ((((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srca ^ srcb)) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd -= 2; }
@@ -608,7 +576,7 @@ function Blitter() {
 			if (ptd) ptd -= b.bltdmod;
 		}
 		b.bltbhold = srcb;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -618,23 +586,23 @@ function Blitter() {
 		var preva = 0;
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
-		var dstd=0;
+		var dstd = 0;
 		var dstp = 0;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
 
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc += 2; }
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc += 2; }
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb += 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb += 2;
 					srcb = ((((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((preva << 16) | bltadat) >>> 0) >>> b.blitashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srcc ^ (srca & (srcb | srcc)))) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd += 2; }
@@ -646,7 +614,7 @@ function Blitter() {
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -661,17 +629,17 @@ function Blitter() {
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc -= 2; }
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc -= 2; }
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb -= 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb -= 2;
 					srcb = ((((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srcc ^ (srca & (srcb | srcc)))) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd -= 2; }
@@ -683,7 +651,7 @@ function Blitter() {
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -693,23 +661,23 @@ function Blitter() {
 		var preva = 0;
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
-		var dstd=0;
+		var dstd = 0;
 		var dstp = 0;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
 
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc += 2; }
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc += 2; }
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb += 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb += 2;
 					srcb = ((((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((preva << 16) | bltadat) >>> 0) >>> b.blitashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srcc ^ (srca & srcb))) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd += 2; }
@@ -721,7 +689,7 @@ function Blitter() {
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -736,17 +704,17 @@ function Blitter() {
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc -= 2; }
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc -= 2; }
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb -= 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb -= 2;
 					srcb = ((((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srcc ^ (srca & srcb))) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd -= 2; }
@@ -758,7 +726,7 @@ function Blitter() {
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -768,23 +736,23 @@ function Blitter() {
 		var preva = 0;
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
-		var dstd=0;
+		var dstd = 0;
 		var dstp = 0;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
 
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc += 2; }
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc += 2; }
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb += 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb += 2;
 					srcb = ((((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((preva << 16) | bltadat) >>> 0) >>> b.blitashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srcc & (~srca | srcb))) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd += 2; }
@@ -796,7 +764,7 @@ function Blitter() {
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -811,17 +779,17 @@ function Blitter() {
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc -= 2; }
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc -= 2; }
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb -= 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb -= 2;
 					srcb = ((((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srcc & (~srca | srcb))) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd -= 2; }
@@ -833,7 +801,7 @@ function Blitter() {
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -843,23 +811,23 @@ function Blitter() {
 		var preva = 0;
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
-		var dstd=0;
+		var dstd = 0;
 		var dstp = 0;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
 
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc += 2; }
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc += 2; }
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb += 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb += 2;
 					srcb = ((((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((preva << 16) | bltadat) >>> 0) >>> b.blitashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srcb & (~srca | srcc))) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd += 2; }
@@ -871,7 +839,7 @@ function Blitter() {
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -886,17 +854,17 @@ function Blitter() {
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc -= 2; }
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc -= 2; }
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb -= 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb -= 2;
 					srcb = ((((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srcb & (~srca | srcc))) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd -= 2; }
@@ -908,7 +876,7 @@ function Blitter() {
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -918,23 +886,23 @@ function Blitter() {
 		var preva = 0;
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
-		var dstd=0;
+		var dstd = 0;
 		var dstp = 0;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
 
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc += 2; }
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc += 2; }
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb += 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb += 2;
 					srcb = ((((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((preva << 16) | bltadat) >>> 0) >>> b.blitashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srcc ^ (srca & ~srcb))) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd += 2; }
@@ -946,7 +914,7 @@ function Blitter() {
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -961,17 +929,17 @@ function Blitter() {
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc -= 2; }
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc -= 2; }
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb -= 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb -= 2;
 					srcb = ((((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srcc ^ (srca & ~srcb))) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd -= 2; }
@@ -983,7 +951,7 @@ function Blitter() {
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -993,23 +961,23 @@ function Blitter() {
 		var preva = 0;
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
-		var dstd=0;
+		var dstd = 0;
 		var dstp = 0;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
 
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc += 2; }
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc += 2; }
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb += 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb += 2;
 					srcb = ((((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((preva << 16) | bltadat) >>> 0) >>> b.blitashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srcc & (srca | srcb))) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd += 2; }
@@ -1021,7 +989,7 @@ function Blitter() {
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -1036,17 +1004,17 @@ function Blitter() {
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc -= 2; }
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc -= 2; }
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb -= 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb -= 2;
 					srcb = ((((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srcc & (srca | srcb))) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd -= 2; }
@@ -1058,7 +1026,7 @@ function Blitter() {
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -1066,14 +1034,14 @@ function Blitter() {
 		var i,j;
 		var totald = 0;
 		var srcc = b.bltcdat;
-		var dstd=0;
+		var dstd = 0;
 		var dstp = 0;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
 
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc += 2; }
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc += 2; }
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = (srcc) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd += 2; }
@@ -1082,7 +1050,7 @@ function Blitter() {
 			if (ptd) ptd += b.bltdmod;
 		}
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -1095,8 +1063,8 @@ function Blitter() {
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc -= 2; }
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc -= 2; }
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = (srcc) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd -= 2; }
@@ -1105,7 +1073,7 @@ function Blitter() {
 			if (ptd) ptd -= b.bltdmod;
 		}
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -1115,23 +1083,23 @@ function Blitter() {
 		var preva = 0;
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
-		var dstd=0;
+		var dstd = 0;
 		var dstp = 0;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
 
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc += 2; }
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc += 2; }
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb += 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb += 2;
 					srcb = ((((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((preva << 16) | bltadat) >>> 0) >>> b.blitashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = (~(srca ^ (srcc | (srca ^ srcb)))) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd += 2; }
@@ -1143,7 +1111,7 @@ function Blitter() {
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -1158,17 +1126,17 @@ function Blitter() {
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc -= 2; }
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc -= 2; }
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb -= 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb -= 2;
 					srcb = ((((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = (~(srca ^ (srcc | (srca ^ srcb)))) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd -= 2; }
@@ -1180,7 +1148,7 @@ function Blitter() {
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -1190,23 +1158,23 @@ function Blitter() {
 		var preva = 0;
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
-		var dstd=0;
+		var dstd = 0;
 		var dstp = 0;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
 
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc += 2; }
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc += 2; }
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb += 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb += 2;
 					srcb = ((((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((preva << 16) | bltadat) >>> 0) >>> b.blitashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srcc ^ (srca & (srcb ^ srcc)))) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd += 2; }
@@ -1218,7 +1186,7 @@ function Blitter() {
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -1233,17 +1201,17 @@ function Blitter() {
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc -= 2; }
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc -= 2; }
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb -= 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb -= 2;
 					srcb = ((((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srcc ^ (srca & (srcb ^ srcc)))) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd -= 2; }
@@ -1255,7 +1223,7 @@ function Blitter() {
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -1263,18 +1231,18 @@ function Blitter() {
 		var i,j;
 		var totald = 0;
 		var prevb = 0, srcb = b.bltbhold;
-		var dstd=0;
+		var dstd = 0;
 		var dstp = 0;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
 
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb += 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb += 2;
 					srcb = ((((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = (srcb) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd += 2; }
@@ -1283,7 +1251,7 @@ function Blitter() {
 			if (ptd) ptd += b.bltdmod;
 		}
 		b.bltbhold = srcb;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -1297,11 +1265,11 @@ function Blitter() {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb -= 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb -= 2;
 					srcb = ((((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = (srcb) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd -= 2; }
@@ -1310,7 +1278,7 @@ function Blitter() {
 			if (ptd) ptd -= b.bltdmod;
 		}
 		b.bltbhold = srcb;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -1320,23 +1288,23 @@ function Blitter() {
 		var preva = 0;
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
-		var dstd=0;
+		var dstd = 0;
 		var dstp = 0;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
 
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc += 2; }
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc += 2; }
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb += 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb += 2;
 					srcb = ((((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((preva << 16) | bltadat) >>> 0) >>> b.blitashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srca ^ (srcc & (srca ^ srcb)))) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd += 2; }
@@ -1348,7 +1316,7 @@ function Blitter() {
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -1363,17 +1331,17 @@ function Blitter() {
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc -= 2; }
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc -= 2; }
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb -= 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb -= 2;
 					srcb = ((((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srca ^ (srcc & (srca ^ srcb)))) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd -= 2; }
@@ -1385,7 +1353,7 @@ function Blitter() {
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -1395,23 +1363,23 @@ function Blitter() {
 		var preva = 0;
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
-		var dstd=0;
+		var dstd = 0;
 		var dstp = 0;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
 
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc += 2; }
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc += 2; }
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb += 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb += 2;
 					srcb = ((((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((preva << 16) | bltadat) >>> 0) >>> b.blitashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srcc ^ (srcb & (srca ^ srcc)))) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd += 2; }
@@ -1423,7 +1391,7 @@ function Blitter() {
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -1438,17 +1406,17 @@ function Blitter() {
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc -= 2; }
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc -= 2; }
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb -= 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb -= 2;
 					srcb = ((((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srcc ^ (srcb & (srca ^ srcc)))) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd -= 2; }
@@ -1460,7 +1428,7 @@ function Blitter() {
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -1470,23 +1438,23 @@ function Blitter() {
 		var preva = 0;
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
-		var dstd=0;
+		var dstd = 0;
 		var dstp = 0;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
 
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc += 2; }
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc += 2; }
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb += 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb += 2;
 					srcb = ((((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((preva << 16) | bltadat) >>> 0) >>> b.blitashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srcc | (srca & srcb))) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd += 2; }
@@ -1498,7 +1466,7 @@ function Blitter() {
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -1513,17 +1481,17 @@ function Blitter() {
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc -= 2; }
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc -= 2; }
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb -= 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb -= 2;
 					srcb = ((((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srcc | (srca & srcb))) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd -= 2; }
@@ -1535,7 +1503,7 @@ function Blitter() {
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -1543,17 +1511,17 @@ function Blitter() {
 		var i,j;
 		var totald = 0;
 		var preva = 0;
-		var dstd=0;
+		var dstd = 0;
 		var dstp = 0;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
 
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((preva << 16) | bltadat) >>> 0) >>> b.blitashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = (srca) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd += 2; }
@@ -1561,7 +1529,7 @@ function Blitter() {
 			if (pta) pta += b.bltamod;
 			if (ptd) ptd += b.bltdmod;
 		}
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -1574,11 +1542,11 @@ function Blitter() {
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = (srca) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd -= 2; }
@@ -1586,7 +1554,7 @@ function Blitter() {
 			if (pta) pta -= b.bltamod;
 			if (ptd) ptd -= b.bltdmod;
 		}
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -1595,18 +1563,18 @@ function Blitter() {
 		var totald = 0;
 		var preva = 0;
 		var srcc = b.bltcdat;
-		var dstd=0;
+		var dstd = 0;
 		var dstp = 0;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
 
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc += 2; }
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc += 2; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((preva << 16) | bltadat) >>> 0) >>> b.blitashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srca | srcc)) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd += 2; }
@@ -1616,7 +1584,7 @@ function Blitter() {
 			if (ptd) ptd += b.bltdmod;
 		}
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -1630,12 +1598,12 @@ function Blitter() {
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = AMIGA.mem.load16_chip(ptc); ptc -= 2; }
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (ptc) { srcc = AMIGA.mem.chip.data[ptc >>> 1]; ptc -= 2; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srca | srcc)) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd -= 2; }
@@ -1645,7 +1613,7 @@ function Blitter() {
 			if (ptd) ptd -= b.bltdmod;
 		}
 		b.bltcdat = srcc;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -1654,22 +1622,22 @@ function Blitter() {
 		var totald = 0;
 		var preva = 0;
 		var prevb = 0, srcb = b.bltbhold;
-		var dstd=0;
+		var dstd = 0;
 		var dstp = 0;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
 
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb += 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb += 2;
 					srcb = ((((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((preva << 16) | bltadat) >>> 0) >>> b.blitashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srca | srcb)) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd += 2; }
@@ -1679,7 +1647,7 @@ function Blitter() {
 			if (ptd) ptd += b.bltdmod;
 		}
 		b.bltbhold = srcb;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -1694,15 +1662,15 @@ function Blitter() {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
 				if (ptb) {
-					var bltbdat = blt_info.bltbdat = AMIGA.mem.load16_chip(ptb); ptb -= 2;
+					var bltbdat = blt_info.bltbdat = AMIGA.mem.chip.data[ptb >>> 1]; ptb -= 2;
 					srcb = ((((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift) & 0xffff;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(pta); pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta) { bltadat = blt_info.bltadat = AMIGA.mem.chip.data[pta >>> 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = ((((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift) & 0xffff;
 				preva = bltadat;
-				if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+				if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 				dstd = ((srca | srcb)) & 0xffff;
 				totald |= dstd;
 				if (ptd) { dstp = ptd; ptd -= 2; }
@@ -1712,7 +1680,7 @@ function Blitter() {
 			if (ptd) ptd -= b.bltdmod;
 		}
 		b.bltbhold = srcb;
-		if (dstp) AMIGA.mem.store16_chip(dstp, dstd);
+		if (dstp) AMIGA.mem.chip.data[dstp >>> 1] = dstd;
 		if (totald != 0) b.blitzero = 0;
 	}
 
@@ -2048,6 +2016,7 @@ function Blitter() {
 	}
 	
 	function blitter_dofast() {
+		//console.log('blitter_dofast');
 		var i,j;
 		var bltadatptr = 0, bltbdatptr = 0, bltcdatptr = 0, bltddatptr = 0;
 		var mt = bltcon0 & 0xFF;
@@ -2072,7 +2041,7 @@ function Blitter() {
 			bltdpt += (blt_info.hblitsize * 2 + blt_info.bltdmod) * blt_info.vblitsize;
 		}
 
-		if (blitfunc_dofast[mt] !== 0 && !blitfill)
+		if (FAST && blitfunc_dofast[mt] !== 0 && !blitfill)
 			blitfunc_dofast[mt](bltadatptr, bltbdatptr, bltcdatptr, bltddatptr, blt_info);
 		else {
 			var blitbhold = blt_info.bltbhold;
@@ -2086,7 +2055,8 @@ function Blitter() {
 					var bltadat, blitahold;
 					var bltbdat;
 					if (bltadatptr) {
-						blt_info.bltadat = bltadat = AMIGA.mem.load16_chip(bltadatptr);
+						//blt_info.bltadat = bltadat = AMIGA.mem.load16_chip(bltadatptr);
+						blt_info.bltadat = bltadat = AMIGA.mem.chip.data[bltadatptr >>> 1];
 						bltadatptr += 2;
 					} else
 						bltadat = blt_info.bltadat;
@@ -2095,19 +2065,23 @@ function Blitter() {
 					preva = bltadat;
 
 					if (bltbdatptr) {
-						blt_info.bltbdat = bltbdat = AMIGA.mem.load16_chip(bltbdatptr);
+						//blt_info.bltbdat = bltbdat = AMIGA.mem.load16_chip(bltbdatptr);
+						blt_info.bltbdat = bltbdat = AMIGA.mem.chip.data[bltbdatptr >>> 1];
 						bltbdatptr += 2;
 						blitbhold = (((prevb << 16) | bltbdat) >>> 0) >>> blt_info.blitbshift;
 						prevb = bltbdat;
 					}
 
 					if (bltcdatptr) {
-						blt_info.bltcdat = AMIGA.mem.load16_chip(bltcdatptr);
+						//blt_info.bltcdat = AMIGA.mem.load16_chip(bltcdatptr);
+						blt_info.bltcdat = AMIGA.mem.chip.data[bltcdatptr >>> 1];
 						bltcdatptr += 2;
 					}
 					if (dodst)
-						AMIGA.mem.store16_chip(dstp, blt_info.bltddat);
-					blt_info.bltddat = blit_func (blitahold, blitbhold, blt_info.bltcdat, mt) & 0xffff;
+						//AMIGA.mem.store16_chip(dstp, blt_info.bltddat);
+						AMIGA.mem.chip.data[dstp >>> 1] = blt_info.bltddat;
+						
+					blt_info.bltddat = (blit_func(blitahold & 0xffff, blitbhold & 0xffff, blt_info.bltcdat & 0xffff, mt) >>> 0) & 0xffff;
 					if (blitfill) {
 						var d = blt_info.bltddat;
 						var ifemode = blitife ? 2 : 0;
@@ -2129,7 +2103,9 @@ function Blitter() {
 				if (bltddatptr) bltddatptr += blt_info.bltdmod;
 			}
 			if (dodst)
-				AMIGA.mem.store16_chip(dstp, blt_info.bltddat);
+				//AMIGA.mem.store16_chip(dstp, blt_info.bltddat);
+				AMIGA.mem.chip.data[dstp >>> 1] = blt_info.bltddat;
+
 			blt_info.bltbhold = blitbhold;
 		}
 		blit_masktable[0] = 0xffff;
@@ -2139,6 +2115,7 @@ function Blitter() {
 	}
 
 	function blitter_dofast_desc() {
+		//console.log('blitter_dofast_desc');
 		var i,j;
 		var bltadatptr = 0, bltbdatptr = 0, bltcdatptr = 0, bltddatptr = 0;
 		var mt = bltcon0 & 0xFF;
@@ -2163,7 +2140,7 @@ function Blitter() {
 			bltdpt -= (blt_info.hblitsize * 2 + blt_info.bltdmod) * blt_info.vblitsize;
 		}
 
-		if (blitfunc_dofast_desc[mt] !== 0 && !blitfill)
+		if (FAST && blitfunc_dofast_desc[mt] !== 0 && !blitfill)
 			blitfunc_dofast_desc[mt](bltadatptr, bltbdatptr, bltcdatptr, bltddatptr, blt_info);
 		else {
 			var blitbhold = blt_info.bltbhold;
@@ -2177,7 +2154,8 @@ function Blitter() {
 					var bltadat, blitahold;
 					var bltbdat;
 					if (bltadatptr) {
-						bltadat = blt_info.bltadat = AMIGA.mem.load16_chip(bltadatptr);
+						//blt_info.bltadat = bltadat = AMIGA.mem.load16_chip(bltadatptr);
+						blt_info.bltadat = bltadat = AMIGA.mem.chip.data[bltadatptr >>> 1];
 						bltadatptr -= 2;
 					} else
 						bltadat = blt_info.bltadat;
@@ -2186,19 +2164,23 @@ function Blitter() {
 					preva = bltadat;
 
 					if (bltbdatptr) {
-						blt_info.bltbdat = bltbdat = AMIGA.mem.load16_chip(bltbdatptr);
+						//blt_info.bltbdat = bltbdat = AMIGA.mem.load16_chip(bltbdatptr);
+						blt_info.bltbdat = bltbdat = AMIGA.mem.chip.data[bltbdatptr >>> 1];
 						bltbdatptr -= 2;
 						blitbhold = (((bltbdat << 16) | prevb) >>> 0) >> blt_info.blitdownbshift;
 						prevb = bltbdat;
 					}
 
 					if (bltcdatptr) {
-						blt_info.bltcdat = blt_info.bltbdat = AMIGA.mem.load16_chip(bltcdatptr);
+						//blt_info.bltcdat = blt_info.bltbdat = AMIGA.mem.load16_chip(bltcdatptr);
+						blt_info.bltcdat = blt_info.bltbdat = AMIGA.mem.chip.data[bltcdatptr >>> 1];
 						bltcdatptr -= 2;
 					}
 					if (dodst)
-						AMIGA.mem.store16_chip(dstp, blt_info.bltddat);
-					blt_info.bltddat = blit_func (blitahold, blitbhold, blt_info.bltcdat, mt) & 0xffff;
+						//AMIGA.mem.store16_chip(dstp, blt_info.bltddat);
+						AMIGA.mem.chip.data[dstp >>> 1] = blt_info.bltddat;
+
+					blt_info.bltddat = (blit_func(blitahold & 0xffff, blitbhold & 0xffff, blt_info.bltcdat & 0xffff, mt) >>> 0) & 0xffff;
 					if (blitfill) {
 						var d = blt_info.bltddat;
 						var ifemode = blitife ? 2 : 0;
@@ -2220,7 +2202,9 @@ function Blitter() {
 				if (bltddatptr) bltddatptr -= blt_info.bltdmod;
 			}
 			if (dodst)
-				AMIGA.mem.store16_chip(dstp, blt_info.bltddat);
+				//AMIGA.mem.store16_chip(dstp, blt_info.bltddat);
+				AMIGA.mem.chip.data[dstp >>> 1] = blt_info.bltddat;
+
 			blt_info.bltbhold = blitbhold;
 		}
 		blit_masktable[0] = 0xffff;
@@ -2232,7 +2216,8 @@ function Blitter() {
 	function blitter_read() {
 		if (bltcon0 & 0x200) {
 			if (AMIGA.dmaen(DMAF_BLTEN))
-				blt_info.bltcdat = AMIGA.mem.load16_chip(bltcpt);
+				//blt_info.bltcdat = AMIGA.mem.load16_chip(bltcpt);
+				blt_info.bltcdat = dat = AMIGA.mem.chip.data[bltcpt >>> 1];
 		}
 		bltstate = BLT_work;
 	}
@@ -2243,7 +2228,8 @@ function Blitter() {
 			
 		if (bltcon0 & 0x200) {
 			if (AMIGA.dmaen(DMAF_BLTEN))
-				AMIGA.mem.store16_chip(bltdpt, blt_info.bltddat);
+				//AMIGA.mem.store16_chip(bltdpt, blt_info.bltddat);
+				AMIGA.mem.chip.data[bltdpt >>> 1] = blt_info.bltddat;
 		}
 		bltstate = BLT_next;
 	}
@@ -2254,7 +2240,7 @@ function Blitter() {
 
 		blt_info.bltbhold = (blineb & 1) ? 0xffff : 0;
 		blitlinepixel = !blitsing || (blitsing && !blitonedot);
-		blt_info.bltddat = blit_func (blitahold, blt_info.bltbhold, blitchold, bltcon0 & 0xFF);
+		blt_info.bltddat = blit_func(blitahold, blt_info.bltbhold, blitchold, bltcon0 & 0xff);
 		blitonedot++;
 	}
 
@@ -2396,26 +2382,27 @@ function Blitter() {
 				if (blt_info.vblitsize <= 0)
 					bltstate = BLT_done;
 			} while (bltstate != BLT_done);
+			bltapt_line = null;			
 			bltdpt = bltcpt;
 		} else {
 			if (blitdesc)
 				blitter_dofast_desc();
 			else
-				blitter_dofast();
+				blitter_dofast();			
 			bltstate = BLT_done;
 		}
 	}
 
-	function blitter_doit() {
+	function blitter_do() {
 		actually_do_blit();
-		blitter_done(AMIGA.events.hpos());
+		blitter_done(AMIGA.playfield.hpos());
 	}
 
 	/*---------------------------------*/
 
 	this.handler = function(data) {
 		if (!AMIGA.dmaen(DMAF_BLTEN)) {
-			AMIGA.events.event2_newevent(EV2_BLITTER, 10, 0);
+			AMIGA.events.newevent(EV2_BLITTER, 10, 0);
 			if (++blit_stuck < 20000 || !AMIGA.config.blitter.immediate)
 				return;
 
@@ -2423,40 +2410,15 @@ function Blitter() {
 		}
 		blit_stuck = 0;
 		if (blit_slowdown > 0 && !AMIGA.config.blitter.immediate) {
-			AMIGA.events.event2_newevent(EV2_BLITTER, blit_slowdown, 0);
+			//console.log('Blitter.handler () slowdown', blit_slowdown);
+			AMIGA.events.newevent(EV2_BLITTER, blit_slowdown, 0);
 			blit_slowdown = -1;
 			return;
 		}
-		blitter_doit();
+		blitter_do();
 	}
 
-	/*function blitter_force_finish() {
-		if (bltstate == BLT_done)
-			return;
-		if (bltstate != BLT_done) {
-			var odmacon = AMIGA.dmacon;
-			AMIGA.dmacon |= DMAF_DMAEN | DMAF_BLTEN;
-			BUG.info('forcing blitter finish');
-			
-			if (blitter_cycle_exact) {
-				var rounds = 10000;
-				while (bltstate != BLT_done && rounds > 0) {
-					memset (cycle_line, 0, sizeof cycle_line);
-					decide_blitter (-1);
-					rounds--;
-				}
-				if (rounds == 0) BUG.info('blitter froze!?');
-				blit_startcycles = 0;
-			} else {
-				actually_do_blit();
-			}
-			blitter_done(AMIGA.events.hpos());
-			AMIGA.dmacon = odmacon;
-		}
-	}*/
-
-	/*var changetable = new Uint8Array(32 * 32);
-	for (var i = 0; i < changetable.length; i++) changetable[i] = 0;*/	
+	var changetable = new Uint8Array(32 * 32); for (var i = 0; i < changetable.length; i++) changetable[i] = 0;	
 	var freezes = 10;
 	function blit_bltset(con) {
 		if (con & 2) {
@@ -2498,50 +2460,25 @@ function Blitter() {
 				
 			blit_diag = blitfill && blit_cycle_diagram_fill[blit_ch][0] ? blit_cycle_diagram_fill[blit_ch] : blit_cycle_diagram[blit_ch];
 		}
-		if ((bltcon1 & 0x80) && (AMIGA.config.chipset.type == SAEV_Config_Chipset_Type_ECS))
+		if ((bltcon1 & 0x80) && (AMIGA.config.chipset.mask & CSMASK_ECS_AGNUS))
 			BUG.info('blit_bltset() ECS BLTCON1 DOFF-bit set');
-
-		/*on the fly switching fillmode from extra cycle to non-extra: blitter freezes
-		non-extra cycle to extra cycle: does not freeze but cycle diagram goes weird,
-		extra free cycle changes to another D write..
-		(Absolute Inebriation vector cube inside semi-filled vector object requires freezing blitter.)*/
-		/*if (bltstate != BLT_done) {
-			var olddiag = blit_diag;
-			var isen = blit_diag >= &blit_cycle_diagram_fill[0][0] && blit_diag <= &blit_cycle_diagram_fill[15][0];
-			var iseo = olddiag >= &blit_cycle_diagram_fill[0][0] && olddiag <= &blit_cycle_diagram_fill[15][0];
-			if (iseo != isen) {
-				if (freezes > 0) {
-					BUG.info('BLITTER: on the fly %d (%d) -> %d (%d) switch!', original_ch, iseo, blit_ch, isen);
-					freezes--;
-				}
-			}
-			if (original_fill == isen) {
-				blit_frozen = 0;
-			} else if (iseo && !isen) {
-				blit_frozen = 1;
-				BUG.info('BLITTER: frozen! %d (%d) -> %d (%d)', original_ch, iseo, blit_ch, isen);
-			} else if (!iseo && isen) {
-				BUG.info('BLITTER: on the fly %d (%d) -> %d (%d) switch', original_ch, iseo, blit_ch, isen);
-			}
-		}*/
 
 		// on the fly switching from CH=1 to CH=D -> blitter stops writing (Rampage/TEK)
 		// currently just switch to no-channels mode, better than crashing the demo..
 		if (bltstate != BLT_done) {
-			/*var o = original_ch + (original_fill ? 16 : 0);
+			var o = original_ch + (original_fill ? 16 : 0);
 			var n = blit_ch + (blitfill ? 16 : 0);
 			if (o != n) {
 				if (changetable[o * 32 + n] < 10) {
 					changetable[o * 32 + n]++;
 					BUG.info('blit_bltset() channel mode changed while active (%02x->%02x)', o, n);
 				}
-			}*/
+			}
 			if (blit_ch == 13 && original_ch == 1)
 				blit_faulty = 1;
 		}
-
 		if (blit_faulty) {
-			//BUG.info('blit_bltset() blit_faulty!');
+			BUG.info('blit_bltset() blitter faulty!');
 			blit_ch = 0;
 			blit_diag = blit_cycle_diagram[blit_ch];
 		}
@@ -2559,15 +2496,6 @@ function Blitter() {
 		}
 	}
 
-	/*function blit_modset() {
-		blit_add = blitdesc ? -2 : 2;
-		var mult = blitdesc ? -1 : 1;
-		blit_modadda = mult * blt_info.bltamod; 
-		blit_modaddb = mult * blt_info.bltbmod; 
-		blit_modaddc = mult * blt_info.bltcmod; 
-		blit_modaddd = mult * blt_info.bltdmod; 
-	}*/
-
 	function reset_blit(bltcon) {
 		if (bltcon & 1)
 			blinea_shift = bltcon0 >> 12;
@@ -2577,7 +2505,6 @@ function Blitter() {
 			return;
 		if (bltcon)
 			blit_bltset(bltcon);
-		//blit_modset();
 	}
 
 	var warned1 = 10;	
@@ -2596,14 +2523,9 @@ function Blitter() {
 		return false;
 	}
 
-	function do_blitter2(hpos, copper) {
+	function do_blitter(hpos, copper) {
 		var cycles;
 
-		//#ifdef BLITTER_DEBUG_NOWAIT
-		if (bltstate != BLT_done) {
-			if (blit_final) BUG.info('do_blitter2() blitter was already active!');
-		}
-		//#endif
 		var cleanstart = 0;
 		if (bltstate == BLT_done) {
 			if (blit_faulty > 0)
@@ -2613,23 +2535,17 @@ function Blitter() {
 
 		bltstate = BLT_done;
 
-		blitter_cycle_exact = AMIGA.config.blitter.exact;
 		blt_info.blitzero = 1;
 		preva = 0;
 		prevb = 0;
 		blt_info.got_cycle = 0;
-		//blit_frozen = 0;
 
 		blit_firstline_cycles = blit_first_cycle = AMIGA.events.currcycle;
-		//blit_misscyclecounter = 0;
 		blit_last_cycle = 0;
-		//blit_maxcyclecounter = 0;
-		//last_blitter_hpos = hpos + 1;
+		last_blitter_hpos = hpos + 1;
 		blit_cyclecounter = 0;
-		//blit_totalcyclecounter = 0;
 
 		blit_bltset(1 | 2);
-		//blit_modset();
 		ddat1use = ddat2use = 0;
 		blit_interrupt = false;
 
@@ -2643,7 +2559,6 @@ function Blitter() {
 		} else {
 			blit_firstline_cycles = blit_first_cycle + (blit_diag[0] * blt_info.hblitsize + AMIGA.cpu.cycles) * CYCLE_UNIT;
 			cycles = blt_info.vblitsize * blt_info.hblitsize;
-			//console.log('blit_firstline_cycles', blit_firstline_cycles, cycles);
 		}
 
 		if (cleanstart) {
@@ -2654,14 +2569,10 @@ function Blitter() {
 
 		/*if (0) {
 			var ch = 0;
-			if (blit_ch & 1)
-				ch++;
-			if (blit_ch & 2)
-				ch++;
-			if (blit_ch & 4)
-				ch++;
-			if (blit_ch & 8)
-				ch++;
+			if (blit_ch & 1) ch++;
+			if (blit_ch & 2) ch++;
+			if (blit_ch & 4) ch++;
+			if (blit_ch & 8) ch++;
 			BUG.info('do_blitter2() %dx%d ch=%d %d*%d=%d d=%d f=%d n=%d l=%d dma=%04x %s',
 				blt_info.hblitsize, blt_info.vblitsize, ch, blit_diag[0], cycles, blit_diag[0] * cycles,
 				blitdesc ? 1 : 0, blitfill ? 1 : 0, AMIGA.dmaen(DMAF_BLTPRI) ? 1 : 0, blitline ? 1 : 0,
@@ -2672,43 +2583,29 @@ function Blitter() {
 		bltstate = BLT_init;
 		blit_slowdown = 0;
 
-		clr_special (SPCFLAG_BLTNASTY);
+		clr_special(SPCFLAG_BLTNASTY);
 		if (AMIGA.dmaen(DMAF_BLTPRI))
-			set_special (SPCFLAG_BLTNASTY);
+			set_special(SPCFLAG_BLTNASTY);
 
 		if (AMIGA.dmaen(DMAF_BLTEN))
 			bltstate = BLT_work;
-
-		/*blit_maxcyclecounter = 0x7fffffff;
-		if (blitter_cycle_exact) {
-			blitter_hcounter1 = blitter_hcounter2 = 0;
-			blitter_vcounter1 = blitter_vcounter2 = 0;
-			if (blit_nod)
-				blitter_vcounter2 = blt_info.vblitsize;
-			blit_cyclecounter = -BLITTER_STARTUP_CYCLES;
-			blit_waitcyclecounter = copper;
-			blit_startcycles = 0;
-			blit_maxcyclecounter = blt_info.hblitsize * blt_info.vblitsize + 2;
-			return;
-		}*/
 
 		if (blt_info.vblitsize == 0 || (blitline && blt_info.hblitsize != 2)) {
 			blitter_done(hpos);
 			return;
 		}
-
 		blt_info.got_cycle = 1;
-		//blit_waitcyclecounter = 0;
 
 		if (AMIGA.config.blitter.immediate) {
-			blitter_doit();
+			blitter_do();
 			return;
 		}
 
-		blit_cyclecounter = cycles * (blit_dmacount2 + (blit_nod ? 0 : 1)); 
-		AMIGA.events.event2_newevent(EV2_BLITTER, blit_cyclecounter, 0);
+		blit_cyclecounter = cycles * (blit_dmacount2 + (blit_nod ? 0 : 1)); 		
 
-		if (AMIGA.dmaen(DMAF_BLTEN) && (AMIGA.config.cpu.model >= 68020 || !AMIGA.config.cpu.exact)) {
+		AMIGA.events.newevent(EV2_BLITTER, blit_cyclecounter, 0);
+
+		if (AMIGA.dmaen(DMAF_BLTEN)) {
 			if (AMIGA.config.blitter.waiting) {
 				// wait immediately if all cycles in use and blitter nastry
 				if (blit_dmacount == blit_diag[0] && (AMIGA.spcflags & SPCFLAG_BLTNASTY))
@@ -2717,28 +2614,16 @@ function Blitter() {
 		}
 	}
 	
-	function do_blitter(hpos, copper) {
-		if (bltstate == BLT_done || !AMIGA.config.blitter.exact) {
-			do_blitter2(hpos, copper);
-			return;
-		}
-		if (!AMIGA.dmaen(DMAF_BLTEN) || !blt_info.got_cycle)
-			return;
-
-		//blit_startcycles = BLITTER_STARTUP_CYCLES;
-		//blit_waitcyclecounter = copper;
-	}
-
 	var warned2 = 10;
-	function maybe_blit(hpos, hack) {
+	this.maybe_blit = function(hpos, hack) {
 		if (bltstate == BLT_done)
 			return;
 
-		if (AMIGA.dmaen(DMAF_BLTEN) && (AMIGA.config.cpu.model >= 68020 || !AMIGA.config.cpu.exact)) {
+		if (AMIGA.dmaen(DMAF_BLTEN)) {
 			var doit = false;
 			if (AMIGA.config.blitter.waiting == 3) { // always
 				doit = true;
-			} else if (AMIGA.config.blitter.waiting == 2) { // noidle
+			} else if (AMIGA.config.blitter.waiting == 2) { // no idle
 				if (blit_dmacount == blit_diag[0] && (AMIGA.spcflags & SPCFLAG_BLTNASTY))
 					doit = true;
 			} else if (AMIGA.config.blitter.waiting == 1) { // automatic
@@ -2748,7 +2633,7 @@ function Blitter() {
 					doit = true;
 			}
 			if (doit) {
-				if (waitingblits ())
+				if (waitingblits())
 					return;
 			}
 		}
@@ -2758,10 +2643,6 @@ function Blitter() {
 			BUG.info('maybe_blit() program does not wait for blitter tc=%d', blit_cyclecounter);
 		}
 
-		/*if (blitter_cycle_exact) {
-			decide_blitter (hpos);
-			return;
-		}*/		
 		if (hack == 1 && AMIGA.events.currcycle < blit_firstline_cycles)
 			return;
 
@@ -2769,22 +2650,15 @@ function Blitter() {
 	}
 
 	this.blitnasty = function() {
-		var cycles, ccnt;
-		if (bltstate == BLT_done)
+		if (bltstate == BLT_done || !AMIGA.dmaen(DMAF_BLTEN))
 			return 0;
-		if (!AMIGA.dmaen(DMAF_BLTEN))
-			return 0;
-		/*if (blitter_cycle_exact) {
-			blitter_force_finish();
-			return -1;
-		}*/
 		if (blit_last_cycle >= blit_diag[0] && blit_dmacount == blit_diag[0])
 			return 0;
-		cycles = Math.floor((AMIGA.events.currcycle - blit_first_cycle) / CYCLE_UNIT);
-		ccnt = 0;
+
+		var cycles = Math.floor((AMIGA.events.currcycle - blit_first_cycle) * CYCLE_UNIT_INV);
+		var ccnt = 0;
 		while (blit_last_cycle < cycles) {
-			var c = channel_state(blit_last_cycle++);
-			if (!c)
+			if (!channel_state(blit_last_cycle++))
 				ccnt++;
 		}
 		return ccnt;
@@ -2794,7 +2668,7 @@ function Blitter() {
 
 	var oddfstrt = 0, oddfstop = 0, ototal = 0, ofree = 0, slow = 0;
 	this.slowdown = function() {
-		var data = AMIGA.playfield.get_data();
+		var data = AMIGA.playfield.getData();
 		var ddfstrt = data[0];
 		var ddfstop = data[1];
 		var totalcycles = data[2];
@@ -2803,9 +2677,10 @@ function Blitter() {
 		if (!totalcycles || ddfstrt < 0 || ddfstop < 0)
 			return;
 		if (ddfstrt != oddfstrt || ddfstop != oddfstop || totalcycles != ototal || ofree != freecycles) {
-			var linecycles = Math.floor(((ddfstop - ddfstrt + totalcycles - 1) / totalcycles) * totalcycles);
-			var freelinecycles = Math.floor(((ddfstop - ddfstrt + totalcycles - 1) / totalcycles) * freecycles);
+			var linecycles 	 = Math.floor(((ddfstop - ddfstrt + totalcycles - 1) / totalcycles) * totalcycles);
+			var freelinecycles = Math.floor(((ddfstop - ddfstrt + totalcycles - 1) / totalcycles) * freecycles);			
 			var dmacycles = Math.floor((linecycles * blit_dmacount) / blit_diag[0]);
+			
 			oddfstrt = ddfstrt;
 			oddfstop = ddfstop;
 			ototal = totalcycles;
@@ -2818,15 +2693,13 @@ function Blitter() {
 			return;
 			
 		blit_slowdown += slow;
-		//blit_misscyclecounter += slow;
-		//console.log('Blitter.slowdown()', data, blit_slowdown);
 	}
 		
 	/*---------------------------------*/
 
-	this.BLTADAT = function(hpos, v) { maybe_blit(hpos, 0); blt_info.bltadat = v; }
+	this.BLTADAT = function(hpos, v) { this.maybe_blit(hpos, 0); blt_info.bltadat = v; }
 	this.BLTBDAT = function(hpos, v) {
-		maybe_blit(hpos, 0);
+		this.maybe_blit(hpos, 0);
 		if (bltcon1 & 2)
 			blt_info.bltbhold = (v << (bltcon1 >> 12)) & 0xffff;
 		else
@@ -2834,35 +2707,35 @@ function Blitter() {
 
 		blt_info.bltbdat = v;
 	}
-	this.BLTCDAT = function(hpos, v) { maybe_blit(hpos, 0); blt_info.bltcdat = v; reset_blit(0); }
+	this.BLTCDAT = function(hpos, v) { this.maybe_blit(hpos, 0); blt_info.bltcdat = v; reset_blit(0); }
 
-	this.BLTAMOD = function(hpos, v) { maybe_blit(hpos, 1); blt_info.bltamod = castWord(v & 0xfffe); reset_blit(0); }
-	this.BLTBMOD = function(hpos, v) { maybe_blit(hpos, 1); blt_info.bltbmod = castWord(v & 0xfffe); reset_blit(0); }
-	this.BLTCMOD = function(hpos, v) { maybe_blit(hpos, 1); blt_info.bltcmod = castWord(v & 0xfffe); reset_blit(0); }
-	this.BLTDMOD = function(hpos, v) { maybe_blit(hpos, 1); blt_info.bltdmod = castWord(v & 0xfffe); reset_blit(0); }
+	this.BLTAMOD = function(hpos, v) { this.maybe_blit(hpos, 1); blt_info.bltamod = castWord(v & 0xfffe); reset_blit(0); }
+	this.BLTBMOD = function(hpos, v) { this.maybe_blit(hpos, 1); blt_info.bltbmod = castWord(v & 0xfffe); reset_blit(0); }
+	this.BLTCMOD = function(hpos, v) { this.maybe_blit(hpos, 1); blt_info.bltcmod = castWord(v & 0xfffe); reset_blit(0); }
+	this.BLTDMOD = function(hpos, v) { this.maybe_blit(hpos, 1); blt_info.bltdmod = castWord(v & 0xfffe); reset_blit(0); }
 
-	this.BLTCON0 = function(hpos, v) { maybe_blit(hpos, 2); bltcon0 = v; reset_blit(1); }
+	this.BLTCON0 = function(hpos, v) { this.maybe_blit(hpos, 2); bltcon0 = v; reset_blit(1); }
 	this.BLTCON0L = function( hpos, v) {
-		if (AMIGA.config.chipset.type == SAEV_Config_Chipset_Type_OCS) return;
-		maybe_blit(hpos, 2); bltcon0 = (bltcon0 & 0xFF00) | (v & 0xFF);
+		if (!(AMIGA.config.chipset.mask & CSMASK_ECS_AGNUS)) return;
+		this.maybe_blit(hpos, 2); bltcon0 = (bltcon0 & 0xFF00) | (v & 0xFF);
 		reset_blit(1);
 	}
-	this.BLTCON1 = function(hpos, v) { maybe_blit(hpos, 2); bltcon1 = v; reset_blit(2); }
+	this.BLTCON1 = function(hpos, v) { this.maybe_blit(hpos, 2); bltcon1 = v; reset_blit(2); }
 
-	this.BLTAFWM = function(hpos, v) { maybe_blit(hpos, 2); blt_info.bltafwm = v; reset_blit(0); }
-	this.BLTALWM = function(hpos, v) { maybe_blit(hpos, 2); blt_info.bltalwm = v; reset_blit(0); }
+	this.BLTAFWM = function(hpos, v) { this.maybe_blit(hpos, 2); blt_info.bltafwm = v; reset_blit(0); }
+	this.BLTALWM = function(hpos, v) { this.maybe_blit(hpos, 2); blt_info.bltalwm = v; reset_blit(0); }
 
-	this.BLTAPTH = function(hpos, v) { maybe_blit(hpos, 0); bltapt = ((bltapt & 0xffff) | (v << 16)) >>> 0; }
-	this.BLTAPTL = function(hpos, v) { maybe_blit(hpos, 0); bltapt = ((bltapt & ~0xffff) | (v & 0xfffe)) >>> 0; }
-	this.BLTBPTH = function(hpos, v) { maybe_blit(hpos, 0); bltbpt = ((bltbpt & 0xffff) | (v << 16)) >>> 0; }
-	this.BLTBPTL = function(hpos, v) { maybe_blit(hpos, 0); bltbpt = ((bltbpt & ~0xffff) | (v & 0xfffe)) >>> 0; }
-	this.BLTCPTH = function(hpos, v) { maybe_blit(hpos, 0); bltcpt = ((bltcpt & 0xffff) | (v << 16)) >>> 0; }
-	this.BLTCPTL = function(hpos, v) { maybe_blit(hpos, 0); bltcpt = ((bltcpt & ~0xffff) | (v & 0xfffe)) >>> 0; }
-	this.BLTDPTH = function(hpos, v) { maybe_blit(hpos, 0); bltdpt = ((bltdpt & 0xffff) | (v << 16)) >>> 0; }
-	this.BLTDPTL = function(hpos, v) { maybe_blit(hpos, 0); bltdpt = ((bltdpt & ~0xffff) | (v & 0xfffe)) >>> 0; }
+	this.BLTAPTH = function(hpos, v) { this.maybe_blit(hpos, 0); bltapt = ((bltapt & 0xffff) | (v << 16)) >>> 0; }
+	this.BLTAPTL = function(hpos, v) { this.maybe_blit(hpos, 0); bltapt = ((bltapt & ~0xffff) | (v & 0xfffe)) >>> 0; }
+	this.BLTBPTH = function(hpos, v) { this.maybe_blit(hpos, 0); bltbpt = ((bltbpt & 0xffff) | (v << 16)) >>> 0; }
+	this.BLTBPTL = function(hpos, v) { this.maybe_blit(hpos, 0); bltbpt = ((bltbpt & ~0xffff) | (v & 0xfffe)) >>> 0; }
+	this.BLTCPTH = function(hpos, v) { this.maybe_blit(hpos, 0); bltcpt = ((bltcpt & 0xffff) | (v << 16)) >>> 0; }
+	this.BLTCPTL = function(hpos, v) { this.maybe_blit(hpos, 0); bltcpt = ((bltcpt & ~0xffff) | (v & 0xfffe)) >>> 0; }
+	this.BLTDPTH = function(hpos, v) { this.maybe_blit(hpos, 0); bltdpt = ((bltdpt & 0xffff) | (v << 16)) >>> 0; }
+	this.BLTDPTL = function(hpos, v) { this.maybe_blit(hpos, 0); bltdpt = ((bltdpt & ~0xffff) | (v & 0xfffe)) >>> 0; }
 
 	this.BLTSIZE = function(hpos, v) {
-		maybe_blit(hpos, 0);
+		this.maybe_blit(hpos, 0);
 
 		blt_info.vblitsize = v >> 6;
 		blt_info.hblitsize = v & 0x3F;
@@ -2870,23 +2743,25 @@ function Blitter() {
 			blt_info.vblitsize = 1024;
 		if (!blt_info.hblitsize)
 			blt_info.hblitsize = 64;
+			
 		do_blitter(hpos, AMIGA.copper.access);
 	}
 
 	this.BLTSIZV = function(hpos, v) {
-		if (AMIGA.config.chipset.type == SAEV_Config_Chipset_Type_OCS) return;
-		maybe_blit(hpos, 0);
+		if (!(AMIGA.config.chipset.mask & CSMASK_ECS_AGNUS)) return;
+		this.maybe_blit(hpos, 0);
 		blt_info.vblitsize = v & 0x7FFF;
 	}
 
 	this.BLTSIZH = function(hpos, v) {
-		if (AMIGA.config.chipset.type == SAEV_Config_Chipset_Type_OCS) return;
-		maybe_blit(hpos, 0);
+		if (!(AMIGA.config.chipset.mask & CSMASK_ECS_AGNUS)) return;
+		this.maybe_blit(hpos, 0);
 		blt_info.hblitsize = v & 0x7FF;
 		if (!blt_info.vblitsize)
 			blt_info.vblitsize = 0x8000;
 		if (!blt_info.hblitsize)
 			blt_info.hblitsize = 0x0800;
+			
 		do_blitter(hpos, AMIGA.copper.access);
 	}		
 	

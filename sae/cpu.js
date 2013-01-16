@@ -6,18 +6,16 @@
 * ©2012 Rupert Hausberger
 * Commercial use is prohibited.
 *
-**************************************************************************
+***************************************************************************
 *
 * TODO:
 * - Faster versions of ASx/LSx/ROx/ROXx and xBCD
-* - Complete exception 2/3 handling
-* - Explode ADDQ,SUBQ
 *
 *  Notes:
 * - Based on M68000PRM.pdf
 * - Written from scratch.
 * 
-*************************************************************************/
+**************************************************************************/
 
 function CPU() {
 	const M_rdd		=  1; /* Register Direct Data */
@@ -89,8 +87,10 @@ function CPU() {
 	const undef = false; /* use undef */
 
 	var regs = {
-		d: [0, 0, 0, 0, 0, 0, 0, 0], /* Dn */
-		a: [0, 0, 0, 0, 0, 0, 0, 0], /* An */
+		//d: [0, 0, 0, 0, 0, 0, 0, 0], /* Dn */
+		//a: [0, 0, 0, 0, 0, 0, 0, 0], /* An */
+		d: new Uint32Array(8),
+		a: new Uint32Array(8),
 		/* Status Register (SR) */
 		t: false,
 		s: false,
@@ -104,10 +104,7 @@ function CPU() {
 		usp: 0, /* User Stack Ptr (USP) */
 		isp: 0, /* Interrupt Stack Ptr (ISP) */
 		pc: 0, /* Program Counter (PC) */
-		/* Interrupts */
-		ipl:0,
-		ipl_pin:0,
-		stopped:true		
+		stopped:true
 	};
 	var fault = {
 		op: 0,
@@ -116,8 +113,9 @@ function CPU() {
 		ia: false
 	};
 	var iTab = null;
-	var doDiss = 0;	
-
+	var cpu_cycle_unit = CYCLE_UNIT / 2;
+	var cpu_cycles = 4 * cpu_cycle_unit;
+	
 	/*-----------------------------------------------------------------------*/
 
 	this.setup = function() {
@@ -141,10 +139,7 @@ function CPU() {
 		regs.isp = 0;
 		regs.a[7] = AMIGA.mem.load32(addr);
 		regs.pc = AMIGA.mem.load32(addr + 4);
-		regs.ipl = regs.ipl_pin = 0;
 		regs.stopped = false;
-
-		doDiss = 0;	
 
 		BUG.say(sprintf('cpu.reset() addr 0x%08x, A7 0x%08x, PC 0x%08x', addr, regs.a[7], regs.pc));
 	}
@@ -225,6 +220,13 @@ function CPU() {
 		}
 	}
 
+	function nextOPCode() {
+		var op = AMIGA.mem.load16(regs.pc);
+		fault.pc = regs.pc;
+		fault.op = op;
+		regs.pc += 2;
+		return op;
+	}
 	function nextIWord() {
 		var r = AMIGA.mem.load16(regs.pc);
 		regs.pc += 2;
@@ -249,7 +251,7 @@ function CPU() {
 			return add32(add32(base, disp), reg);		
 		}		
 	}
-
+	
 	function exEA(ea, z) {
 		var dp;
 
@@ -257,23 +259,18 @@ function CPU() {
 			case M_rdd:
 				ea.a = ea.r;
 				ea.t = T_RD;
-				//ea.c = 0;
 				break;
 			case M_rda:
 				ea.a = ea.r;
 				ea.t = T_RA;
-				//ea.c = 0;
 				break;
 			case M_ria:
 				ea.a = regs.a[ea.r];
 				ea.t = T_AD;
-				//ea.c = z == 4 ? 8 : 4;
 				break;
 			case M_ripo:
 				ea.a = regs.a[ea.r];
 				ea.t = T_AD;
-				//ea.c = z == 4 ? 8 : 4;
-				//regs.a[ea.r] = add32(regs.a[ea.r], z);
 				regs.a[ea.r] += z;
 				if (regs.a[ea.r] > 0xffffffff) {
 					BUG.say(sprintf('exEA() M_ripo A%d > 2^32 ($%x)', ea.r, regs.a[ea.r]));
@@ -284,7 +281,6 @@ function CPU() {
 				}
 				break;
 			case M_ripr:
-				//regs.a[ea.r] = sub32(regs.a[ea.r], z);
 				regs.a[ea.r] -= z;
 				if (regs.a[ea.r] < 0) {
 					BUG.say(sprintf('exEA() M_ripr A%d < 0 ($%x)', ea.r, regs.a[ea.r]));
@@ -295,39 +291,32 @@ function CPU() {
 				}
 				ea.a = regs.a[ea.r];
 				ea.t = T_AD;
-				//ea.c = z == 4 ? 10 : 6;
 				break;
 			case M_rid:
 				dp = (nextIWord());
 				ea.a = add32(regs.a[ea.r], extWord(dp));
 				ea.t = T_AD;
-				//ea.c = z == 4 ? 12 : 8;
 				break;
 			case M_rii:
 				ea.a = exII(regs.a[ea.r]);
 				ea.t = T_AD;
-				//ea.c = z == 4 ? 14 : 10;
 				break;
 			case M_pcid:
 				dp = extWord(nextIWord());
 				ea.a = add32(regs.pc - 2, dp);
 				ea.t = T_AD;
-				//ea.c = z == 4 ? 12 : 8;
 				break;
 			case M_pcii:
 				ea.a = exII(regs.pc);
 				ea.t = T_AD;
-				//ea.c = z == 4 ? 14 : 10;
 				break;
 			case M_absw:
 				ea.a = extWord(nextIWord());
 				ea.t = T_AD;
-				//ea.c = z == 4 ? 12 : 8;
 				break;
 			case M_absl:
 				ea.a = nextILong();
 				ea.t = T_AD;
-				//ea.c = z == 4 ? 16 : 12;
 				break;
 			case M_imm: {
 				if (ea.r == -1) {
@@ -341,7 +330,6 @@ function CPU() {
 				} else 
 					ea.a = ea.r;
 				ea.t = T_IM;
-				//ea.c = z == 4 ? 8 : 4;
 				break;
 			}
 			default:
@@ -705,15 +693,6 @@ function CPU() {
 		stEA(dea, p.z, sea.a);
 		//ccna
 		//BUG.say(sprintf('I_LEA.%s sea $%08x', szChr(p.z), sea.a));
-		/*switch (sea.m) {
-			case M_ria: return 4;
-			case M_rid: return 8;
-			case M_rii: return 12;
-			case M_pcid: return 8;
-			case M_pcii: return 12;
-			case M_absw: return 8;
-			case M_absl: return 12;
-		}*/		
 		return p.cyc;		
 	}
 
@@ -735,7 +714,7 @@ function CPU() {
 		regs.a[An] = regs.a[7];
 		regs.a[7] = add32(regs.a[7], dp);
 		//ccna
-		return p.cyc;//16;
+		return p.cyc;
 
 		/*debug
 		var newsp = add32(regs.a[7], dp);
@@ -780,7 +759,7 @@ function CPU() {
 		stEA(dea, p.z, s);
 		flgLogical(s, p.z);
 		//BUG.say(sprintf('I_MOVEQ.%s s $%08x', szChr(p.z), s));
-		return p.cyc; //4;
+		return p.cyc;
 	}
          		  
 	function I_MOVEM_R2M(p) {
@@ -827,8 +806,8 @@ function CPU() {
 			}
 		}
 		//ccna	
-		//BUG.say(sprintf('I_MOVEM_R2M.%s s $%08x d $%08x', szChr(p.z), sea.a, dea.a));	
-		return p.cyc + (p.z == 2 ? 4 : 8) * n;	
+		//BUG.say(sprintf('I_MOVEM_R2M.%s s $%08x d $%08x', szChr(p.z), sea.a, dea.a));
+		return [p.cyc[0] + (p.z == 2 ? 4 : 8) * n, 0,0]; //FIXME	
 	}
          		  
 	function I_MOVEM_M2R(p) {
@@ -858,7 +837,7 @@ function CPU() {
 		}
 		//ccna		
 		//BUG.say(sprintf('I_MOVEM_M2R.%s s $%08x d $%08x', szChr(p.z), sea.a, dea.a));		
-		return p.cyc + (p.z == 2 ? 4 : 8) * n;	
+		return [p.cyc[0] + (p.z == 2 ? 4 : 8) * n, 0,0]; //FIXME	
 	}
 
 	function I_MOVEP(p) {
@@ -883,7 +862,7 @@ function CPU() {
 				r += ldEA(sea, 1);
 				r >>>= 0;
 			}
-			BUG.say(sprintf('I_MOVEP_M2R.%s A%d addr $%08x r $%08x', szChr(p.z), dea.a, sea.a - (p.z == 2 ? 4 : 8), r));
+			//BUG.say(sprintf('I_MOVEP_M2R.%s A%d addr $%08x r $%08x', szChr(p.z), dea.a, sea.a - (p.z == 2 ? 4 : 8), r));
 			stEA(dea, p.z, r);
 		}
 		//R2M
@@ -903,10 +882,10 @@ function CPU() {
 				dea.a += 2;
 				stEA(dea, 1, r);
 			}
-			BUG.say(sprintf('I_MOVEP_R2M.%s A%d addr $%08x r $%08x', szChr(p.z), sea.a, dea.a - (p.z == 2 ? 4 : 8), r));
+			//BUG.say(sprintf('I_MOVEP_R2M.%s A%d addr $%08x r $%08x', szChr(p.z), sea.a, dea.a - (p.z == 2 ? 4 : 8), r));
 		}
 		//ccna		
-		return p.cyc; //p.z == 2 ? 16 : 24;
+		return p.cyc;
 	}
 
 	/*-----------------------------------------------------------------------*/
@@ -945,10 +924,10 @@ function CPU() {
 		stEA(dea, p.z, r);
 		flgAdd(s, d, r, p.z, false);
 		//BUG.say(sprintf('I_ADDI.%s s $%08x d $%08x r $%08x', szChr(p.z), s, d, r));	
-		return p.cyc; //dea.m == M_rdd ? (p.z == 4 ? 16 : 8) : (p.z == 4 ? 20 : 12) + dea.c;  
+		return p.cyc;  
 	}
 
-	function I_ADDQ(p) {
+	/*function I_ADDQ(p) {
 		var sea = exEA(p.s, p.z);
 		var s = ldEA(sea, p.z);
 		if (p.d.m == M_rda) {
@@ -968,6 +947,29 @@ function CPU() {
 		}
 		//BUG.say(sprintf('I_ADDQ.%s s $%08x d $%08x r $%08x', szChr(p.z), s, d, r));		
 		return p.cyc;
+	}*/
+
+	function I_ADDQ(p) {
+		var sea = exEA(p.s, p.z);
+		var s = ldEA(sea, p.z);
+		var dea = exEA(p.d, p.z);
+		var d = ldEA(dea, p.z);
+		var r = addAuto(s, d, p.z);
+		stEA(dea, p.z, r);
+		flgAdd(s, d, r, p.z, false); 
+		//BUG.say(sprintf('I_ADDQ.%s s $%08x d $%08x r $%08x', szChr(p.z), s, d, r));		
+		return p.cyc;
+	}
+	function I_ADDQA(p) {
+		var sea = exEA(p.s, p.z);
+		var s = ldEA(sea, p.z);
+		var dea = exEA(p.d, 4);
+		var d = ldEA(dea, 4); 
+		var r = add32(s, d);
+		stEA(dea, 4, r);
+		//ccna	
+		//BUG.say(sprintf('I_ADDQA.%s s $%08x d $%08x r $%08x', szChr(p.z), s, d, r));		
+		return p.cyc;
 	}
 
 	function I_ADDX(p) {
@@ -980,7 +982,7 @@ function CPU() {
 		stEA(dea, p.z, r);
 		flgAdd(s, d, r, p.z, true);
 		//BUG.say(sprintf('I_ADDX.%s s $%08x d $%08x xo %d xn %d r $%08x', szChr(p.z), s, d, _x, regs.x?1:0, r));
-		return p.cyc;//dea.m == M_rdd ? (p.z == 4 ? 8 : 4) : (p.z == 4 ? 30 : 18);  
+		return p.cyc;
 	}
 
 	function I_CLR(p) {
@@ -993,7 +995,7 @@ function CPU() {
 		regs.v = false;
 		regs.c = false;
 		//BUG.say(sprintf('I_CLR.%s', szChr(p.z)));
-		return p.cyc; //dea.m == M_rdd ? (p.z == 4 ? 6 : 4) : (p.z == 4 ? 12 : 8) + dea.c;  
+		return p.cyc;
 	}
 
 	function I_CMP(p) {
@@ -1026,7 +1028,7 @@ function CPU() {
 		var r = subAuto(d, s, p.z);
 		flgCmp(s, d, r, p.z);
 		//BUG.say(sprintf('I_CMPI.%s s $%08x d $%08x r $%08x', szChr(p.z), s, d, r));
-		return p.cyc; //dea.m == M_rdd ? (p.z == 4 ? 14 : 8) : (p.z == 4 ? 12 : 8) + dea.c;  
+		return p.cyc;
 	}
 
 	function I_CMPM(p) {
@@ -1037,7 +1039,7 @@ function CPU() {
 		var r = subAuto(d, s, p.z);
 		flgCmp(s, d, r, p.z);
 		//BUG.say(sprintf('I_CMPM.%s s $%08x d $%08x r $%08x | %c', szChr(p.z), s, d, r, s));
-		return p.cyc;//p.z == 4 ? 20 : 12;  
+		return p.cyc;
 	}
 
 	function I_DIVS(p) {
@@ -1073,7 +1075,7 @@ function CPU() {
 				stEA(dea, 4, r);
 				//BUG.say(sprintf('I_DIVS.%s $%08x / $%08x = $%08x (quo $%08x | rem $%08x)', szChr(p.z), d, s, r, quo, rem));			
 			}
-			return p.cyc;// 158 + dea.c;
+			return p.cyc;
 		}
 	}
 
@@ -1110,7 +1112,7 @@ function CPU() {
 				stEA(dea, 4, r);
 				//BUG.say(sprintf('I_DIVU.%s $%08x / $%08x = $%08x (quo $%08x | rem $%08x)', szChr(p.z), d, s, r, quo, rem));			
 			}
-			return p.cyc; //140 + dea.c;
+			return p.cyc;
 		}
 	}
 
@@ -1122,7 +1124,7 @@ function CPU() {
 		stEA(dea, p.z, r);
 		flgLogical(r, p.z);
 		//BUG.say(sprintf('I_EXT.%s d $%08x r $%08x', szChr(p.z), d, r));
-		return p.cyc; //4;
+		return p.cyc;
 	}
 
 	function I_MULS(p) {
@@ -1139,7 +1141,7 @@ function CPU() {
 		regs.n = (r & 0x80000000) != 0;
 		regs.z = r == 0;
 		//BUG.say(sprintf('I_MULS.%s s $%08x d $%08x r $%08x', szChr(p.z), s, d, r));
-		return p.cyc; //70 + dea.c;
+		return p.cyc;
 	}
 
 	function I_MULU(p) {
@@ -1155,7 +1157,7 @@ function CPU() {
 		regs.n = (r & 0x80000000) != 0;
 		regs.z = r == 0;
 		//BUG.say(sprintf('I_MULU.%s s $%08x d $%08x r $%08x', szChr(p.z), s, d, r));
-		return p.cyc; //70 + dea.c;
+		return p.cyc;
 	}
 
 	function I_NEG(p) {
@@ -1165,7 +1167,7 @@ function CPU() {
 		stEA(dea, p.z, r);
 		flgNeg(d, r, p.z, false);
 		//BUG.say(sprintf('I_NEG.%s d $%08x r $%08x', szChr(p.z), d, r));
-		return p.cyc; //dea.m == M_rdd ? (p.z == 4 ? 6 : 4) : (p.z == 4 ? 12 : 8) + dea.c;  
+		return p.cyc;
 	}
    
 	function I_NEGX(p) {
@@ -1175,7 +1177,7 @@ function CPU() {
 		stEA(dea, p.z, r);
 		flgNeg(d, r, p.z, true);
 		//BUG.say(sprintf('I_NEGX.%s d $%08x x %d r $%08x', szChr(p.z), d, regs.x ? 1 : 0, r));
-		return p.cyc; //dea.m == M_rdd ? (p.z == 4 ? 6 : 4) : (p.z == 4 ? 12 : 8) + dea.c;  
+		return p.cyc;  
 	}
 
 	function I_SUB(p) {
@@ -1211,10 +1213,10 @@ function CPU() {
 		stEA(dea, p.z, r);
 		flgSub(s, d, r, p.z, false);
 		//BUG.say(sprintf('I_SUBI.%s s $%08x d $%08x r $%08x', szChr(p.z), s, d, r));				
-		return p.cyc; //dea.m == M_rdd ? (p.z == 4 ? 16 : 8) : (p.z == 4 ? 20 : 12) + dea.c;  
+		return p.cyc;
 	}
 
-	function I_SUBQ(p) {
+	/*function I_SUBQ(p) {
 		var sea = exEA(p.s, p.z);
 		var s = ldEA(sea, p.z);
 		if (p.d.m == M_rda) {
@@ -1234,6 +1236,29 @@ function CPU() {
 		}	
 		//BUG.say(sprintf('I_SUBQ.%s s $%08x d $%08x r $%08x', szChr(p.z), s, d, r));		
 		return p.cyc;
+	}*/
+	
+	function I_SUBQ(p) {
+		var sea = exEA(p.s, p.z);
+		var s = ldEA(sea, p.z);
+		var dea = exEA(p.d, p.z);
+		var d = ldEA(dea, p.z);
+		var r = subAuto(d, s, p.z);
+		stEA(dea, p.z, r);		
+		flgSub(s, d, r, p.z, false);
+		//BUG.say(sprintf('I_SUBQ.%s s $%08x d $%08x r $%08x', szChr(p.z), s, d, r));		
+		return p.cyc;
+	}
+	function I_SUBQA(p) {
+		var sea = exEA(p.s, p.z);
+		var s = ldEA(sea, p.z);
+		var dea = exEA(p.d, 4);
+		var d = ldEA(dea, 4);
+		var r = sub32(d, s);
+		stEA(dea, 4, r);		
+		//ccna
+		//BUG.say(sprintf('I_SUBQA.%s s $%08x d $%08x r $%08x', szChr(p.z), s, d, r));		
+		return p.cyc;
 	}
 
 	function I_SUBX(p) {
@@ -1246,7 +1271,7 @@ function CPU() {
 		stEA(dea, p.z, r);
 		flgSub(s, d, r, p.z, true);
 		//BUG.say(sprintf('I_SUBX.%s s $%08x d $%08x xo %d xn %d r $%08x', szChr(p.z), s, d, _x, regs.x?1:0, r));
-		return p.cyc;//dea.m == M_rdd ? (p.z == 4 ? 8 : 4) : (p.z == 4 ? 30 : 18);  
+		return p.cyc;
 	}
 		
 	/*-----------------------------------------------------------------------*/
@@ -1273,7 +1298,7 @@ function CPU() {
 		stEA(dea, p.z, r);
 		flgLogical(r, p.z);
 		//BUG.say(sprintf('I_ANDI.%s s $%08x d $%08x r $%08x', szChr(p.z), s, d, r));			
-		return p.cyc; //dea.m == M_rdd ? (p.z == 4 ? 16 : 8) : (p.z == 4 ? 20 : 12) + dea.c;  
+		return p.cyc; 
 	}
 
 	function I_EOR(p) {
@@ -1297,7 +1322,7 @@ function CPU() {
 		stEA(dea, p.z, r);
 		flgLogical(r, p.z);
 		//BUG.say(sprintf('I_EORI.%s s $%08x d $%08x r $%08x', szChr(p.z), s, d, r));		
-		return p.cyc; //dea.m == M_rdd ? (p.z == 4 ? 16 : 8) : (p.z == 4 ? 20 : 12) + dea.c;  
+		return p.cyc; 
 	}
 
 	function I_NOT(p) {
@@ -1308,7 +1333,7 @@ function CPU() {
 		stEA(dea, p.z, r);
 		flgLogical(r, p.z);
 		//BUG.say(sprintf('I_NOT.%s d $%08x r $%08x', szChr(p.z), d, r));
-		return p.cyc;//dea.m == M_rdd ? (p.z == 4 ? 6 : 4) : (p.z == 4 ? 12 : 8) + dea.c;  
+		return p.cyc;
 	}
 		  
 	function I_OR(p) {
@@ -1332,7 +1357,7 @@ function CPU() {
 		stEA(dea, p.z, r);
 		flgLogical(r, p.z);
 		//BUG.say(sprintf('I_ORI.%s s $%08x d $%08x r $%08x', szChr(p.z), s, d, r));		
-		return p.cyc; //dea.m == M_rdd ? (p.z == 4 ? 16 : 8) : (p.z == 4 ? 20 : 12) + dea.c;  
+		return p.cyc;
 	}
 
 	/*-----------------------------------------------------------------------*/
@@ -1364,7 +1389,7 @@ function CPU() {
 		regs.n = (r & p.ms) != 0;
 		regs.z = r == 0;
 		//BUG.say(sprintf('I_ASL.%s num %d d $%08x r $%08x', szChr(p.z), s, d, r));			
-		return p.cyc + (dea.m == M_rdd ? s << 1 : 0);//dea.m == M_rdd ? (p.z == 4 ? 8+n2 : 6+n2) : 8 + dea.c;
+		return [p.cyc[0] + (dea.m == M_rdd ? s << 1 : 0), 0,0]; //FIXME
 	}
 	
 	function I_ASR(p) {
@@ -1390,7 +1415,7 @@ function CPU() {
 		regs.n = (r & p.ms) != 0;
 		regs.z = r == 0;
 		//BUG.say(sprintf('I_ASR.%s num %d d $%08x r $%08x sign %d', szChr(p.z), s, d, r, sign));		
-		return p.cyc + (dea.m == M_rdd ? s << 1 : 0);//dea.m == M_rdd ? (p.z == 4 ? 8+n2 : 6+n2) : 8 + dea.c;
+		return [p.cyc[0] + (dea.m == M_rdd ? s << 1 : 0), 0,0]; //FIXME
 	}
 
 	function I_LSL(p) {
@@ -1416,7 +1441,7 @@ function CPU() {
 		regs.n = (r & p.ms) != 0;
 		regs.z = r == 0;
 		//BUG.say(sprintf('I_LSL.%s num %d d $%08x r $%08x', szChr(p.z), s, d, r));		
-		return p.cyc + (dea.m == M_rdd ? s << 1 : 0);//dea.m == M_rdd ? (p.z == 4 ? 8+n2 : 6+n2) : 8 + dea.c;
+		return [p.cyc[0] + (dea.m == M_rdd ? s << 1 : 0), 0,0]; //FIXME
 	}
 
 	function I_LSR(p) {
@@ -1441,7 +1466,7 @@ function CPU() {
 		regs.n = (r & p.ms) != 0;
 		regs.z = r == 0;
 		//BUG.say(sprintf('I_LSR.%s num %d d $%08x r $%08x', szChr(p.z), s, d, r));		
-		return p.cyc + (dea.m == M_rdd ? s << 1 : 0);//dea.m == M_rdd ? (p.z == 4 ? 8+n2 : 6+n2) : 8 + dea.c;
+		return [p.cyc[0] + (dea.m == M_rdd ? s << 1 : 0), 0,0]; //FIXME
 	}
 
 	function I_ROL(p) {
@@ -1468,7 +1493,7 @@ function CPU() {
 		regs.n = (r & p.ms) != 0;
 		regs.z = r == 0;
 		//BUG.say(sprintf('I_ROL.%s num %d d $%08x r $%08x', szChr(p.z), s, d, r));		
-		return p.cyc + (dea.m == M_rdd ? s << 1 : 0);//dea.m == M_rdd ? (p.z == 4 ? 8+n2 : 6+n2) : 8 + dea.c;
+		return [p.cyc[0] + (dea.m == M_rdd ? s << 1 : 0), 0,0]; //FIXME
 	}
 
 	function I_ROR(p) {
@@ -1494,7 +1519,7 @@ function CPU() {
 		regs.n = (r & p.ms) != 0;
 		regs.z = r == 0;
 		//BUG.say(sprintf('I_ROR.%s num %d d $%08x r $%08x', szChr(p.z), s, d, r));		
-		return p.cyc + (dea.m == M_rdd ? s << 1 : 0);//dea.m == M_rdd ? (p.z == 4 ? 8+n2 : 6+n2) : 8 + dea.c;
+		return [p.cyc[0] + (dea.m == M_rdd ? s << 1 : 0), 0,0]; //FIXME
 	}
 
 	function I_ROXL(p) {
@@ -1523,7 +1548,7 @@ function CPU() {
 		regs.n = (r & p.ms) != 0;
 		regs.z = r == 0;
 		//BUG.say(sprintf('I_ROXL.%s num %d d $%08x ox %d nx %d r $%08x', szChr(p.z), s, d, _x, regs.x?1:0, r));		
-		return p.cyc + (dea.m == M_rdd ? s << 1 : 0);//dea.m == M_rdd ? (p.z == 4 ? 8+n2 : 6+n2) : 8 + dea.c;
+		return [p.cyc[0] + (dea.m == M_rdd ? s << 1 : 0), 0,0]; //FIXME
 	}
 
 	function I_ROXR(p) {
@@ -1551,7 +1576,7 @@ function CPU() {
 		regs.n = (r & p.ms) != 0;
 		regs.z = r == 0;
 		//BUG.say(sprintf('I_ROXR.%s num %d d $%08x ox %d nx %d r $%08x', szChr(p.z), s, d, _x, regs.x?1:0, r));		
-		return p.cyc + (dea.m == M_rdd ? s << 1 : 0);//dea.m == M_rdd ? (p.z == 4 ? 8+n2 : 6+n2) : 8 + dea.c;
+		return [p.cyc[0] + (dea.m == M_rdd ? s << 1 : 0), 0,0]; //FIXME
 	}
 
 	function I_SWAP(p) {
@@ -1565,7 +1590,7 @@ function CPU() {
 		regs.v = false;
 		regs.c = false;
 		//BUG.say(sprintf('I_SWAP.%s d $%08x r $%08x', szChr(p.z), d, r));								
-		return p.cyc; //4;
+		return p.cyc;
 	}
 
 	/*-----------------------------------------------------------------------*/
@@ -1588,7 +1613,7 @@ function CPU() {
 		else
 			BUG.say(sprintf('I_BCHG.%s s $%02x == m $%02x, d $%02x, r $%02x', szChr(p.z), s, m, d, r));*/
 			
-		return p.cyc;//dea.m == M_rdd ? 8 : 8 + dea.c;
+		return p.cyc;
 	}
 
 	function I_BCLR(p) {
@@ -1607,7 +1632,7 @@ function CPU() {
 			BUG.say(sprintf('I_BCLR.%s s $%08x == m $%08x, d $%08x, r $%08x', szChr(p.z), s, m, d, r));
 		else
 			BUG.say(sprintf('I_BCLR.%s s $%02x == m $%02x, d $%02x, r $%02x', szChr(p.z), s, m, d, r));*/
-		return p.cyc;//dea.m == M_rdd ? 10 : 8 + dea.c;			
+		return p.cyc;
 	}
 
 	function I_BSET(p) {
@@ -1626,7 +1651,7 @@ function CPU() {
 			BUG.say(sprintf('I_BSET.%s s $%08x == m $%08x, d $%08x, r $%08x', szChr(p.z), s, m, d, r));
 		else
 			BUG.say(sprintf('I_BSET.%s s $%02x == m $%02x, d $%02x, r $%02x', szChr(p.z), s, m, d, r));*/
-		return p.cyc;//dea.m == M_rdd ? 8 : 8 + dea.c;
+		return p.cyc;
 	}
 
 	function I_BTST(p) {
@@ -1643,7 +1668,7 @@ function CPU() {
 			BUG.say(sprintf('I_BTST.%s s $%08x == m $%08x, d $%08x, r $%08x', szChr(p.z), s, m, d, r));
 		else
 			BUG.say(sprintf('I_BTST.%s s $%02x == m $%02x, d $%02x, r $%02x', szChr(p.z), s, m, d, r));*/
-		return p.cyc;//dea.m == M_rdd ? 6 : 4 + dea.c;			
+		return p.cyc;
 	}
 
 	/*-----------------------------------------------------------------------*/
@@ -1684,7 +1709,7 @@ function CPU() {
 			regs.v = !regs.v; //undef
 		}
 		//BUG.say(sprintf('I_ABCD.%s s $%02x d $%02x x %d | s_h %d s_l %d d_h %d d_l %d | r $%02x c %d', szChr(p.z), s, d, x, s_h, s_l, d_h, d_l, r, c?1:0));
-		return p.cyc; //dea.m == M_rdd ? 6 : 18;  
+		return p.cyc;
 	}
 
 	function I_NBCD(p) {
@@ -1717,7 +1742,7 @@ function CPU() {
 			regs.v = !regs.v; //undef
 		}
 		//BUG.say(sprintf('I_NBCD.%s s $%02x d $%02x x %d | s_h %d s_l %d d_h %d d_l %d | r $%02x c %d', szChr(p.z), s, d, x, s_h, s_l, d_h, d_l, r, c?1:0));
-		return p.cyc; //dea.m == M_rdd ? 6 : 8 + dea.c;  
+		return p.cyc;
 	}
 
 	function I_SBCD(p) {
@@ -1755,7 +1780,7 @@ function CPU() {
 			regs.v = !regs.v; //undef
 		}
 		//BUG.say(sprintf('I_SBCD.%s s $%02x d $%02x x %d | s_h %d s_l %d d_h %d d_l %d | r $%02x c %d', szChr(p.z), s, d, x, s_h, s_l, d_h, d_l, r, c?1:0));
-		return p.cyc; //dea.m == M_rdd ? 6 : 18;  
+		return p.cyc;
 	}
 
 	/*-----------------------------------------------------------------------*/
@@ -1775,10 +1800,10 @@ function CPU() {
 			else pc = add32(regs.pc, extByte(dp));
 			//BUG.say(sprintf('I_Bcc pc $%08x', pc));		
 			setPC(pc);
-			return p.cycTaken; //10;
+			return p.cycTaken;
 		}
 		//ccna
-		return p.cyc;//dp == 0 ? 12 : 8;
+		return p.cyc;
 	}
 			
 	function I_DBcc(p) {
@@ -1793,13 +1818,13 @@ function CPU() {
 			if (dr--) {
 				var pc = add32(regs.pc - 2, extWord(dp));
 				setPC(pc);
-				cyc = p.cycFalseTaken; //10; 
+				cyc = p.cycFalseTaken;
 			} else {
 				dr = 0xffff;
-				cyc = p.cycFalse; //14;
+				cyc = p.cycFalse;
 			}
 			stEA(ea, p.z, dr);
-		} else cyc = p.cycTrue; //12;
+		} else cyc = p.cycTrue;
 		//ccna
 		return cyc; 
 	}
@@ -1813,7 +1838,7 @@ function CPU() {
 		stEA(dea, p.z, isTrue ? 0xff : 0);
 		//ccna
 		//BUG.say(sprintf('I_S%s, cc %d, ccTrue %d, cyc %d', ccNames[cc], cc, ccTrue(cc)?1:0, isTrue ? p.cycTrue : p.cycFalse));		
-		return isTrue ? p.cycTrue : p.cycFalse; //dea.m == M_rdd ? (isTrue ? 6 : 4) : 8 + dea.c;
+		return isTrue ? p.cycTrue : p.cycFalse;
 	}
 
 	function I_BRA(p) {
@@ -1829,7 +1854,7 @@ function CPU() {
 
 		setPC(pc);
 		//ccna
-		return p.cycTaken; //10;
+		return p.cycTaken; 
 	}
 
 	function I_BSR(p) {
@@ -1846,7 +1871,7 @@ function CPU() {
 		stEA(exEA(new effAddr(M_ripr, 7), 4), 4, regs.pc);
 		setPC(pc);
 		//ccna
-		return p.cycTaken; //18;
+		return p.cycTaken; 
 	}
 
 	function I_JMP(p) {
@@ -1854,15 +1879,6 @@ function CPU() {
 		setPC(dea.a);
 		//ccna		
 		//BUG.say(sprintf('I_JMP $%08x', dea.a));		
-		/*switch (dea.m) {
-			case M_ria: return 8;
-			case M_rid: return 10;
-			case M_rii: return 14;
-			case M_pcid: return 10;
-			case M_pcii: return 14;
-			case M_absw: return 10;
-			case M_absl: return 12;
-		}*/		
 		return p.cyc;
 	}
 
@@ -1871,16 +1887,7 @@ function CPU() {
 		stEA(exEA(new effAddr(M_ripr, 7), 4), 4, regs.pc);
 		setPC(dea.a);
 		//ccna		
-		//BUG.say(sprintf('I_JSR $%08x', dea.a));		
-		/*switch (dea.m) {
-			case M_ria: return 16;
-			case M_rid: return 18;
-			case M_rii: return 22;
-			case M_pcid: return 18;
-			case M_pcii: return 22;
-			case M_absw: return 18;
-			case M_absl: return 20;
-		}*/		
+		//BUG.say(sprintf('I_JSR $%08x', dea.a));			
 		return p.cyc;
 	}
 
@@ -1906,7 +1913,7 @@ function CPU() {
 		var r = ldEA(dea, p.z); //r = extAuto(r, p.z);
 		flgLogical(r, p.z);
 		//BUG.say(sprintf('I_TST.%s r $%08x', szChr(p.z), r));
-		return p.cyc; //dea.m == M_rdd || dea.m == M_rda ? 4 : 4 + dea.c;
+		return p.cyc;
 	}
 
 	function I_NOP(p) {
@@ -2036,7 +2043,7 @@ function CPU() {
 		stEA(dea, p.z, sr);
 		//ccna	
 		//BUG.say(sprintf('I_MOVE_SR2.%s sr $%04x', szChr(p.z), sr));		 			
-		return p.cyc;//dea.m == M_rdd ? 6 : 8;
+		return p.cyc;
 	}
 
 	/*-----------------------------------------------------------------------*/
@@ -2195,7 +2202,7 @@ function CPU() {
 		regs.v = false;
 		regs.c = false;		
 		BUG.say(sprintf('I_TAS.%s d $%02x r $%02x', szChr(p.z), d, r));	
-		return p.cyc; //dea.m == M_rdd ? 4 : 10 + dea.c;
+		return p.cyc;
 	}
 
 	/*-----------------------------------------------------------------------*/
@@ -2203,7 +2210,7 @@ function CPU() {
 	/*-----------------------------------------------------------------------*/
 	
 	function mkCyc(z, m) {
-		switch (m) {
+		/*switch (m) {
 			case M_rdd:
 			case M_rda: return 0;	
 			case M_ria: return z == 4 ? 8 : 4;
@@ -2217,6 +2224,21 @@ function CPU() {
 			case M_absl: return z == 4 ? 16 : 12;
 			case M_imm:
 			case M_list: return z == 4 ? 8 : 4;
+		}*/		
+		switch (m) {
+			case M_rdd:
+			case M_rda:  return z == 4 ? [ 0,0,0] : [ 0,0,0]; 
+			case M_ria:  return z == 4 ? [ 8,2,0] : [ 4,1,0]; 
+			case M_ripo: return z == 4 ? [ 8,2,0] : [ 4,1,0];
+			case M_ripr: return z == 4 ? [10,2,0] : [ 6,1,0];
+			case M_rid:  return z == 4 ? [12,3,0] : [ 8,2,0]; 
+			case M_rii:  return z == 4 ? [14,3,0] : [10,2,0]; 
+			case M_pcid: return z == 4 ? [12,3,0] : [ 8,2,0];
+			case M_pcii: return z == 4 ? [14,3,0] : [10,2,0];
+			case M_absw: return z == 4 ? [12,3,0] : [ 8,2,0];
+			case M_absl: return z == 4 ? [16,4,0] : [12,3,0];
+			case M_imm:
+			case M_list: return z == 4 ? [ 8,2,0] : [ 4,1,0];
 		}		
 	}
 
@@ -2227,7 +2249,7 @@ function CPU() {
 		i.mn = mn;
 		i.f = null;
 		i.p = {};
-		if (cyc) i.p.cyc = cyc;
+		i.p.cyc = cyc;
 		return i;
 	}
 
@@ -2242,7 +2264,9 @@ function CPU() {
 		i.p.s = new effAddr(s, r);
 		i.p.s.c = mkCyc(z, s);
 		i.p.cyc = cyc;
-		if (add) i.p.cyc += i.p.s.c;
+		if (add) i.p.cyc[0] += i.p.s.c[0];
+		i.p.cyc[1] += i.p.s.c[1];
+		i.p.cyc[2] += i.p.s.c[2];
 		return i;
 	}
 
@@ -2257,7 +2281,9 @@ function CPU() {
 		i.p.d = new effAddr(d, r);
 		i.p.d.c = mkCyc(z, d);
 		i.p.cyc = cyc;
-		if (add) i.p.cyc += i.p.d.c;
+		if (add) i.p.cyc[0] += i.p.d.c[0];
+		i.p.cyc[1] += i.p.d.c[1];
+		i.p.cyc[2] += i.p.d.c[2];
 		return i;
 	}
 
@@ -2276,8 +2302,12 @@ function CPU() {
 		i.p.s.c = mkCyc(z, sm);
 		i.p.d.c = mkCyc(z, dm);
 		i.p.cyc = cyc;
-		if (sa) i.p.cyc += i.p.s.c;
-		if (da) i.p.cyc += i.p.d.c;
+		if (sa) i.p.cyc[0] += i.p.s.c[0];
+		if (da) i.p.cyc[0] += i.p.d.c[0];		
+		i.p.cyc[1] += i.p.s.c[1];
+		i.p.cyc[2] += i.p.s.c[2];
+		i.p.cyc[1] += i.p.d.c[1];		
+		i.p.cyc[2] += i.p.d.c[2];		
 		return i;
 	}
 
@@ -2324,9 +2354,13 @@ function CPU() {
 		i.p.cycTrue = cycTrue;
 		i.p.cycFalse = cycFalse;
 		if (add) {
-			i.p.cycTrue += i.p.d.c;
-			i.p.cycFalse += i.p.d.c;
+			i.p.cycTrue[0] += i.p.d.c[0];
+			i.p.cycFalse[0] += i.p.d.c[0];
 		}
+		i.p.cycTrue[1] += i.p.d.c[1];
+		i.p.cycTrue[2] += i.p.d.c[2];
+		i.p.cycFalse[1] += i.p.d.c[1];
+		i.p.cycFalse[2] += i.p.d.c[2];
 		return i;
 	}
 	
@@ -2380,9 +2414,9 @@ function CPU() {
 
 						if (iTab[op].op === -1) {
 							if (rm == 0)
-								iTab[op] = mkSD(op, 'ABCD', 1, M_rdd, Ry, M_rdd, Rx, 6, false, false);
+								iTab[op] = mkSD(op, 'ABCD', 1, M_rdd, Ry, M_rdd, Rx, [6,1,0], false, false);
 							else
-								iTab[op] = mkSD(op, 'ABCD', 1, M_ripr, Ry, M_ripr, Rx, 18, false, false);
+								iTab[op] = mkSD(op, 'ABCD', 1, M_ripr, Ry, M_ripr, Rx, [18,3,1], false, false);
 
 							iTab[op].f = I_ABCD;
 							cnt++;
@@ -2412,8 +2446,8 @@ function CPU() {
 								
 								op = (13 << 12) | (Dn << 9) | (dir << 8) | (z << 6) | ea[0];
 								
-								cyc = dir == 0 ? (z2 == 4 ? (ea[1] == M_rdd || ea[1] == M_imm ? 8 : 6) : 4) : (z2 == 4 ? 12 : 8);
-
+  								cyc = dir == 0 ? (z2 == 4 ? (ea[1] == M_rdd || ea[1] == M_imm ? [8,1,0] : [6,1,0]) : [4,1,0]) : (z2 == 4 ? [12,1,2] : [8,1,1]);
+		  								
 		  						if (iTab[op].op === -1) {
 									if (dir == 0)
 										iTab[op] = mkSD(op, 'ADD', z2, ea[1], ea[2], M_rdd, Dn, cyc, true, false);
@@ -2421,7 +2455,6 @@ function CPU() {
 										iTab[op] = mkSD(op, 'ADD', z2, M_rdd, Dn, ea[1], ea[2], cyc, false, true);
 
 									iTab[op].f = I_ADD;
-									//iTab[op].p.cyc = ((dir == 0) ? (z2 == 4 ? (ea[1]==M_rdd||ea[1]==M_imm?8:6) : 4) : (z2 == 4 ? 12 : 8)) + mkCyc(z2, ea[1]);
 									cnt++;
 								} else {
 									BUG.say('OP EXISTS ADD ' + op);
@@ -2448,9 +2481,8 @@ function CPU() {
 							op = (13 << 12) | (An << 9) | (z3 << 6) | ea[0];
 
 							if (iTab[op].op === -1) {
-								iTab[op] = mkSD(op, 'ADDA', z2, ea[1], ea[2], M_rda, An, z2 == 4 ? (ea[1] == M_rdd || ea[1] == M_imm ? 8 : 6) : 8, true, false);
+								iTab[op] = mkSD(op, 'ADDA', z2, ea[1], ea[2], M_rda, An, z2 == 4 ? (ea[1] == M_rdd || ea[1] == M_imm ? [8,1,0] : [6,1,0]) : [8,1,0], true, false);
 								iTab[op].f = I_ADDA;
-								//iTab[op].p.cyc = (z2 == 4 ? (ea[1] == M_rdd || ea[1] == M_imm ? 8 : 6) : 8) + mkCyc(z2, ea[1]);
 								cnt++;
 							} else {
 								BUG.say('OP EXISTS ADDA ' + op);
@@ -2474,7 +2506,7 @@ function CPU() {
 						op = (6 << 8) | (z << 6) | ea[0];
 
 						if (iTab[op].op === -1) {
-							iTab[op] = mkSD(op, 'ADDI', z2, M_imm, -1, ea[1], ea[2], ea[1] == M_rdd ? (z2 == 4 ? 16 : 8) : (z2 == 4 ? 20 : 12), false, ea[1] != M_rdd);
+							iTab[op] = mkSD(op, 'ADDI', z2, M_imm, -1, ea[1], ea[2], ea[1] == M_rdd ? (z2 == 4 ? [16,3,0] : [8,2,0]) : (z2 == 4 ? [20,3,2] : [12,2,1]), false, ea[1] != M_rdd);
 							iTab[op].f = I_ADDI;
 							cnt++;
 						} else {
@@ -2499,11 +2531,12 @@ function CPU() {
 							if (ea[1] == M_rda && z == 0) continue; //An word and long only
 
 							op = (5 << 12) | (id << 9) | (z << 6) | ea[0];
-							cyc = ea[1] == M_rda ? 8 : (ea[1] == M_rdd ? (z2 == 4 ? 8 : 4) : (z2 == 4 ? 12 : 8));
+							cyc = ea[1] == M_rda ? [8,1,0] : (ea[1] == M_rdd ? (z2 == 4 ? [8,1,0] : [4,1,0]) : (z2 == 4 ? [12,1,2] : [8,1,1]));
 
 							if (iTab[op].op === -1) {
 								iTab[op] = mkSD(op, 'ADDQ', z2, M_imm, id == 0 ? 8 : id, ea[1], ea[2], cyc, false, ea[1] != M_rdd && ea[1] != M_rda);
-								iTab[op].f = I_ADDQ;
+								//iTab[op].f = I_ADDQ;								
+								iTab[op].f = ea[1] != M_rda ? I_ADDQ : I_ADDQA;
 								cnt++;
 							} else {
 								BUG.say('OP EXISTS ADDQ ' + op);
@@ -2527,9 +2560,9 @@ function CPU() {
 
 							if (iTab[op].op === -1) {
 								if (rm == 0)
-									iTab[op] = mkSD(op, 'ADDX', z2, M_rdd, Ry, M_rdd, Rx, z2 == 4 ? 8 : 4, false, false);
-								else
-									iTab[op] = mkSD(op, 'ADDX', z2, M_ripr, Ry, M_ripr, Rx, z2 == 4 ? 30 : 18, false, false);
+									iTab[op] = mkSD(op, 'ADDX', z2, M_rdd, Ry, M_rdd, Rx, z2 == 4 ? [8,1,0] : [4,1,0], false, false);    
+								else                                                                                                                     
+									iTab[op] = mkSD(op, 'ADDX', z2, M_ripr, Ry, M_ripr, Rx, z2 == 4 ? [30,5,2] : [18,1,0], false, false); 
 
 								iTab[op].f = I_ADDX;
 								cnt++;
@@ -2558,7 +2591,7 @@ function CPU() {
 							if (ea[0] != -1) {
 								op = (12 << 12) | (Dn << 9) | (dir << 8) | (z << 6) | ea[0];
 
-								cyc = dir == 0 ? (z2 == 4 ? (ea[1] == M_rdd || ea[1] == M_imm ? 8 : 6) : 4) : (z2 == 4 ? 12 : 8);
+  								cyc = dir == 0 ? (z2 == 4 ? (ea[1] == M_rdd || ea[1] == M_imm ? [8,1,0] : [6,1,0]) : [4,1,0]) : (z2 == 4 ? [12,1,2] : [8,1,1]);
 
 								if (iTab[op].op === -1) {
 									if (dir == 0)
@@ -2567,7 +2600,6 @@ function CPU() {
 										iTab[op] = mkSD(op, 'AND', z2, M_rdd, Dn, ea[1], ea[2], cyc, false, true);
 
 									iTab[op].f = I_AND;
-									//iTab[op].p.cyc = (dir == 0 ? (z2 == 4 ? (ea[1]==M_rdd||ea[1]==M_imm?8:6) : 4) : (z2 == 4 ? 12 : 8)) + mkCyc(z2, ea[1]);
 									cnt++;
 								} else {
 									BUG.say('OP EXISTS AND ' + op);
@@ -2592,7 +2624,7 @@ function CPU() {
 						op = (2 << 8) | (z << 6) | ea[0];
 
 						if (iTab[op].op === -1) {
-							iTab[op] = mkSD(op, 'ANDI', z2, M_imm, -1, ea[1], ea[2], ea[1] == M_rdd ? (z2 == 4 ? 16 : 8) : (z2 == 4 ? 20 : 12), false, ea[1] != M_rdd);
+							iTab[op] = mkSD(op, 'ANDI', z2, M_imm, -1, ea[1], ea[2], ea[1] == M_rdd ? (z2 == 4 ? [16,3,0] : [8,2,0]) : (z2 == 4 ? [20,3,2] : [12,2,1]), false, ea[1] != M_rdd);
 							iTab[op].f = I_ANDI;
 							cnt++;
 						} else {
@@ -2608,7 +2640,7 @@ function CPU() {
 			op = 0x23C;
 
 			if (iTab[op].op === -1) {
-				iTab[op] = mkS(op, 'ANDI_CCR', 1, M_imm, -1, 20, false);
+				iTab[op] = mkS(op, 'ANDI_CCR', 1, M_imm, -1, [20,3,0], false);
 				iTab[op].f = I_ANDI_CCR;
 				cnt++;
 			} else {
@@ -2621,7 +2653,7 @@ function CPU() {
 			op = 0x27C;
 
 			if (iTab[op].op === -1) {
-				iTab[op] = mkS(op, 'ANDI_SR', 2, M_imm, -1, 20, false);
+				iTab[op] = mkS(op, 'ANDI_SR', 2, M_imm, -1, [20,3,0], false);
 				iTab[op].pr = true;
 				iTab[op].f = I_ANDI_SR;
 				cnt++;
@@ -2646,9 +2678,9 @@ function CPU() {
 
 								if (iTab[op].op === -1) {
 									if (ir == 0)
-										iTab[op] = mkSD(op, dr == 0 ? 'ASR_RI' : 'ASL_RI', z2, M_imm, cr == 0 ? 8 : cr, M_rdd, Dy, z2 == 4 ? 8 : 6, false, false);
+										iTab[op] = mkSD(op, dr == 0 ? 'ASR_RI' : 'ASL_RI', z2, M_imm, cr == 0 ? 8 : cr, M_rdd, Dy, z2 == 4 ? [8,1,0] : [6,1,0], false, false);
 									else
-										iTab[op] = mkSD(op, dr == 0 ? 'ASR_RD' : 'ASL_RD', z2, M_rdd, cr, M_rdd, Dy, z2 == 4 ? 8 : 6, false, false);
+										iTab[op] = mkSD(op, dr == 0 ? 'ASR_RD' : 'ASL_RD', z2, M_rdd, cr, M_rdd, Dy, z2 == 4 ? [8,1,0] : [6,1,0], false, false);
 
 									iTab[op].f = dr == 0 ? I_ASR : I_ASL;
 									cnt++;
@@ -2668,7 +2700,7 @@ function CPU() {
 						op = (112 << 9) | (dr << 8) | (3 << 6) | ea[0];
 
 						if (iTab[op].op === -1) {
-							iTab[op] = mkSD(op, dr == 0 ? 'ASR_M' : 'ASL_M', 2, M_imm, 1, ea[1], ea[2], 8, false, true);
+							iTab[op] = mkSD(op, dr == 0 ? 'ASR_M' : 'ASL_M', 2, M_imm, 1, ea[1], ea[2], [8,1,1], false, true);
 							iTab[op].f = dr == 0 ? I_ASR : I_ASL;
 							cnt++;
 						} else {
@@ -2684,12 +2716,12 @@ function CPU() {
 			var cc, dp;
 
 			for (cc = 2; cc < 16; cc++) {
-				for (dp = 0; dp < 255; dp++) /* 0xff = 68020 only */
+				for (dp = 0; dp < 255; dp++) /* 0xff = long, 68020 only */
 				{
 					op = (6 << 12) | (cc << 8) | dp;
 
 					if (iTab[op].op === -1) {
-						iTab[op] = mkC(op, 'B' + ccNames[cc], dp == 0 ? 1 : 2, cc, dp, -1, 10, dp == 0 ? 12 : 8);
+						iTab[op] = mkC(op, 'B' + ccNames[cc], dp == 0 ? 1 : 2, cc, dp, -1, [10,2,0], dp == 0 ? [12,1,0] : [8,1,0]);
 						iTab[op].f = I_Bcc;
 						cnt++;
 					} else {
@@ -2711,7 +2743,7 @@ function CPU() {
 						op = (Dn << 9) | (5 << 6) | ea[0];
 
 						if (iTab[op].op === -1) {
-							iTab[op] = mkSD(op, 'BCHG1', 4, M_rdd, Dn, ea[1], ea[2], 8, false, false);
+							iTab[op] = mkSD(op, 'BCHG1', 4, M_rdd, Dn, ea[1], ea[2], [8,1,0], false, false);
 							iTab[op].f = I_BCHG;
 							cnt++;
 						} else {
@@ -2727,7 +2759,7 @@ function CPU() {
 					op = (33 << 6) | ea[0];
 
 					if (iTab[op].op === -1) {
-						iTab[op] = mkSD(op, 'BCHG2', 1, M_imm, -1, ea[1], ea[2], 8, false, true);
+						iTab[op] = mkSD(op, 'BCHG2', 1, M_imm, -1, ea[1], ea[2], [8,1,1], false, true);
 						iTab[op].f = I_BCHG;
 						cnt++;
 					} else {
@@ -2749,7 +2781,7 @@ function CPU() {
 						op = (Dn << 9) | (6 << 6) | ea[0];
 
 						if (iTab[op].op === -1) {
-							iTab[op] = mkSD(op, 'BCLR1', 4, M_rdd, Dn, ea[1], ea[2], 10, false, false);
+							iTab[op] = mkSD(op, 'BCLR1', 4, M_rdd, Dn, ea[1], ea[2], [10,1,0], false, false);
 							iTab[op].f = I_BCLR;
 							cnt++;
 						} else {
@@ -2765,7 +2797,7 @@ function CPU() {
 					op = (34 << 6) | ea[0];
 
 					if (iTab[op].op === -1) {
-						iTab[op] = mkSD(op, 'BCLR2', 1, M_imm, - 1, ea[1], ea[2], 8, false, true);
+						iTab[op] = mkSD(op, 'BCLR2', 1, M_imm, - 1, ea[1], ea[2], [8,1,1], false, true);
 						iTab[op].f = I_BCLR;
 						cnt++;
 					} else {
@@ -2787,7 +2819,7 @@ function CPU() {
 						op = (Dn << 9) | (7 << 6) | ea[0];
 
 						if (iTab[op].op === -1) {
-							iTab[op] = mkSD(op, 'BSET1', 4, M_rdd, Dn, ea[1], ea[2], 8, false, false);
+							iTab[op] = mkSD(op, 'BSET1', 4, M_rdd, Dn, ea[1], ea[2], [8,1,0], false, false);
 							iTab[op].f = I_BSET;
 							cnt++;
 						} else {
@@ -2803,7 +2835,7 @@ function CPU() {
 					op = (35 << 6) | ea[0];
 
 					if (iTab[op].op === -1) {
-						iTab[op] = mkSD(op, 'BSET2', 1, M_imm, - 1, ea[1], ea[2], 8, false, true);
+						iTab[op] = mkSD(op, 'BSET2', 1, M_imm, - 1, ea[1], ea[2], [8,1,1], false, true);
 						iTab[op].f = I_BSET;
 						cnt++;
 					} else {
@@ -2825,7 +2857,7 @@ function CPU() {
 						op = (Dn << 9) | (4 << 6) | ea[0];
 
 						if (iTab[op].op === -1) {
-							iTab[op] = mkSD(op, 'BTST1', 4, M_rdd, Dn, ea[1], ea[2], 6, false, false);
+							iTab[op] = mkSD(op, 'BTST1', 4, M_rdd, Dn, ea[1], ea[2], [6,1,0], false, false);
 							iTab[op].f = I_BTST;
 							cnt++;
 						} else {
@@ -2842,7 +2874,7 @@ function CPU() {
 					op = (32 << 6) | ea[0];
 
 					if (iTab[op].op === -1) {
-						iTab[op] = mkSD(op, 'BTST2', 1, M_imm, -1, ea[1], ea[2], 8, false, true);
+						iTab[op] = mkSD(op, 'BTST2', 1, M_imm, -1, ea[1], ea[2], [4,1,0], false, true);
 						iTab[op].f = I_BTST;
 						cnt++;
 					} else {
@@ -2861,7 +2893,7 @@ function CPU() {
 				op = (96 << 8) | dp;
 
 				if (iTab[op].op === -1) {
-					iTab[op] = mkC(op, 'BRA', dp == 0 ? 1 : 2, 0, dp, -1, 10, null);
+					iTab[op] = mkC(op, 'BRA', dp == 0 ? 1 : 2, 0, dp, -1, [10,2,0], null);
 					iTab[op].f = I_BRA;
 					cnt++;
 				} else {
@@ -2879,7 +2911,7 @@ function CPU() {
 				op = (97 << 8) | dp;
 
 				if (iTab[op].op === -1) {
-					iTab[op] = mkC(op, 'BSR', dp == 0 ? 1 : 2, 1, dp, -1, 18, null);
+					iTab[op] = mkC(op, 'BSR', dp == 0 ? 1 : 2, 1, dp, -1, [18,2,2], null);
 					iTab[op].f = I_BSR;
 					cnt++;
 				} else {
@@ -2902,7 +2934,7 @@ function CPU() {
 						op = (4 << 12) | (Dn << 9) | (z3 << 7) | ea[0];
 
 						if (iTab[op].op === -1) {
-							iTab[op] = mkSD(op, 'CHK', z2, ea[1], ea[2], M_rdd, Dn, 10, true, false);
+							iTab[op] = mkSD(op, 'CHK', z2, ea[1], ea[2], M_rdd, Dn, [10,1,0], true, false);
 							iTab[op].f = I_CHK;
 							iTab[op].p.cycTaken = iTab[op].p.s.c;
 							cnt++;
@@ -2927,7 +2959,7 @@ function CPU() {
 						op = (66 << 8) | (z << 6) | ea[0];
 
 						if (iTab[op].op === -1) {
-							iTab[op] = mkD(op, 'CLR', z2, ea[1], ea[2], ea[1] == M_rdd ? (z2 == 4 ? 6 : 4) : (z2 == 4 ? 12 : 8), ea[1] != M_rdd);
+							iTab[op] = mkD(op, 'CLR', z2, ea[1], ea[2], ea[1] == M_rdd ? (z2 == 4 ? [6,1,0] : [4,1,0]) : (z2 == 4 ? [12,1,2] : [8,1,1]), ea[1] != M_rdd);
 							iTab[op].f = I_CLR;
 							cnt++;
 						} else {
@@ -2954,9 +2986,8 @@ function CPU() {
 							op = (11 << 12) | (Dn << 9) | (z << 6) | ea[0];
 
 							if (iTab[op].op === -1) {
-								iTab[op] = mkSD(op, 'CMP', z2, ea[1], ea[2], M_rdd, Dn, z2 == 4 ? 6 : 4, true, false);
+								iTab[op] = mkSD(op, 'CMP', z2, ea[1], ea[2], M_rdd, Dn, z2 == 4 ? [6,1,0] : [4,1,0], true, false);
 								iTab[op].f = I_CMP;
-								//iTab[op].p.cyc = (z2 == 4 ? 6 : 4) + mkCyc(z2, ea[1]);
 								cnt++;
 							} else {
 								BUG.say('OP EXISTS CMP ' + op);
@@ -2982,9 +3013,8 @@ function CPU() {
 							op = (11 << 12) | (An << 9) | (z3 << 6) | ea[0];
 
 							if (iTab[op].op === -1) {
-								iTab[op] = mkSD(op, 'CMPA', z2, ea[1], ea[2], M_rda, An, 6, true, false);
+								iTab[op] = mkSD(op, 'CMPA', z2, ea[1], ea[2], M_rda, An, [6,1,0], true, false);
 								iTab[op].f = I_CMPA;
-								//iTab[op].p.cyc = 6 + mkCyc(z2, ea[1]);
 								cnt++;
 							} else {
 								BUG.say('OP EXISTS CMPA ' + op);
@@ -3008,7 +3038,7 @@ function CPU() {
 						op = (12 << 8) | (z << 6) | ea[0];
 
 						if (iTab[op].op === -1) {
-							iTab[op] = mkSD(op, 'CMPI', z2, M_imm, -1, ea[1], ea[2], ea[1] == M_rdd ? (z2 == 4 ? 14 : 8) : (z2 == 4 ? 12 : 8), false, ea[1] != M_rdd);
+							iTab[op] = mkSD(op, 'CMPI', z2, M_imm, -1, ea[1], ea[2], ea[1] == M_rdd ? (z2 == 4 ? [14,3,0] : [8,2,0]) : (z2 == 4 ? [12,3,0] : [8,2,0]), false, ea[1] != M_rdd);
 							iTab[op].f = I_CMPI;
 							cnt++;
 						} else {
@@ -3030,7 +3060,7 @@ function CPU() {
 						op = (11 << 12) | (Ax << 9) | (1 << 8) | (z << 6) | (1 << 3) | Ay;
 
 						if (iTab[op].op === -1) {
-							iTab[op] = mkSD(op, 'CMPM', z2, M_ripo, Ay, M_ripo, Ax, z2 == 4 ? 20 : 12, false, false);
+							iTab[op] = mkSD(op, 'CMPM', z2, M_ripo, Ay, M_ripo, Ax, z2 == 4 ? [20,5,0] : [12,3,0], false, false);
 							iTab[op].f = I_CMPM;
 							cnt++;
 						} else {
@@ -3050,7 +3080,7 @@ function CPU() {
 					op = (5 << 12) | (cc << 8) | (25 << 3) | dr;
 
 					if (iTab[op].op === -1) {
-						iTab[op] = mkDBcc(op, 'DB' + ccNames[cc], 2, cc, -1, dr, 12, 10, 14);
+						iTab[op] = mkDBcc(op, 'DB' + ccNames[cc], 2, cc, -1, dr, [12,2,0], [10,2,0], [14,3,0]);
 						iTab[op].f = I_DBcc;
 						cnt++;
 					} else {
@@ -3072,7 +3102,7 @@ function CPU() {
 						op = (8 << 12) | (Dn << 9) | (7 << 6) | ea[0];
 
 						if (iTab[op].op === -1) {
-							iTab[op] = mkSD(op, 'DIVS', 2, ea[1], ea[2], M_rdd, Dn, 158, true, false);
+							iTab[op] = mkSD(op, 'DIVS', 2, ea[1], ea[2], M_rdd, Dn, [158,1,0], true, false);
 							iTab[op].f = I_DIVS;
 							cnt++;
 						} else {
@@ -3095,7 +3125,7 @@ function CPU() {
 						op = (8 << 12) | (Dn << 9) | (3 << 6) | ea[0];
 
 						if (iTab[op].op === -1) {
-							iTab[op] = mkSD(op, 'DIVU', 2, ea[1], ea[2], M_rdd, Dn, 140, true, false);
+							iTab[op] = mkSD(op, 'DIVU', 2, ea[1], ea[2], M_rdd, Dn, [140,1,0], true, false);
 							iTab[op].f = I_DIVU;
 							cnt++;
 						} else {
@@ -3121,9 +3151,8 @@ function CPU() {
 							op = (11 << 12) | (Dn << 9) | (z3 << 6) | ea[0];
 
 							if (iTab[op].op === -1) {
-								iTab[op] = mkSD(op, 'EOR', z2, M_rdd, Dn, ea[1], ea[2], ea[1] == M_rdd ? (z2 == 4 ? 8 : 4) : (z2 == 4 ? 12 : 8), false, true);
+								iTab[op] = mkSD(op, 'EOR', z2, M_rdd, Dn, ea[1], ea[2], ea[1] == M_rdd ? (z2 == 4 ? [8,1,0] : [4,1,0]) : (z2 == 4 ? [12,1,2] : [8,1,1]), false, true);
 								iTab[op].f = I_EOR;
-								//iTab[op].p.cyc = ea[1] == M_rdd ? (z2 == 4 ? 8 : 4) : ((z2 == 4 ? 12 : 8) + mkCyc(z2, ea[1]));
 								cnt++;
 							} else {
 								BUG.say('OP EXISTS EOR ' + op);
@@ -3147,7 +3176,7 @@ function CPU() {
 						op = (10 << 8) | (z << 6) | ea[0];
 
 						if (iTab[op].op === -1) {
-							iTab[op] = mkSD(op, 'EORI', z2, M_imm, -1, ea[1], ea[2], ea[1] == M_rdd ? (z2 == 4 ? 16 : 8) : (z2 == 4 ? 20 : 12), false, ea[1] != M_rdd);
+							iTab[op] = mkSD(op, 'EORI', z2, M_imm, -1, ea[1], ea[2], ea[1] == M_rdd ? (z2 == 4 ? [16,3,0] : [8,2,0]) : (z2 == 4 ? [20,3,2] : [12,2,1]), false, ea[1] != M_rdd);
 							iTab[op].f = I_EORI;
 							cnt++;
 						} else {
@@ -3163,7 +3192,7 @@ function CPU() {
 			op = 0xA3C;
 
 			if (iTab[op].op === -1) {
-				iTab[op] = mkS(op, 'EORI_CCR', 1, M_imm, -1, 20, false);
+				iTab[op] = mkS(op, 'EORI_CCR', 1, M_imm, -1, [20,3,0], false);
 				iTab[op].f = I_EORI_CCR;
 				cnt++;
 			} else {
@@ -3176,7 +3205,7 @@ function CPU() {
 			op = 0xA7C;
 
 			if (iTab[op].op === -1) {
-				iTab[op] = mkS(op, 'EORI_SR', 2, M_imm, -1, 20, false);
+				iTab[op] = mkS(op, 'EORI_SR', 2, M_imm, -1, [20,3,0], false);
 				iTab[op].pr = true;
 				iTab[op].f = I_EORI_SR;
 				cnt++;
@@ -3197,11 +3226,11 @@ function CPU() {
 
 						if (iTab[op].op === -1) {
 							if (m == 0)
-								iTab[op] = mkSD(op, 'EXG', 4, M_rdd, Rx, M_rdd, Ry, 6, false, false);
+								iTab[op] = mkSD(op, 'EXG', 4, M_rdd, Rx, M_rdd, Ry, [6,1,0], false, false);
 							else if (m == 1)
-								iTab[op] = mkSD(op, 'EXG', 4, M_rda, Rx, M_rda, Ry, 6, false, false);
+								iTab[op] = mkSD(op, 'EXG', 4, M_rda, Rx, M_rda, Ry, [6,1,0], false, false);
 							else
-								iTab[op] = mkSD(op, 'EXG', 4, M_rdd, Rx, M_rda, Ry, 6, false, false);
+								iTab[op] = mkSD(op, 'EXG', 4, M_rdd, Rx, M_rda, Ry, [6,1,0], false, false);
 
 							iTab[op].f = I_EXG;
 							cnt++;
@@ -3224,7 +3253,7 @@ function CPU() {
 					op = (36 << 9) | (opm << 6) | Dn;
 
 					if (iTab[op].op === -1) {
-						iTab[op] = mkD(op, 'EXT', z2, M_rdd, Dn, 4, false);
+						iTab[op] = mkD(op, 'EXT', z2, M_rdd, Dn, [4,1,0], false);
 						iTab[op].f = I_EXT;
 						cnt++;
 					} else {
@@ -3239,7 +3268,7 @@ function CPU() {
 			op = 0x4AFC;
 
 			if (iTab[op].op === -1) {
-				iTab[op] = mkN(op, 'ILLEGAL');
+				iTab[op] = mkN(op, 'ILLEGAL', [0,0,0]);
 				iTab[op].f = I_ILLEGAL;
 				cnt++;
 			} else {
@@ -3257,15 +3286,15 @@ function CPU() {
 				if (ea[0] != -1) {
 					op = (315 << 6) | ea[0];
 
-					if (iTab[op].op === -1) {
+					if (iTab[op].op === -1) {   
 						switch (ea[1]) {
-							case M_ria: cyc = 8; break;
-							case M_rid: cyc = 10; break;
-							case M_rii: cyc = 14; break;
-							case M_pcid: cyc = 10; break;
-							case M_pcii: cyc = 14; break;
-							case M_absw: cyc = 10; break;
-							case M_absl: cyc = 12; break;
+							case M_ria:  cyc = [ 8,2,0]; break;
+							case M_rid:  cyc = [10,2,0]; break;
+							case M_rii:  cyc = [14,3,0]; break;
+							case M_pcid: cyc = [10,2,0]; break;
+							case M_pcii: cyc = [14,3,0]; break;
+							case M_absw: cyc = [10,2,0]; break;
+							case M_absl: cyc = [12,3,0]; break;
 						}		
 						iTab[op] = mkD(op, 'JMP', 0, ea[1], ea[2], cyc, false);
 						iTab[op].f = I_JMP;
@@ -3289,13 +3318,13 @@ function CPU() {
 
 					if (iTab[op].op === -1) {
 						switch (ea[1]) {
-							case M_ria: cyc = 16; break;
-							case M_rid: cyc = 18; break;
-							case M_rii: cyc = 22; break;
-							case M_pcid: cyc = 18; break;
-							case M_pcii: cyc = 22; break;
-							case M_absw: cyc = 18; break;
-							case M_absl: cyc = 20; break;
+							case M_ria:  cyc = [16,2,2]; break;
+							case M_rid:  cyc = [18,2,2]; break;
+							case M_rii:  cyc = [22,2,2]; break;
+							case M_pcid: cyc = [18,2,2]; break;
+							case M_pcii: cyc = [22,2,2]; break;
+							case M_absw: cyc = [18,2,2]; break;
+							case M_absl: cyc = [20,3,2]; break;
 						}		
 						iTab[op] = mkD(op, 'JSR', 0, ea[1], ea[2], cyc, false);
 						iTab[op].f = I_JSR;
@@ -3320,14 +3349,14 @@ function CPU() {
 
 						if (iTab[op].op === -1) {
 							switch (ea[1]) {
-								case M_ria: cyc = 4; break;
-								case M_rid: cyc = 8; break;
-								case M_rii: cyc = 12; break;
-								case M_pcid: cyc = 8; break;
-								case M_pcii: cyc = 12; break;
-								case M_absw: cyc = 8; break;
-								case M_absl: cyc = 12; break;
-							}		
+								case M_ria:  cyc = [ 4,1,0]; break;
+								case M_rid:  cyc = [ 8,2,0]; break;
+								case M_rii:  cyc = [12,2,0]; break;
+								case M_pcid: cyc = [ 8,2,0]; break;
+								case M_pcii: cyc = [12,2,0]; break;
+								case M_absw: cyc = [ 8,2,0]; break;
+								case M_absl: cyc = [12,3,0]; break;
+							}
 							iTab[op] = mkSD(op, 'LEA', 4, ea[1], ea[2], M_rda, An, cyc, false, false);
 							iTab[op].f = I_LEA;
 							cnt++;
@@ -3347,7 +3376,7 @@ function CPU() {
 				op = (2506 << 3) | An;
 
 				if (iTab[op].op === -1) {
-					iTab[op] = mkSD(op, 'LINK', 2, M_rda, An, M_imm, -1, 16, false, false);
+					iTab[op] = mkSD(op, 'LINK', 2, M_rda, An, M_imm, -1, [16,2,2], false, false);
 					iTab[op].f = I_LINK;
 					cnt++;
 				} else {
@@ -3372,9 +3401,9 @@ function CPU() {
 
 								if (iTab[op].op === -1) {
 									if (ir == 0)
-										iTab[op] = mkSD(op, dr == 0 ? 'LSR_RI' : 'LSL_RI', z2, M_imm, cr == 0 ? 8 : cr, M_rdd, Dy, z2 == 4 ? 8 : 6, false, false);
+										iTab[op] = mkSD(op, dr == 0 ? 'LSR_RI' : 'LSL_RI', z2, M_imm, cr == 0 ? 8 : cr, M_rdd, Dy, z2 == 4 ? [8,1,0] : [6,1,0], false, false);
 									else
-										iTab[op] = mkSD(op, dr == 0 ? 'LSR_RD' : 'LSL_RD', z2, M_rdd, cr, M_rdd, Dy, z2 == 4 ? 8 : 6, false, false);
+										iTab[op] = mkSD(op, dr == 0 ? 'LSR_RD' : 'LSL_RD', z2, M_rdd, cr, M_rdd, Dy, z2 == 4 ? [8,1,0] : [6,1,0], false, false);
 
 									iTab[op].f = dr == 0 ? I_LSR : I_LSL;
 									cnt++;
@@ -3394,7 +3423,7 @@ function CPU() {
 						op = (113 << 9) | (dr << 8) | (3 << 6) | ea[0];
 
 						if (iTab[op].op === -1) {
-							iTab[op] = mkSD(op, dr == 0 ? 'LSR_M' : 'LSL_M', 2, M_imm, 1, ea[1], ea[2], 8, false, true);
+							iTab[op] = mkSD(op, dr == 0 ? 'LSR_M' : 'LSL_M', 2, M_imm, 1, ea[1], ea[2], [8,1,1], false, true);
 							iTab[op].f = dr == 0 ? I_LSR : I_LSL;
 							cnt++;
 						} else {
@@ -3406,37 +3435,37 @@ function CPU() {
 			}
 		}
 		//MOVE	
-		{
+		{    
 			var tab2 = [
-				[ 4,0, 8, 8, 8,12,0,0,14,12,16,0],
-				[ 4,0, 8, 8, 8,12,0,0,14,12,16,0],
-				[ 8,0,12,12,12,16,0,0,18,16,20,0],
-				[ 8,0,12,12,12,16,0,0,18,16,20,0],
-				[10,0,14,14,14,18,0,0,20,18,22,0],
-				[12,0,16,16,16,20,0,0,22,20,24,0],
-				[14,0,18,18,18,22,0,0,24,22,26,0],
-				[12,0,16,16,16,20,0,0,22,20,24,0],
-				[14,0,18,18,18,22,0,0,24,22,26,0],
-				[12,0,16,16,16,20,0,0,22,20,24,0],
-				[16,0,20,20,20,24,0,0,26,24,28,0],
-				[ 8,0,12,12,12,16,0,0,18,16,20,0]
+				[[ 4,1,0],null,[ 8,1,1],[ 8,1,1],[ 8,1,1],[12,2,1],[14,2,1],null,null,[12,2,1],[16,3,1],null],
+				[[ 4,1,0],null,[ 8,1,1],[ 8,1,1],[ 8,1,1],[12,2,1],[14,2,1],null,null,[12,2,1],[16,3,1],null],
+				[[ 8,2,0],null,[12,2,1],[12,2,1],[12,2,1],[16,3,1],[18,3,1],null,null,[16,3,1],[20,4,1],null],
+				[[ 8,2,0],null,[12,2,1],[12,2,1],[12,2,1],[16,3,1],[18,3,1],null,null,[16,3,1],[20,4,1],null],
+				[[10,2,0],null,[14,2,1],[14,2,1],[14,2,1],[18,3,1],[20,4,1],null,null,[18,3,1],[22,4,1],null],
+				[[12,3,0],null,[16,3,1],[16,3,1],[16,3,1],[20,4,1],[22,4,1],null,null,[20,4,1],[24,5,1],null],
+				[[14,3,0],null,[18,3,1],[18,3,1],[18,3,1],[22,4,1],[24,4,1],null,null,[22,4,1],[26,5,1],null],
+				[[12,3,0],null,[16,3,1],[16,3,1],[16,3,1],[20,4,1],[22,4,1],null,null,[20,4,1],[24,5,1],null],
+				[[14,3,0],null,[18,3,1],[18,3,1],[18,3,1],[22,4,1],[24,4,1],null,null,[22,4,1],[26,5,1],null],
+				[[12,3,0],null,[16,3,1],[16,3,1],[16,3,1],[20,4,1],[22,4,1],null,null,[20,4,1],[24,5,1],null],
+				[[16,4,0],null,[20,4,1],[20,4,1],[20,4,1],[24,5,1],[26,5,1],null,null,[24,5,1],[28,6,1],null],
+				[[ 8,2,0],null,[12,2,1],[12,2,1],[12,2,1],[16,3,1],[18,3,1],null,null,[16,3,1],[20,4,1],null]
 			];	
 			var tab4 = [
-				[ 4,0,12,12,12,16,0,0,18,16,20,0], 
-				[ 4,0,12,12,12,16,0,0,18,16,20,0], 
-				[12,0,20,20,20,24,0,0,26,24,28,0], 
-				[12,0,20,20,20,24,0,0,26,24,28,0], 
-				[14,0,22,22,22,26,0,0,28,26,30,0], 
-				[16,0,24,24,24,28,0,0,30,28,32,0], 
-				[18,0,26,26,26,30,0,0,32,30,34,0], 
-				[16,0,24,24,24,28,0,0,30,28,32,0], 
-				[18,0,26,26,26,30,0,0,32,30,34,0], 
-				[16,0,24,24,24,28,0,0,30,28,32,0], 
-				[20,0,28,28,28,32,0,0,34,32,36,0], 
-				[12,0,20,20,20,24,0,0,26,24,28,0]  
-			];	
+				[[ 4,1,0],null,[12,1,2],[12,1,2],[12,1,2],[16,2,2],[18,2,2],null,null,[16,2,2],[20,3,2],null],
+				[[ 4,1,0],null,[12,1,2],[12,1,2],[12,1,2],[16,2,2],[18,2,2],null,null,[16,2,2],[20,3,2],null],
+				[[12,3,0],null,[20,3,2],[20,3,2],[20,3,2],[24,4,2],[26,4,2],null,null,[24,4,2],[28,5,2],null],
+				[[12,3,0],null,[20,3,2],[20,3,2],[20,3,2],[24,4,2],[26,4,2],null,null,[24,4,2],[28,5,2],null],
+				[[14,3,0],null,[22,3,2],[22,3,2],[22,3,2],[26,4,2],[28,4,2],null,null,[26,4,2],[30,5,2],null],
+				[[16,4,0],null,[24,4,2],[24,4,2],[24,4,2],[28,5,2],[30,5,2],null,null,[28,5,2],[32,6,2],null],
+				[[18,4,0],null,[26,4,2],[26,4,2],[26,4,2],[30,5,2],[32,5,2],null,null,[30,5,2],[34,6,2],null],
+				[[16,4,0],null,[24,4,2],[24,4,2],[24,4,2],[28,5,2],[30,5,2],null,null,[28,5,2],[32,5,2],null],
+				[[18,4,0],null,[26,4,2],[26,4,2],[26,4,2],[30,5,2],[32,5,2],null,null,[30,5,2],[34,6,2],null],
+				[[16,4,0],null,[24,4,2],[24,4,2],[24,4,2],[28,5,2],[30,5,2],null,null,[28,5,2],[32,6,2],null],
+				[[20,5,0],null,[28,5,2],[28,5,2],[28,5,2],[32,6,2],[34,6,2],null,null,[32,6,2],[36,7,2],null],
+				[[12,3,0],null,[20,3,2],[20,3,2],[20,3,2],[24,4,2],[26,4,2],null,null,[24,4,2],[28,5,2],null]			
+			];				
 			var sen = [M_rdd, M_rda, M_ria, M_ripo, M_ripr, M_rid, M_rii, M_pcid, M_pcii, M_absw, M_absl, M_imm];
-			var den = [M_rdd,M_ria, M_ripo, M_ripr, M_rid, M_rii,M_absw, M_absl];
+			var den = [M_rdd, M_ria, M_ripo, M_ripr, M_rid, M_rii, M_absw, M_absl];
 			var z, z2, z3, smr, dmr, sea, dea;
 
 			for (z = 0; z < 3; z++) {
@@ -3472,8 +3501,34 @@ function CPU() {
 		}
 		//MOVEA	
 		{
-			var tab2 = [4,4,8,8,10,12,14,12,14,12,16,8];
-			var tab4 = [4,4,12,12,14,16,18,16,18,16,20,12];
+			var tab2 = [
+				[ 4,1,0],
+				[ 4,1,0],
+				[ 8,2,0],
+				[ 8,2,0],
+				[10,2,0],
+				[12,3,0],
+				[14,3,0],
+				[12,3,0],
+				[14,3,0],
+				[12,3,0],
+				[16,4,0],
+				[ 8,2,0]
+			];	
+			var tab4 = [
+				[ 4,1,0],
+				[ 4,1,0],
+				[12,3,0],
+				[12,3,0],
+				[14,3,0],
+				[16,4,0],
+				[18,4,0],
+				[16,4,0],
+				[18,4,0],
+				[16,4,0],
+				[20,5,0],
+				[12,3,0]			
+			];	
 			var en = [M_rdd, M_rda, M_ria, M_ripo, M_ripr, M_rid, M_rii, M_pcid, M_pcii, M_absw, M_absl, M_imm];
 			var z, z2, z3, An, mr, ea;
 
@@ -3514,7 +3569,7 @@ function CPU() {
 					op = (267 << 6) | ea[0];  
 
 					if (iTab[op].op === -1) {
-						iTab[op] = mkD(op, 'MOVE_CCR2', 2, ea[1], ea[2]);
+						iTab[op] = mkD(op, 'MOVE_CCR2', 2, ea[1], ea[2], [0,0,0], false);
 						iTab[op].f = I_MOVE_CCR2;
 						cnt++;
 					} else {
@@ -3535,7 +3590,7 @@ function CPU() {
 					op = (275 << 6) | ea[0];
 
 					if (iTab[op].op === -1) {
-						iTab[op] = mkS(op, 'MOVE_2CCR', 2, ea[1], ea[2], 12, ea[1] == M_rdd ? false : true);
+						iTab[op] = mkS(op, 'MOVE_2CCR', 2, ea[1], ea[2], [12,1,0], ea[1] == M_rdd ? false : true);
 						iTab[op].f = I_MOVE_2CCR;
 						cnt++;
 					} else {
@@ -3556,7 +3611,7 @@ function CPU() {
 					op = (259 << 6) | ea[0];
 
 					if (iTab[op].op === -1) {
-						iTab[op] = mkD(op, 'MOVE_SR2', 2, ea[1], ea[2], ea[1] == M_rdd ? 6 : 8, ea[1] != M_rdd);
+						iTab[op] = mkD(op, 'MOVE_SR2', 2, ea[1], ea[2], ea[1] == M_rdd ? [6,1,0] : [8,1,1], ea[1] != M_rdd);
 						iTab[op].f = I_MOVE_SR2;
 						cnt++;
 					} else {
@@ -3577,7 +3632,7 @@ function CPU() {
 					op = (283 << 6) | ea[0];
 
 					if (iTab[op].op === -1) {
-						iTab[op] = mkS(op, 'MOVE_2SR', 2, ea[1], ea[2], 12, ea[1] == M_rdd ? false : true);
+						iTab[op] = mkS(op, 'MOVE_2SR', 2, ea[1], ea[2], [12,1,0], ea[1] == M_rdd ? false : true);
 						iTab[op].pr = true;
 						iTab[op].f = I_MOVE_2SR;
 						cnt++;
@@ -3598,9 +3653,9 @@ function CPU() {
 
 					if (iTab[op].op === -1) {
 						if (dr == 0)
-							iTab[op] = mkS(op, 'MOVE_A2USP', 4, M_rda, An, 4, false);
+							iTab[op] = mkS(op, 'MOVE_A2USP', 4, M_rda, An, [4,1,0], false);
 						else
-							iTab[op] = mkD(op, 'MOVE_USP2A', 4, M_rda, An, 4, false);
+							iTab[op] = mkD(op, 'MOVE_USP2A', 4, M_rda, An, [4,1,0], false);
 
 						iTab[op].pr = true;
 						iTab[op].f = (dr == 0) ? I_MOVE_A2USP : I_MOVE_USP2A;
@@ -3613,6 +3668,19 @@ function CPU() {
 			}
 		}
 		//MOVEM
+		/*		
+		instr	size	(An)		(An)+	-(An)	d(An)	   	d(An,ix)+   d(PC)      d(PC,ix)*     xxx.W      xxx.L                    
+		MOVEM	                                                                                                                  
+			word	   12+4n	   12+4n	  -	  16+4n       18+4n     16+4n      18+4n          16+4n      20+4n	                  
+		M->R		 (3+n/0)	 (3+n/0)	  -	(4+n/0)     (4+n/0)   (4+n/0)    (4+n/0)        (4+n/0)    (5+n/0)	                  
+			long	   12+8n	   12+8n	  -	  16+8n       18+8n     16+8n      18+8n          16+8n      20+8n	                  
+					(3+2n/0)	(3+2n/0)	  -    (4+2n/0)   (4+2n/0)   (4+2n/0)   (4+2n/0)     (4+2n/0)   (5+2n/0)  
+					                 
+		MOVEM	                                                                                                                  
+			word	    8+4n	   -		  8+4n	  12+4n    14+4n     -				-              12+4n      16+4n	                        
+		R->M		   (2/n)	   -		 (2/n)	  (3/n)    (3/n)     -				-              (3/n)      (4/n)	                        
+			long	    8+8n	   -		  8+8n	  12+8n    14+8n     -				-              12+8n      16+8n	                        
+		 			 (2/2n)	   -		(2/2n)	 (3/2n)    (3/2n)  	 -				-		         (3/2n)     (4/2n)*/
 		{
 			var z, z2, dr, mr, ea, cyc;
 
@@ -3630,25 +3698,25 @@ function CPU() {
 							if (iTab[op].op === -1) {
 								if (dr == 0) {
 									switch (ea[1]) {
-										case M_ria: cyc = 8; break;
-										case M_ripr: cyc = 8; break;
-										case M_rid: cyc = 12; break;
-										case M_rii: cyc = 14; break;
-										case M_absw: cyc = 12; break;
-										case M_absl: cyc = 16; break;
+										case M_ria: cyc = [8,2,0]; break;
+										case M_ripr: cyc = [8,2,0]; break;
+										case M_rid: cyc = [12,3,0]; break;
+										case M_rii: cyc = [14,3,0]; break;
+										case M_absw: cyc = [12,3,0]; break;
+										case M_absl: cyc = [16,4,0]; break;
 									}		
 									iTab[op] = mkSD(op, 'MOVEM_R2M', z2, M_list, -1, ea[1], ea[2], cyc, false, false);
 									iTab[op].f = I_MOVEM_R2M;
 								} else {
 									switch (ea[1]) {
-										case M_ria: cyc = 12; break;
-										case M_ripo: cyc = 12; break;
-										case M_rid: cyc = 16; break;
-										case M_rii: cyc = 18; break;
-										case M_pcid: cyc = 16; break;
-										case M_pcii: cyc = 18; break;
-										case M_absw: cyc = 16; break;
-										case M_absl: cyc = 20; break;
+										case M_ria: cyc = [12,3,0]; break;
+										case M_ripo: cyc = [12,3,0]; break;
+										case M_rid: cyc = [16,4,0]; break;
+										case M_rii: cyc = [18,4,0]; break;
+										case M_pcid: cyc = [16,4,0]; break;
+										case M_pcii: cyc = [18,4,0]; break;
+										case M_absw: cyc = [16,4,0]; break;
+										case M_absl: cyc = [20,5,0]; break;
 									}		
 									iTab[op] = mkSD(op, 'MOVEM_M2R', z2, M_list, -1, ea[1], ea[2], cyc, false, false);
 									iTab[op].f = I_MOVEM_M2R;
@@ -3675,13 +3743,13 @@ function CPU() {
 
 						if (iTab[op].op === -1) {
 							if (m == 0)
-								iTab[op] = mkSD(op, 'MOVEP', 2, M_rid, An, M_rdd, Dn, 16, false, false);
+								iTab[op] = mkSD(op, 'MOVEP', 2, M_rid, An, M_rdd, Dn, [16,4,0], false, false);
 							else if (m == 1)
-								iTab[op] = mkSD(op, 'MOVEP', 4, M_rid, An, M_rdd, Dn, 24, false, false);
+								iTab[op] = mkSD(op, 'MOVEP', 4, M_rid, An, M_rdd, Dn, [24,6,0], false, false);
 							else if (m == 2)
-								iTab[op] = mkSD(op, 'MOVEP', 2, M_rdd, Dn, M_rid, An, 16, false, false);
+								iTab[op] = mkSD(op, 'MOVEP', 2, M_rdd, Dn, M_rid, An, [16,2,2], false, false);
 							else
-								iTab[op] = mkSD(op, 'MOVEP', 4, M_rdd, Dn, M_rid, An, 24, false, false);
+								iTab[op] = mkSD(op, 'MOVEP', 4, M_rdd, Dn, M_rid, An, [24,2,4], false, false);
 
 							iTab[op].f = I_MOVEP;
 							cnt++;
@@ -3702,7 +3770,7 @@ function CPU() {
 					op = (7 << 12) | (Dn << 9) | d;
 
 					if (iTab[op].op === -1) {
-						iTab[op] = mkSD(op, 'MOVEQ', 4, M_imm, d, M_rdd, Dn, 4, false, false);
+						iTab[op] = mkSD(op, 'MOVEQ', 4, M_imm, d, M_rdd, Dn, [4,1,0], false, false);
 						iTab[op].f = I_MOVEQ;
 						cnt++;
 					} else {
@@ -3724,7 +3792,7 @@ function CPU() {
 						op = (12 << 12) | (Dn << 9) | (7 << 6) | ea[0];
 
 						if (iTab[op].op === -1) {
-							iTab[op] = mkSD(op, 'MULS', 2, ea[1], ea[2], M_rdd, Dn, 70, true, false);
+							iTab[op] = mkSD(op, 'MULS', 2, ea[1], ea[2], M_rdd, Dn, [70,1,0], true, false);
 							iTab[op].f = I_MULS;
 							cnt++;
 						} else {
@@ -3747,7 +3815,7 @@ function CPU() {
 						op = (12 << 12) | (Dn << 9) | (3 << 6) | ea[0];
 
 						if (iTab[op].op === -1) {
-							iTab[op] = mkSD(op, 'MULU', 2, ea[1], ea[2], M_rdd, Dn, 70, true, false);
+							iTab[op] = mkSD(op, 'MULU', 2, ea[1], ea[2], M_rdd, Dn, [70,1,0], true, false);
 							iTab[op].f = I_MULU;
 							cnt++;
 						} else {
@@ -3769,7 +3837,7 @@ function CPU() {
 					op = (288 << 6) | ea[0];
 
 					if (iTab[op].op === -1) {
-						iTab[op] = mkD(op, 'NBCD', 1, ea[1], ea[2], ea[1] == M_rdd ? 6 : 8, ea[1] != M_rdd);
+						iTab[op] = mkD(op, 'NBCD', 1, ea[1], ea[2], ea[1] == M_rdd ? [6,1,0] : [8,1,1], ea[1] != M_rdd);
 						iTab[op].f = I_NBCD;
 						cnt++;
 					} else {
@@ -3792,7 +3860,7 @@ function CPU() {
 						op = (68 << 8) | (z << 6) | ea[0];
 
 						if (iTab[op].op === -1) {
-							iTab[op] = mkD(op, 'NEG', z2, ea[1], ea[2], ea[1] == M_rdd ? (z2 == 4 ? 6 : 4) : (z2 == 4 ? 12 : 8), ea[1] != M_rdd);
+							iTab[op] = mkD(op, 'NEG', z2, ea[1], ea[2], ea[1] == M_rdd ? (z2 == 4 ? [6,1,0] : [4,1,0]) : (z2 == 4 ? [12,1,2] : [8,1,1]), ea[1] != M_rdd);
 							iTab[op].f = I_NEG;
 							cnt++;
 						} else {
@@ -3816,7 +3884,7 @@ function CPU() {
 						op = (64 << 8) | (z << 6) | ea[0];
 
 						if (iTab[op].op === -1) {
-							iTab[op] = mkD(op, 'NEGX', z2, ea[1], ea[2], ea[1] == M_rdd ? (z2 == 4 ? 6 : 4) : (z2 == 4 ? 12 : 8), ea[1] != M_rdd);
+							iTab[op] = mkD(op, 'NEGX', z2, ea[1], ea[2], ea[1] == M_rdd ? (z2 == 4 ? [6,1,0] : [4,1,0]) : (z2 == 4 ? [12,1,2] : [8,1,1]), ea[1] != M_rdd);
 							iTab[op].f = I_NEGX;
 							cnt++;
 						} else {
@@ -3832,7 +3900,7 @@ function CPU() {
 			op = 0x4E71;
 
 			if (iTab[op].op === -1) {
-				iTab[op] = mkN(op, 'NOP', 4);
+				iTab[op] = mkN(op, 'NOP', [4,1,0]);
 				iTab[op].f = I_NOP;
 				cnt++;
 			} else {
@@ -3853,7 +3921,7 @@ function CPU() {
 						op = (70 << 8) | (z << 6) | ea[0];
 
 						if (iTab[op].op === -1) {
-							iTab[op] = mkD(op, 'NOT', z2, ea[1], ea[2], ea[1] == M_rdd ? (z2 == 4 ? 6 : 4) : (z2 == 4 ? 12 : 8), ea[1] != M_rdd);
+							iTab[op] = mkD(op, 'NOT', z2, ea[1], ea[2], ea[1] == M_rdd ? (z2 == 4 ? [6,1,0] : [4,1,0]) : (z2 == 4 ? [12,1,2] : [8,1,1]), ea[1] != M_rdd);
 							iTab[op].f = I_NOT;
 							cnt++;
 						} else {
@@ -3880,7 +3948,7 @@ function CPU() {
 							if (ea[0] != -1) {
 								op = (8 << 12) | (Dn << 9) | (dir << 8) | (z << 6) | ea[0];
 
-								cyc = dir == 0 ? (z2 == 4 ? (ea[1] == M_rdd || ea[1] == M_imm ? 8 : 6) : (ea[1] == M_rdd || ea[1] == M_imm ? 8 : 4)) : (z2 == 4 ? 12 : 8);
+  								cyc = dir == 0 ? (z2 == 4 ? (ea[1] == M_rdd || ea[1] == M_imm ? [8,1,0] : [6,1,0]) : (ea[1] == M_rdd || ea[1] == M_imm ? [8,1,0] : [4,1,0])) : (z2 == 4 ? [12,1,2] : [8,1,1]);
 
 								if (iTab[op].op === -1) {
 									if (dir == 0)
@@ -3889,7 +3957,6 @@ function CPU() {
 										iTab[op] = mkSD(op, 'OR', z2, M_rdd, Dn, ea[1], ea[2], cyc, false, true);
 
 									iTab[op].f = I_OR;
-									//iTab[op].p.cyc = (dir == 0 ? (z2 == 4 ? (ea[1]==M_rdd||ea[1]==M_imm?8:6) : (ea[1]==M_rdd||ea[1]==M_imm?8:4)) : (z2 == 4 ? 12 : 8)) + mkCyc(z2, ea[1]);
 									cnt++;
 								} else {
 									BUG.say('OP EXISTS OR ' + op);
@@ -3914,7 +3981,7 @@ function CPU() {
 						op = (z << 6) | ea[0];
 
 						if (iTab[op].op === -1) {
-							iTab[op] = mkSD(op, 'ORI', z2, M_imm, -1, ea[1], ea[2], ea[1] == M_rdd ? (z2 == 4 ? 16 : 8) : (z2 == 4 ? 20 : 12), false, ea[1] != M_rdd);
+							iTab[op] = mkSD(op, 'ORI', z2, M_imm, -1, ea[1], ea[2], ea[1] == M_rdd ? (z2 == 4 ? [16,3,0] : [8,2,0]) : (z2 == 4 ? [20,3,2] : [12,2,1]), false, ea[1] != M_rdd);
 							iTab[op].f = I_ORI;
 							cnt++;
 						} else {
@@ -3930,7 +3997,7 @@ function CPU() {
 			op = 0x3C;
 
 			if (iTab[op].op === -1) {
-				iTab[op] = mkS(op, 'ORI_CCR', 1, M_imm, -1, 20, false);
+				iTab[op] = mkS(op, 'ORI_CCR', 1, M_imm, -1, [20,3,0], false);
 				iTab[op].f = I_ORI_CCR;
 				cnt++;
 			} else {
@@ -3943,7 +4010,7 @@ function CPU() {
 			op = 0x7C;
 
 			if (iTab[op].op === -1) {
-				iTab[op] = mkS(op, 'ORI_SR', 2, M_imm, -1, 20, false);
+				iTab[op] = mkS(op, 'ORI_SR', 2, M_imm, -1, [20,3,0], false);
 				iTab[op].pr = true;
 				iTab[op].f = I_ORI_SR;
 				cnt++;
@@ -3951,7 +4018,7 @@ function CPU() {
 				BUG.say('OP EXISTS ORI_SR ' + op);
 				return false;
 			}
-		}
+		}		 	 
 		//PEA	
 		{
 			var en = [M_ria, M_rid, M_rii, M_pcid, M_pcii, M_absw, M_absl];
@@ -3964,13 +4031,13 @@ function CPU() {
 
 					if (iTab[op].op === -1) {
 						switch (ea[1]) {
-							case M_ria: cyc = 12; break;
-							case M_rid: cyc = 16; break;
-							case M_rii: cyc = 20; break;
-							case M_pcid: cyc = 16; break;
-							case M_pcii: cyc = 20; break;
-							case M_absw: cyc = 16; break;
-							case M_absl: cyc = 20; break;
+							case M_ria: cyc = [12,1,2]; break;   
+							case M_rid: cyc = [16,2,2]; break;
+							case M_rii: cyc = [20,2,2]; break;
+							case M_pcid: cyc = [16,2,2]; break;
+							case M_pcii: cyc = [20,2,2]; break;
+							case M_absw: cyc = [16,2,2]; break;
+							case M_absl: cyc = [20,3,2]; break;
 						}		
 						iTab[op] = mkS(op, 'PEA', 4, ea[1], ea[2], cyc, false);
 						iTab[op].f = I_PEA;
@@ -3987,7 +4054,7 @@ function CPU() {
 			op = 0x4E70;
 
 			if (iTab[op].op === -1) {
-				iTab[op] = mkN(op, 'RESET', 132);
+				iTab[op] = mkN(op, 'RESET', [132,1,0]);
 				iTab[op].f = I_RESET;
 				cnt++;
 			} else {
@@ -4011,9 +4078,9 @@ function CPU() {
 
 								if (iTab[op].op === -1) {
 									if (ir == 0)
-										iTab[op] = mkSD(op, dr == 0 ? 'ROR_RI' : 'ROL_RI', z2, M_imm, cr == 0 ? 8 : cr, M_rdd, Dy, z2 == 4 ? 8 : 6, false, false);
+										iTab[op] = mkSD(op, dr == 0 ? 'ROR_RI' : 'ROL_RI', z2, M_imm, cr == 0 ? 8 : cr, M_rdd, Dy, z2 == 4 ? [8,1,0] : [6,1,0], false, false);
 									else
-										iTab[op] = mkSD(op, dr == 0 ? 'ROR_RD' : 'ROL_RD', z2, M_rdd, cr, M_rdd, Dy, z2 == 4 ? 8 : 6, false, false);
+										iTab[op] = mkSD(op, dr == 0 ? 'ROR_RD' : 'ROL_RD', z2, M_rdd, cr, M_rdd, Dy, z2 == 4 ? [8,1,0] : [6,1,0], false, false);
 
 									iTab[op].f = dr == 0 ? I_ROR : I_ROL;
 									cnt++;
@@ -4033,7 +4100,7 @@ function CPU() {
 						op = (115 << 9) | (dr << 8) | (3 << 6) | ea[0];
 
 						if (iTab[op].op === -1) {
-							iTab[op] = mkSD(op, dr == 0 ? 'ROR_M' : 'ROL_M', 2, M_imm, 1, ea[1], ea[2], 8, false, true);
+							iTab[op] = mkSD(op, dr == 0 ? 'ROR_M' : 'ROL_M', 2, M_imm, 1, ea[1], ea[2], [8,1,1], false, true);
 							iTab[op].f = dr == 0 ? I_ROR : I_ROL;
 							cnt++;
 						} else {
@@ -4060,9 +4127,9 @@ function CPU() {
 
 								if (iTab[op].op === -1) {
 									if (ir == 0)
-										iTab[op] = mkSD(op, dr == 0 ? 'ROXR_RI' : 'ROXL_RI', z2, M_imm, cr == 0 ? 8 : cr, M_rdd, Dy, z2 == 4 ? 8 : 6, false, false);
+										iTab[op] = mkSD(op, dr == 0 ? 'ROXR_RI' : 'ROXL_RI', z2, M_imm, cr == 0 ? 8 : cr, M_rdd, Dy, z2 == 4 ? [8,1,0] : [6,1,0], false, false);
 									else
-										iTab[op] = mkSD(op, dr == 0 ? 'ROXR_RD' : 'ROXL_RD', z2, M_rdd, cr, M_rdd, Dy, z2 == 4 ? 8 : 6, false, false);
+										iTab[op] = mkSD(op, dr == 0 ? 'ROXR_RD' : 'ROXL_RD', z2, M_rdd, cr, M_rdd, Dy, z2 == 4 ? [8,1,0] : [6,1,0], false, false);
 
 									iTab[op].f = dr == 0 ? I_ROXR : I_ROXL;
 									cnt++;
@@ -4082,7 +4149,7 @@ function CPU() {
 						op = (114 << 9) | (dr << 8) | (3 << 6) | ea[0];
 
 						if (iTab[op].op === -1) {
-							iTab[op] = mkSD(op, dr == 0 ? 'ROXR_M' : 'ROXL_M', 2, M_imm, 1, ea[1], ea[2], 8, false, true);
+							iTab[op] = mkSD(op, dr == 0 ? 'ROXR_M' : 'ROXL_M', 2, M_imm, 1, ea[1], ea[2], [8,1,1], false, true);
 							iTab[op].f = dr == 0 ? I_ROXR : I_ROXL;
 							cnt++;
 						} else {
@@ -4098,7 +4165,7 @@ function CPU() {
 			op = 0x4E73;
 
 			if (iTab[op].op === -1) {
-				iTab[op] = mkN(op, 'RTE', 20);
+				iTab[op] = mkN(op, 'RTE', [20,5,0]);
 				iTab[op].pr = true;
 				iTab[op].f = I_RTE;
 				cnt++;
@@ -4112,7 +4179,7 @@ function CPU() {
 			op = 0x4E77;
 
 			if (iTab[op].op === -1) {
-				iTab[op] = mkN(op, 'RTR', 20);
+				iTab[op] = mkN(op, 'RTR', [20,5,0]);
 				iTab[op].f = I_RTR;
 				cnt++;
 			} else {
@@ -4125,7 +4192,7 @@ function CPU() {
 			op = 0x4E75;
 
 			if (iTab[op].op === -1) {
-				iTab[op] = mkN(op, 'RTS', 16);
+				iTab[op] = mkN(op, 'RTS', [16,4,0]);
 				iTab[op].f = I_RTS;
 				cnt++;
 			} else {
@@ -4144,9 +4211,9 @@ function CPU() {
 
 						if (iTab[op].op === -1) {
 							if (rm == 0)
-								iTab[op] = mkSD(op, 'SBCD', 1, M_rdd, Rx, M_rdd, Ry, 6, false, false);
+								iTab[op] = mkSD(op, 'SBCD', 1, M_rdd, Rx, M_rdd, Ry,  [6,3,1], false, false);
 							else
-								iTab[op] = mkSD(op, 'SBCD', 1, M_ripr, Rx, M_ripr, Ry, 18, false, false);
+								iTab[op] = mkSD(op, 'SBCD', 1, M_ripr, Rx, M_ripr, Ry,  [18,3,1], false, false);
 
 							iTab[op].f = I_SBCD;
 							cnt++;
@@ -4170,7 +4237,7 @@ function CPU() {
 						op = (5 << 12) | (cc << 8) | (3 << 6) | ea[0];
 
 						if (iTab[op].op === -1) {
-							iTab[op] = mkCD(op, 'S' + ccNames[cc], 1, cc, -1, -1, ea[1], ea[2], ea[1] == M_rdd ? 6 : 8, ea[1] == M_rdd ? 4 : 8, ea[1] != M_rdd);
+							iTab[op] = mkCD(op, 'S' + ccNames[cc], 1, cc, -1, -1, ea[1], ea[2], ea[1] == M_rdd ? [6,1,0] : [8,1,1], ea[1] == M_rdd ? [4,1,0] : [8,1,1], ea[1] != M_rdd);
 							iTab[op].f = I_Scc;
 							cnt++;
 						} else {
@@ -4186,7 +4253,7 @@ function CPU() {
 			op = 0x4E72;
 
 			if (iTab[op].op === -1) {
-				iTab[op] = mkS(op, 'STOP', 2, M_imm, -1, 4, false);
+				iTab[op] = mkS(op, 'STOP', 2, M_imm, -1, [4,0,0], false);
 				iTab[op].pr = true;
 				iTab[op].f = I_STOP;
 				cnt++;
@@ -4214,8 +4281,8 @@ function CPU() {
 
 								op = (9 << 12) | (Dn << 9) | (dir << 8) | (z << 6) | ea[0];
 
-								cyc = dir == 0 ? (z2 == 4 ? (ea[1] == M_rdd || ea[1] == M_imm ? 8 : 6) : 4) : (z2 == 4 ? 12 : 8);
-
+  								cyc = dir == 0 ? (z2 == 4 ? (ea[1] == M_rdd || ea[1] == M_imm ? [8,1,0] : [6,1,0]) : [4,1,0]) : (z2 == 4 ? [12,1,2] : [8,1,1]);
+								
 								if (iTab[op].op === -1) {
 									if (dir == 0)
 										iTab[op] = mkSD(op, 'SUB', z2, ea[1], ea[2], M_rdd, Dn, cyc, true, false);
@@ -4223,7 +4290,6 @@ function CPU() {
 										iTab[op] = mkSD(op, 'SUB', z2, M_rdd, Dn, ea[1], ea[2], cyc, false, true);
 
 									iTab[op].f = I_SUB;
-									//iTab[op].p.cyc = ((dir == 0) ? (z2 == 4 ? (ea[1]==M_rdd||ea[1]==M_imm?8:6) : 4) : (z2 == 4 ? 12 : 8)) + mkCyc(z2, ea[1]);
 									cnt++;
 								} else {
 									BUG.say('OP EXISTS SUB ' + op);
@@ -4250,9 +4316,8 @@ function CPU() {
 							op = (9 << 12) | (An << 9) | (z3 << 6) | ea[0];
 
 							if (iTab[op].op === -1) {
-								iTab[op] = mkSD(op, 'SUBA', z2, ea[1], ea[2], M_rda, An, z2 == 4 ? (ea[1] == M_rdd || ea[1] == M_imm ? 8 : 6) : 8, true, false);
+								iTab[op] = mkSD(op, 'SUBA', z2, ea[1], ea[2], M_rda, An, z2 == 4 ? (ea[1] == M_rdd || ea[1] == M_imm ? [8,1,0] : [6,1,0]) : [8,1,0], true, false);
 								iTab[op].f = I_SUBA;
-								//iTab[op].p.cyc = (z2 == 4 ? (ea[1]==M_rdd||ea[1]==M_imm?8:6) : 8) + mkCyc(z2, ea[1]);
 								cnt++;
 							} else {
 								BUG.say('OP EXISTS SUBA ' + op);
@@ -4276,7 +4341,7 @@ function CPU() {
 						op = (4 << 8) | (z << 6) | ea[0];
 
 						if (iTab[op].op === -1) {
-							iTab[op] = mkSD(op, 'SUBI', z2, M_imm, -1, ea[1], ea[2], ea[1] == M_rdd ? (z2 == 4 ? 16 : 8) : (z2 == 4 ? 20 : 12), false, ea[1] != M_rdd);
+							iTab[op] = mkSD(op, 'SUBI', z2, M_imm, -1, ea[1], ea[2], ea[1] == M_rdd ? (z2 == 4 ? [16,3,0] : [8,2,0]) : (z2 == 4 ? [20,3,2] : [12,2,1]), false, ea[1] != M_rdd);
 							iTab[op].f = I_SUBI;
 							cnt++;
 						} else {
@@ -4301,11 +4366,12 @@ function CPU() {
 							if (ea[1] == M_rda && z == 0) continue; //An word and long only
 							
 							op = (5 << 12) | (id << 9) | (1 << 8) | (z << 6) | ea[0];
-							cyc = ea[1] == M_rda ? 8 : (ea[1] == M_rdd ? (z2 == 4 ? 8 : 4) : (z2 == 4 ? 12 : 8));
+							cyc = ea[1] == M_rda ? [8,1,0] : (ea[1] == M_rdd ? (z2 == 4 ? [8,1,0] : [4,1,0]) : (z2 == 4 ? [12,1,2] : [8,1,1]));
 
 							if (iTab[op].op === -1) {
 								iTab[op] = mkSD(op, 'SUBQ', z2, M_imm, id == 0 ? 8 : id, ea[1], ea[2], cyc, false, ea[1] != M_rdd && ea[1] != M_rda);
-								iTab[op].f = I_SUBQ;
+								//iTab[op].f = I_SUBQ;
+								iTab[op].f = ea[1] != M_rda ? I_SUBQ : I_SUBQA;
 								cnt++;
 							} else {
 								BUG.say('OP EXISTS SUBQ ' + op);
@@ -4329,9 +4395,9 @@ function CPU() {
 
 							if (iTab[op].op === -1) {
 								if (rm == 0)
-									iTab[op] = mkSD(op, 'SUBX', z2, M_rdd, Rx, M_rdd, Ry, z2 == 4 ? 8 : 4, false, false);
+									iTab[op] = mkSD(op, 'SUBX', z2, M_rdd, Rx, M_rdd, Ry, z2 == 4 ? [8,1,0] : [4,1,0], false, false);
 								else
-									iTab[op] = mkSD(op, 'SUBX', z2, M_ripr, Rx, M_ripr, Ry, z2 == 4 ? 30 : 18, false, false);
+									iTab[op] = mkSD(op, 'SUBX', z2, M_ripr, Rx, M_ripr, Ry, z2 == 4 ?  [30,5,2] : [18,1,0], false, false);
 
 								iTab[op].f = I_SUBX;
 								cnt++;
@@ -4352,7 +4418,7 @@ function CPU() {
 				op = (2312 << 3) | Dn;
 
 				if (iTab[op].op === -1) {
-					iTab[op] = mkD(op, 'SWAP', 2, M_rdd, Dn, 4, false);
+					iTab[op] = mkD(op, 'SWAP', 2, M_rdd, Dn, [4,1,0], false);
 					iTab[op].f = I_SWAP;
 					cnt++;
 				} else {
@@ -4372,7 +4438,7 @@ function CPU() {
 					op = (299 << 6) | ea[0];
 
 					if (iTab[op].op === -1) {
-						iTab[op] = mkD(op, 'TAS', 1, ea[1], ea[2], ea[1] == M_rdd ? 4 : 10, ea[1] != M_rdd);
+						iTab[op] = mkD(op, 'TAS', 1, ea[1], ea[2], ea[1] == M_rdd ? [4,1,0] : [10,1,1], ea[1] != M_rdd);
 						iTab[op].f = I_TAS;
 						cnt++;
 					} else {
@@ -4390,7 +4456,7 @@ function CPU() {
 				op = (1252 << 4) | v;
 
 				if (iTab[op].op === -1) {
-					iTab[op] = mkD(op, 'TRAP', 0, M_imm, v, 38, false);
+					iTab[op] = mkD(op, 'TRAP', 0, M_imm, v, [38,4,3], false);
 					iTab[op].f = I_TRAP;
 					cnt++;
 				} else {
@@ -4404,7 +4470,7 @@ function CPU() {
 			op = 0x4E76;
 
 			if (iTab[op].op === -1) {
-				iTab[op] = mkN(op, 'TRAPV', 4);
+				iTab[op] = mkN(op, 'TRAPV', [4,1,0]);
 				iTab[op].f = I_TRAPV;
 				cnt++;
 			} else {
@@ -4425,7 +4491,7 @@ function CPU() {
 						op = (74 << 8) | (z << 6) | ea[0];
 
 						if (iTab[op].op === -1) {
-							iTab[op] = mkD(op, 'TST', z2, ea[1], ea[2], 4, ea[1] != M_rdd && ea[1] != M_rda);
+							iTab[op] = mkD(op, 'TST', z2, ea[1], ea[2], [4,1,0], ea[1] != M_rdd && ea[1] != M_rda);
 							iTab[op].f = I_TST;
 							cnt++;
 						} else {
@@ -4444,7 +4510,7 @@ function CPU() {
 				op = (2507 << 3) | An;
 
 				if (iTab[op].op === -1) {
-					iTab[op] = mkS(op, 'UNLK', 0, M_rda, An, 12, false);
+					iTab[op] = mkS(op, 'UNLK', 0, M_rda, An, [12,3,0], false);
 					iTab[op].f = I_UNLK;
 					cnt++;
 				} else {
@@ -4959,32 +5025,36 @@ function CPU() {
 		regs.t = 0;
 	}
 	
-	function exception(n) {
-		//BUG.say(sprintf('cpu.exception() nr %d', n));
+	function exception_cycles(n) {
 		var c;
 		if (n < 16)
 			switch (n) {
-				case  0: c = 40; break; //Reset Initial Interrupt Stack Pointer             
-				case  1: c = 40; break; //Reset Initial Program Counter                     
-				case  2: c = 50; break; //Access Fault                                      
-				case  3: c = 50; break; //Address Error                                     
-				case  4: c = 34; break; //Illegal Instruction                               
-				case  5: c = 42; break; //Integer Divide by Zero                            
-				case  6: c = 44; break; //CHK, CHK2 Instruction                             
-				case  7: c = 34; break; //FTRAPcc, TRAPcc, TRAPV Instructions               
-				case  8: c = 34; break; //Privilege Violation                               
-				case  9: c = 34; break; //Trace                                             
-				case 10: c = 34; break; //Line 1010 Emulator (Unimplemented A- Line Opcode) 
-				case 11: c = 34; break; //Line 1111 Emulator (Unimplemented F-Line Opcode)	
+				case  0: c = [40,6,0]; break; //Reset Initial Interrupt Stack Pointer             
+				case  1: c = [40,6,0]; break; //Reset Initial Program Counter                     
+				case  2: c = [50,4,7]; break; //Access Fault                                      
+				case  3: c = [50,4,7]; break; //Address Error                                     
+				case  4: c = [34,4,3]; break; //Illegal Instruction                               
+				case  5: c = [42,5,3]; break; //Integer Divide by Zero                            
+				case  6: c = [44,5,3]; break; //CHK, CHK2 Instruction                             
+				case  7: c = [34,4,3]; break; //FTRAPcc, TRAPcc, TRAPV Instructions               
+				case  8: c = [34,4,3]; break; //Privilege Violation                               
+				case  9: c = [34,4,3]; break; //Trace                                             
+				case 10: c = [34,4,3]; break; //Line 1010 Emulator (Unimplemented A- Line Opcode) 
+				case 11: c = [34,4,3]; break; //Line 1111 Emulator (Unimplemented F-Line Opcode)			
 			}		
 		else if (n >= 24 && n < 32)
-			c = 44 + 4;
+			c = [44+4,5,3];
 		else if (n >= 32 && n < 48)
-			c = 38; 
+			c = [38,4,3]; 
 		else {
 			BUG.say(sprintf('cpu.exception() no cycle for %d', n));
-			c = 4;
+			c = [4,0,0];
 		}
+		return c;
+	}
+
+	function exception(n) {
+		//BUG.say(sprintf('cpu.exception() nr %d', n));
 		var olds = regs.s;
 
 		if (n >= 24 && n < 24 + 8) {
@@ -4999,7 +5069,7 @@ function CPU() {
 			regs.s = true;
 			regs.usp = regs.a[7];
 			regs.a[7] = regs.isp;
-
+			
 			BUG.col = 2;
 		}
  
@@ -5043,7 +5113,7 @@ function CPU() {
 		regs.pc = pc;
 		
 		exception_trace(n);
-		return c;
+		return exception_cycles(n);
 	}
 
 	function exception2(ad) {
@@ -5058,34 +5128,6 @@ function CPU() {
 		throw new Exception23(3);
 	}
 	
-	function cycle_real() {
-		//if (doDiss) AMIGA.cpu.diss(null, 1);
-		
-		var op = nextIWord();	
-		fault.pc = regs.pc - 2;
-		fault.op = op;
-		
-		var cycles;		
-		try {
-			cycles = iTab[op].f(iTab[op].p);
-		} catch (e) {
-			if (e instanceof Exception23) {
-				//BUG.info('cpu.cycle() USER EXCEPTION [%d]', e.num);
-				cycles = exception(e.num);
-			}
-			else if (e instanceof Error) {  				
-				BUG.info('cpu.cycle() ERROR EXCEPTION [%s]', e);
-				cycles = 4;
-			} else {  				
-				BUG.info('cpu.cycle() UNKNOWN EXCEPTION [%s]', e);
-				cycles = 4;
-			}
-		}
-		//if (doDiss) { if (doDiss) doDiss--; AMIGA.cpu.dump(); }
-		
-		return cycles >> 1;
-	}	
-	
 	function interrupt(nr) {
 		regs.stopped = false;
 		clr_special(SPCFLAG_STOP);
@@ -5097,16 +5139,8 @@ function CPU() {
 		AMIGA.doint();
 	}	
 
-	var last_trace_ad = 0;
 	function trace() {
-		/*if (regs.t0 && AMIGA.config.cpu.model >= 68020) {
-		} else if (regs.t1) {
-			last_trace_ad = regs.pc;
-			clr_special(SPCFLAG_TRACE);
-			set_special(SPCFLAG_DOTRACE);
-		}*/
 		if (regs.t) {
-			last_trace_ad = regs.pc;
 			clr_special(SPCFLAG_TRACE);
 			set_special(SPCFLAG_DOTRACE);
 		}
@@ -5116,117 +5150,97 @@ function CPU() {
 		if (AMIGA.spcflags & SPCFLAG_COPPER)
 			AMIGA.copper.cycle();
 
-		while ((AMIGA.spcflags & SPCFLAG_BLTNASTY) && AMIGA.dmaen(DMAF_BLTEN) && cycles > 0 && !AMIGA.config.blitter.exact) {
+		while ((AMIGA.spcflags & SPCFLAG_BLTNASTY) && AMIGA.dmaen(DMAF_BLTEN) && cycles > 0) {
 			var c = AMIGA.blitter.blitnasty();
-			if (c < 0) {
-				break;
-			} else if (c > 0) {
+			if (c > 0) {
 				cycles -= c * CYCLE_UNIT * 2;
 				if (cycles < CYCLE_UNIT)
 					cycles = 0;
-			} else {
+			} else
 				c = 4;
-			}
-			/*if (c == 0) { //old blitter
-				cycles -= 2 * CYCLE_UNIT;
-				if (cycles < CYCLE_UNIT) cycles = 0;
-				c = 1;
-			}*/
+
 			AMIGA.events.cycle(c * CYCLE_UNIT);
-			if (AMIGA.spcflags & SPCFLAG_COPPER) AMIGA.copper.cycle();
+			if (AMIGA.spcflags & SPCFLAG_COPPER)
+				AMIGA.copper.cycle();
 		}
 
-		/*if (AMIGA.spcflags & SPCFLAG_DOTRACE)
+		if (AMIGA.spcflags & SPCFLAG_DOTRACE)
 			exception(9);
-
 		if (AMIGA.spcflags & SPCFLAG_TRAP) {
 			clr_special(SPCFLAG_TRAP);
 			exception(3);
-		}*/
+		}
 
 		while (AMIGA.spcflags & SPCFLAG_STOP) {
-			AMIGA.events.cycle (AMIGA.config.cpu.exact ? 2 * CYCLE_UNIT : 4 * CYCLE_UNIT);
+			AMIGA.events.cycle(4 * CYCLE_UNIT);
 			
 			if (AMIGA.spcflags & SPCFLAG_COPPER)
 				AMIGA.copper.cycle();
 
-			if (AMIGA.config.cpu.exact) {
-				regs.ipl = regs.ipl_pin;
-				if (regs.ipl > regs.intmask || regs.ipl == 7)
-					interrupt(regs.ipl);
-			} else {
-				if (AMIGA.spcflags & (SPCFLAG_INT | SPCFLAG_DOINT)) {
-					clr_special(SPCFLAG_INT | SPCFLAG_DOINT);
-					var intr = AMIGA.intlev();
-					if (intr > 0 && intr > regs.intmask)
-						interrupt(intr);
-				}
+			if (AMIGA.spcflags & (SPCFLAG_INT | SPCFLAG_DOINT)) {
+				clr_special(SPCFLAG_INT | SPCFLAG_DOINT);
+				var intr = AMIGA.intlev();
+				if (intr > 0 && intr > regs.intmask)
+					interrupt(intr);
 			}
-
-			/*if ((AMIGA.spcflags & (SPCFLAG_BRK | SPCFLAG_MODE_CHANGE))) {
-				clr_special(SPCFLAG_BRK | SPCFLAG_MODE_CHANGE);
+			/*if (AMIGA.spcflags & SPCFLAG_BRK) {
+				clr_special(SPCFLAG_BRK);
 				clr_special(SPCFLAG_STOP);
 				regs.stopped = false;
-				return 1;
-			}*/
-			if (AMIGA.state != CMD_CYCLE) {
-				if (regs.stopped) {
-					regs.stopped = false;
-					if (AMIGA.config.cpu.exact && AMIGA.config.cpu.model == 68000)
-						AMIGA.events.cycle(CYCLE_UNIT / 2 * 6);
-					clr_special(SPCFLAG_STOP);
-				}				
-				return 1;
-			}			
+				return true;
+			}*/		
 		}
 
 		if (AMIGA.spcflags & SPCFLAG_TRACE)
 			trace();
 
-		if (AMIGA.config.cpu.exact) {
-			if (regs.ipl > regs.intmask || regs.ipl == 7)
-				interrupt(regs.ipl);
-		} else {
-			if (AMIGA.spcflags & SPCFLAG_INT) {
-				clr_special(SPCFLAG_INT | SPCFLAG_DOINT);
-				var intr = AMIGA.intlev();
-				if (intr > 0 && (intr > regs.intmask || intr == 7))
-					interrupt(intr);
-			}
+		if (AMIGA.spcflags & SPCFLAG_INT) {
+			clr_special(SPCFLAG_INT | SPCFLAG_DOINT);
+			var intr = AMIGA.intlev();
+			if (intr > 0 && (intr > regs.intmask || intr == 7))
+				interrupt(intr);
 		}
-
 		if (AMIGA.spcflags & SPCFLAG_DOINT) {
 			clr_special(SPCFLAG_DOINT);
 			set_special(SPCFLAG_INT);
 		}
-
-		/*if ((AMIGA.spcflags & (SPCFLAG_BRK | SPCFLAG_MODE_CHANGE))) {
-			clr_special(SPCFLAG_BRK | SPCFLAG_MODE_CHANGE);
-			return 1;
-		}*/
-		if (AMIGA.state != CMD_CYCLE)
-			return 1;
-
-		return 0;		
+		/*if (AMIGA.spcflags & SPCFLAG_BRK) {
+			clr_special(SPCFLAG_BRK);
+			return true;
+		}*/		
+		return false;		
 	}	
 	
-	this.cycles = 2;
-
 	this.cycle = function() {
-		AMIGA.events.cycle(this.cycles * CYCLE_UNIT);
-		if (AMIGA.state != CMD_CYCLE)
-			return;
+		while (AMIGA.state == ST_CYCLE) {		
+			AMIGA.events.cycle(cpu_cycles);
 
-		this.cycles = cycle_real();			
-	
-		if (AMIGA.spcflags) {
-			if (cycle_spc(this.cycles * CYCLE_UNIT))
-				return;
+			var op = nextOPCode();	
+			try {
+				var cycles = iTab[op].f(iTab[op].p);
+				cpu_cycles = cycles[0] * cpu_cycle_unit;	
+			} catch (e) {
+				if (e instanceof Exception23) {
+					//BUG.info('cpu.cycle_real() USER EXCEPTION [%d]', e.num);
+					var cycles = exception(e.num);
+					cpu_cycles = cycles[0] * cpu_cycle_unit;	
+				}
+				else if (e instanceof VSync) { 
+					//BUG.info('cpu.cycle_real() VSYNC [%s]', e);
+					cpu_cycles = 48 * cpu_cycle_unit;	
+					throw new VSync(e.error, e.message);
+				} 
+				else if (e instanceof FatalError) { 
+					//BUG.info('cpu.cycle_real() FATAL ERROR [%s]', e);
+					Fatal(e.error, e.message);
+				} 
+				else {  				
+					Fatal(SAEE_CPU_Internal, e.message);
+				}
+			}
+			
+			if (AMIGA.spcflags)
+				cycle_spc(cpu_cycles);
 		}
-		regs.ipl = regs.ipl_pin;
-	}
-
-	this.setIPL = function(lev) {
-		regs.ipl_pin = lev;
-	}		
+	}	
 }

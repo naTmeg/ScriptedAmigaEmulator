@@ -6,7 +6,7 @@
 		<meta name="author" content="Rupert Hausberger" /> 
 		<meta name="publisher" content="Rupert Hausberger" /> 
 		<meta name="description" content="Experimental Amiga Classic Emulator in Javascript" /> 
-		<meta name="keywords" content="SAE,Javascript,HTML5,Amiga,AmigaOS,Emulator,Online" /> 
+		<meta name="keywords" content="SAE,Javascript,Scripted,Script,HTML5,Amiga,AmigaOS,Emulator,Online" /> 
 		<meta name="robots" content="index,nofollow" />
 		<link rel="icon" type="image/x-icon" href="http://scriptedamigaemulator.net/favicon.ico" />
 		<link rel="stylesheet" type="text/css" href="index.css" />
@@ -30,37 +30,46 @@
 		<script type="text/javascript" src="sae/cpu.js"></script>
 		<script type="text/javascript" src="sae/amiga.js"></script>
 		<script type="text/javascript" src="index.js"></script>
-		<script type="text/javascript" src="ga.js"></script>		
+		<script type="text/javascript" src="ga.js"></script>
 	</head>
-	<body onload="init()">
-		
+	<body onload="init()">	
 		<div id="base">
 			<div id="head" class="head">
-				<div style="height:8px"></div> 		
-				<img src="images/logo.png" alt="Scripted Amiga Emulator" />
 				<noscript>
 					<div class="noscript">This site does require javascript, obviously :)</div>  	
 				</noscript>
-				<div class="hr"></div>	
-			</div>	  	
-
-			<div style="height:20px"></div> 		
-
-			<div id="config">		
-				<div id="config_simple">
-					<div class="arm">
-						<button class="button" onclick="switchCfg(1)">Advanced</button>				
-					</div>
-					<div style="line-height:20px">
-						<h3>Welcome!</h3>
-						This site is a demonstration of the '<a href="javascript:openNewTab('https://github.com/naTmeg/ScriptedAmigaEmulator')">SAE</a>' project,
-						an experimental <a href="javascript:openNewTab('http://en.wikipedia.org/wiki/Amiga')">Amiga</a> emulator in pure javascript and HTML5.<br />
-						For details, please refer to the <a href="javascript:openNewTab('readme.htm')">readme</a> file.<br /><br />
-						Below you find a small collection of games and demos to play...<br />
-						<span class="info">(Use Google Chrome for best results)</span>
-					</div>			
-					<div style="height:20px"></div> 
+				<div style="height:8px"></div> 		
+				<img src="images/logo.png" alt="Scripted Amiga Emulator" />
+				<div class="acmsg" style="line-height:16px">
+					<i>Experimental</i> <a href="javascript:openNewTab('http://en.wikipedia.org/wiki/Amiga')">Amiga</a> emulator in pure JavaScript and HTML5<br />
+					based on <a href="javascript:openNewTab('http://www.amigaemulator.org')">UAE</a>/<a href="javascript:openNewTab('http://winuae.net')">WinUAE</a>, 
+					powered by <a href="javascript:openNewTab('http://aros.org')">AROS</a>
+				</div>		
+			</div>	  					
+			<div style="height:8px"></div> 		
+			<div id="config">			  	
+				<div id="config_simple">				
 					<div class="config_simple_hof">
+						<div class="acm">
+							<span class="fwb">Browser</span>		
+						</div>
+						<table>		
+							<tr>
+								<td class="arms">Supported video-modes:</td>  
+								<td><span id="info_video">-</span></td>   
+							</tr>
+							<tr>
+								<td class="arms">Supported audio-modes:</td>  
+								<td><span id="info_audio">-</span></td>   
+							</tr>
+							<tr>
+								<td class="arms">SAE-Version:</td>  
+								<td><span id="info_version">-</span></td>   
+							</tr>
+						</table>		
+						<div style="height:10px"></div> 													
+						<div class="hr"></div> 
+						<div style="height:10px"></div> 													
 						<div class="acm">
 							<span class="fwb">Hall of fame</span>		
 						</div>
@@ -82,13 +91,17 @@
 								</td>     
 							</tr>
 							<tr>
-								<td class="arms">Audio</td>
-								<td><input id="cfg_audio_enabled_1" type="checkbox" checked="checked" /></td>			
+								<td class="arms">Audio/Video</td>
+								<td><input id="cfg_audio_enabled_1" type="checkbox" checked="checked" /><input id="cfg_video_enabled_1" type="checkbox" checked="checked" /></td>			
+							</tr>													
+							<tr>
+								<td class="arms">Frameskip</td>
+								<td><input id="cfg_video_skip_1" type="checkbox" checked="checked" /><span class="info">(25 instead of 50 fps)</span></td>			
 							</tr>							
 							<tr>
-								<td class="arms">Scale 4x</td>
-								<td><input id="cfg_video_scale_1" type="checkbox" /><span class="info">(1140 x 1152, press F11 for fullscreen)</span></td>			
-							</tr>						
+								<td class="arms">Extra scale</td>
+								<td><input id="cfg_video_scale_1" type="checkbox" /><span class="info">(double video-size via hardware)</span></td>			
+							</tr>
 						</table>					
 						<div class="hr"></div> 
 						<table id="cfg_info">
@@ -116,28 +129,43 @@
 						<div style="height:10px"></div> 
 						<div class="acm">
 							<button class="sbutton" id="cfg_simple_start" onclick="simpleStart()">Play</button>		
+							<button class="button" onclick="switchCfg(1)">Config</button>
 						</div>
-					</div>
+					</div>						
 				</div>						
 				<div id="config_advanced">
-					<div class="arm">
-						<button class="button" onclick="switchCfg(0)">Simple</button>				
-					</div>
+					<div class="acm"><button class="button" onclick="switchCfg(0)">Back</button></div>  	
 					<table>				
 						<tr>
 							<td class="armsb">CPU</td>
 							<td class="bl">					
-								<table class="wauto">
-									<tr>
-										<td class="arm">Speed:</td>
-										<td>
-											<select id="cfg_cpu_speed" size="1">
-												<option value="0">Original</option>
-												<option value="-1">Maximum</option>
-											</select>
-										</td>
-									</tr>
-								</table>
+								Speed
+								<select id="cfg_cpu_speed" size="1">
+									<option value="0">Original</option>
+									<option value="-1">Maximum</option>
+								</select>
+							</td>
+						</tr>							
+						<tr>
+							<td class="armsb">Chipset</td>
+							<td class="bl">				
+								Type
+								<select id="cfg_chipset_type" size="1">
+									<option value="1">Original Chip Set (OCS Agnus)</option>
+									<option value="2">Enhanced Chip Set (ECS Agnus only)</option>
+									<option value="3">Enhanced Chip Set (ECS Agnus, ECS Denise)</option>
+								</select><br />						
+								<input id="cfg_chipset_cl_enabled" type="checkbox" onchange="spritesUpdate()" />Collisions								
+								<span id="cfg_chipset_cl_grp">								 
+									<select id="cfg_chipset_cl" size="1">
+										<option value="1">Sprites only</option>
+										<option value="2">Sprites & Playfield (recommended)</option>
+										<option value="3">Full</option>
+									</select>
+								</span><br />
+								<input id="cfg_video_ntsc" type="checkbox" />NTSC<br />
+								<input id="cfg_chipset_agnus_dip" type="checkbox" />A1000 OCS Agnus (8361/8367)<br />																		
+								<input id="cfg_blitter_immediate" type="checkbox" />Blit immediate																		
 							</td>
 						</tr>							
 						<tr>
@@ -309,14 +337,13 @@
 									<option value="500">5x</option>
 									<option value="1000">10x</option>
 								</select>																
-								<span class="gray"> ('Turbo' mode is fastest, but not very compatible)</span> 
+								<span class="gray"> ('Turbo' mode is fastest, but not always compatible. All other modes are very slow)</span> 
 							</td>
 						</tr>
 						<tr>
 							<td class="armsb">Audio</td>
 							<td class="bl">
-								<input id="cfg_audio_enabled" type="checkbox" onchange="audioUpdate()" /> 
-								Enabled 
+								<input id="cfg_audio_enabled" type="checkbox" onchange="audioUpdate()" />Enabled 
 								<table id="cfg_audio_grp" class="wauto">
 									<tr>
 										<td class="arm">Mode:</td>
@@ -327,17 +354,6 @@
 												<option value="2">On (best)</option>
 											</select>			
 										</td>
-									</tr>	
-									<tr>
-										<td class="arm">Channels:</td>
-										<td>
-											<select id="cfg_audio_channels" size="1">
-												<option value="1">1 - Mono</option>
-												<option value="2">2 - Stereo</option>
-											</select>			
-										</td>
-									</tr>	
-									<tr>	
 										<td class="arm">Samplerate:</td>
 										<td>
 											<select id="cfg_audio_rate" size="1">
@@ -349,36 +365,45 @@
 											Hz
 										</td>
 									</tr>	
+									<tr>
+										<td class="arm">Channels:</td>
+										<td>
+											<select id="cfg_audio_channels" size="1">
+												<option value="1">1 - Mono</option>
+												<option value="2">2 - Stereo</option>
+											</select>			
+										</td>
+										<td class="arm">Lowpass-filter:</td>
+										<td><input id="cfg_audio_filter" type="checkbox" /></td>
+									</tr>	
 								</table>
 							</td>
 						</tr>
 						<tr>
 							<td class="armsb">Video</td>
 							<td class="bl">
-								<input id="cfg_video_enabled" type="checkbox" onchange="videoUpdate()" /> 
-								Enabled 
-								<div id="cfg_video_grp">						
-									<input id="cfg_chipset_cl_enabled" type="checkbox" onchange="spritesUpdate()" />
-									Sprite collisions
-									<span id="cfg_chipset_cl_grp">								 
-										<select id="cfg_chipset_cl" size="1">
-											<option value="1">Sprite/Sprite</option>
-											<option value="2">Sprite/Sprite + Sprite/Playfield</option>
-										</select>
-									</span>
-									<br />
-									<input id="cfg_video_scale" type="checkbox" />
-									Scale 4x <span class="gray">(1440 x 1152)</span>
-									<br />									
-									<input id="cfg_video_ntsc" type="checkbox" />
-									NTSC
-									<br />
-									<input id="cfg_video_skip" type="checkbox" /> 
-									Frameskip<span class="gray"> (if the emulation is too slow, up to 4 frames will be skipped)</span>
-									<!--<br />									
-									<input id="cfg_video_drop" type="checkbox" /> 
-									Framedrop<span class="gray"> (if the emulation is too fast, a (unprecise) delay is initiated)</span>-->
-								</div>						
+								<input id="cfg_video_enabled" type="checkbox" onchange="videoUpdate()" />Enabled 								
+								<div id="cfg_video_grp">
+									<!--Driver
+									<select id="cfg_video_mode" size="1">
+										<option value="1">Canvas 2D</option>
+										<option value="2">WebGL</option>
+									</select><br />
+									H-Resolution
+									<select id="cfg_video_hres" size="1">
+										<option value="0">320 pixel (Lores)</option>
+										<option value="1">640 pixel (Hires)</option>
+										<option value="2">1280 pixel (SuperHires, ECS)</option>
+									</select><br />			
+									V-Resolution
+									<select id="cfg_video_vres" size="1">
+										<option value="0">200/256 pixel (Normal)</option>
+										<option value="1">400/512 pixel (Double)</option>
+										<option value="2">400/512 pixel (Scanlines)</option>
+									</select><br />-->			
+									<input id="cfg_video_skip" type="checkbox" />Frameskip <span class="gray">(25 instead of 50 fps)</span><br />
+									<input id="cfg_video_scale" type="checkbox" />Extra scale <span class="gray">(double video-size via hardware)</span>
+								</div>
 							</td>
 						</tr>
 						<tr>
@@ -559,15 +584,14 @@
 					<div class="acm">
 						<button class="sbutton" id="cfg_start" onclick="advandedStart()">Start</button>		
 					</div>
-				</div>				
-			</div>  	
-			
-			<div style="height:10px"></div> 
-			<div id="foot" class="foot">
-				<span class="gray">&#169;2012-2013 Rupert Hausberger</span> | 
-				<a href="javascript:openNewTab('https://github.com/naTmeg/ScriptedAmigaEmulator')">Source</a> | 
-				<a href="javascript:openNewTab('readme.htm')">Readme</a>
-			</div>
+				</div>			
+			</div>  				
+			<div style="height:6px"></div> 		
+			<div id="foot" class="foot" style="line-height:14px">
+				<span class="gray">2012-2013 Rupert Hausberger</span> | 
+				<a href="javascript:openNewTab('https://github.com/naTmeg/ScriptedAmigaEmulator')">Source-code</a> | 
+				<a href="javascript:openNewTab('readme.htm')">Description</a>
+			</div>		
 		</div>
 	
 		<div id="emul">

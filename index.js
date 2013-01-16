@@ -13,219 +13,242 @@
 **************************************************************************/
 
 const db = [
-	/* name company year [disks] change [en,f1,f2,map] load [keys] */			
+	/* name company year [disks] [change, turbo] [en,f1,f2,map] load [keys] immediate */			
 	[
 		['Agony', 'Psygnosis', '1992',
 			['Agony (Disk 1).adf',
 			'Agony (Disk 2).adf',
 			'Agony (Disk 3).adf',
-			false], false,
+			false], [false, true],
 			[true, 16, 17, false],
-			['Press the LMB to skip the intro.'], [['Weapon menu', 'Space']] 
+			['Press the LMB to skip the intro.'], [['Weapon menu', 'Space']], false 
 		],
 		['Alien Breed', 'Team 17', '1991',
 			['Alien Breed (Disk 1).adf',
 			'Alien Breed (Disk 2).adf',
-			false, false], true,
+			false, false], [true, true],
 			[true, 16, 17, false],
-			['Insert the 2nd disk manualy and HOLD the fire button.'], [['Show map', 'M']] 
+			['Insert the 2nd disk manualy and HOLD the fire button.'], [['Show map', 'M']], false 
+		],
+		['Alien Breed II - The Horror Continues', 'Team 17', '1993',
+			['Alien Breed II - The Horror Continues (Disk 1).adf',
+			'Alien Breed II - The Horror Continues (Disk 2).adf',
+			'Alien Breed II - The Horror Continues (Disk 3).adf', false], [false, false],
+			[true, 16, 17, false],
+			['Press the LMB to skip the intro.'], [['Show map', 'M']], false 
 		],
 		['Alien Breed - Tower Assault', 'Team 17', '1994',
 			['Alien Breed - Tower Assault (Disk 1).adf',
 			'Alien Breed - Tower Assault (Disk 2).adf',
 			'Alien Breed - Tower Assault (Disk 3).adf',
-			'Alien Breed - Tower Assault (Disk 4).adf'], false,
+			'Alien Breed - Tower Assault (Disk 4).adf'], [false, true],
 			[true, 8, 17, false],
-			['Press ESC to skip the intro.'], [['Show map', 'M']] 
+			['Press ESC to skip the intro.'], [['Show map', 'M']], false 
 		],
-		['Another World', 'Delphine - U.S. Gold', '1991',
+		/*['Another World', 'Delphine - U.S. Gold', '1991',
 			['Another World (Disk 1).adf',
 			'Another World (Disk 2).adf',
-			false, false], false,
-			[true, 16, 17, false], [], [] 
-		],
+			false, false], [false, true],
+			[true, 16, 17, false], ['Select 2x OK when asked.'], [], true 
+		],*/
 		['Blood Money', 'DMA Design', '1989',
 			['Blood Money (Disk 1).adf',
 			'Blood Money (Disk 2).adf',
-			false, false], true,
+			false, false], [true, false],
 			[true, 16, 17, false],
-			['Press the LMB until the main-nemu<br />and insert the 2nd disk manualy.'], [] 
+			['Press the LMB until the main-nemu<br />and insert the 2nd disk manualy.'], [], false 
 		],
 		['Body Blows Galactic', 'Team 17', '1993',
 			['Body Blows Galactic (Disk 1).adf',
 			'Body Blows Galactic (Disk 2).adf',
 			'Body Blows Galactic (Disk 3).adf',
-			false], false,
-			[true, 16, 17, false], ['Press the LMB to skip the intro.'], [] 
+			false], [false, false],
+			[true, 16, 17, false], ['Press the LMB to skip the intro.'], [], false 
 		],
-		['Dyna Blaster', 'Ubi Soft', '1992',
+		/*['Dyna Blaster', 'Ubi Soft', '1992',
 			['Dyna Blaster.adf',
-			false, false, false], false,
-			[true, 16, 17, false], ['Press the LMB to skip the intro.'], [] 
+			false, false, false], [false, false],
+			[true, 16, 17, false], ['Press the LMB to skip the intro.'], [], false 
+		],*/
+		['Lemmings', 'Psygnosis', '1991',
+			['Lemmings (Disk 1).adf',
+			'Lemmings (Disk 2).adf',
+			false, false], [false, true],
+			[false, 0, 0, false], [], [['with','Mouse']], false 
 		],
 		['Lotus Turbo Challenge 2', 'Gremlin', '1991',
 			['Lotus Turbo Challenge 2.adf',
-			false, false, false], false,
-			[true, 16, 17, false], ['Press the LMB to skip the intro.'], [] 
+			false, false, false], [false, true],
+			[true, 16, 17, false], ['Press the LMB to skip the intro.'], [], false 
+		],
+		['Pac-Mania', 'Grandslam', '1988',
+			['Pac-Mania.adf',
+			false, false, false], [false, true],
+			[true, 16, 17, false], [], [], false 
 		],
 		['Pinball Dreams', 'DICE', '1992',
 			['Pinball Dreams (Disk 1).adf',
 			'Pinball Dreams (Disk 2).adf',
-			false, false], false,
-			[false, 0, 0, true], [], [['Select table','F1-F4'],['Start game','F1-F8'],['Shoot Ball','Down-Arrow'],['Flip','L/R-Arrows'],['Shake table','Space'],['Change table','ESC and then y/z'],['En/Disable music','M']] 
+			false, false], [false, true],
+			[false, 0, 0, true], [], [['Select table','F1-F4'],['Start game','F1-F8'],['Shoot Ball','Down-Arrow'],['Flip','L/R-Arrows'],['Shake table','Space'],['Change table','ESC and then y/z'],['En/Disable music','M']], false 
 		],
-		/*['Pinball Fantasies', 'DICE', '1992',
+		['Pinball Fantasies', 'DICE', '1992',
 			['Pinball Fantasies (Disk 1).adf',
+			'Pinball Fantasies (Disk 2).adf',
 			'Pinball Fantasies (Disk 3).adf',
-			false, false], true,
+			false], [true, true],
 			[false, 0, 0, true],
 			['When asked to remove write protection from disk, press the LMB.'],
-			[['Select table','F1-F4'],['Start game','F1-F8'],['Shoot Ball','Down-Arrow'],['Flip','L/R-Arrows'],['Shake table','Space'],['Change table','ESC and then y/z'],['En/Disable music','M']] 
-		],*/
+			[['Select table','F1-F4'],['Start game','F1-F8'],['Shoot Ball','Down-Arrow'],['Flip','L/R-Arrows'],['Shake table','Space'],['Change table','ESC and then y/z'],['En/Disable music','M']], false 
+		],
 		['Prince of Persia', 'Domark', '1991',
 			['Prince of Persia.adf',
-			false, false, false], false,
-			[true, 16, 17, false], ['Press the LMB to skip the intro.'], [] 
+			false, false, false], [false, true],
+			[true, 16, 17, false], ['Press the LMB to skip the intro.'], [], false 
 		],
 		['Project-X - Special Edition 93', 'Team 17', '1993',
 			['Project-X - Special Edition 93 (Disk 1).adf',
 			'Project-X - Special Edition 93 (Disk 2).adf',
 			'Project-X - Special Edition 93 (Disk 3).adf',
-			false], false,
+			false], [false, true],
 			[true, 16, 17, false],
-			['Press the LMB to skip the intro.'], [['Select weapon', 'Space (not in trainer mode)']] 
+			['Press the LMB to skip the intro.'], [['Select weapon', 'Space (not in trainer mode)']], false 
 		],
 		['Rick Dangerous', 'Firebird', '1989',
 			['Rick Dangerous.adf',
-			false, false, false], false,
-			[true, 16, 17, false], [], [] 
+			false, false, false], [false, true],
+			[true, 16, 17, false], [], [], false 
 		],
 		['Shadow of the Beast II', 'Reflections', '1990',
 			['Shadow of the Beast II (Disk 1).adf',
 			'Shadow of the Beast II (Disk 2).adf',
 			'Shadow of the Beast II (Disk 3).adf',
-			false], true,
+			false], [true, true],
 			[true, 16, 17, false],
-			['Change the disks manualy when asked.'], [] 
+			['Change the disks manualy when asked.'], [], false 
 		],
 		['Superfrog', 'Team 17', '1993',
 			['Superfrog (Disk 1).adf',
 			'Superfrog (Disk 2).adf',
 			'Superfrog (Disk 3).adf',
-			'Superfrog (Disk 4).adf'], true,
+			'Superfrog (Disk 4).adf'], [true, false],
 			[true, 16, 17, false],
-			['Change the disks manualy when asked.'], [] 
+			['Change the disks manualy when asked.'], [], false 
 		],
-		/*['Terminator 2 - Judgment Day', 'Ocean', '1991',
+		['Terminator 2 - Judgment Day', 'Ocean', '1991',
 			['Terminator 2 - Judgment Day (Disk 1).adf',
 			'Terminator 2 - Judgment Day (Disk 2).adf',
-			false, false], true,
+			false, false], [true, false],
 			[true, 16, 17, false],
-			['Press the LMB to skip the intro<br />and insert the 2nd disk manualy.'], [] 
-		],*/
+			['Press the LMB to skip the intro<br />and insert the 2nd disk manualy.'], [], true 
+		],
 		['Turrican II - The Final Fight', 'Rainbow Arts', '1991',
 			['Turrican II - The Final Fight (Disk 1).adf',
 			'Turrican II - The Final Fight (Disk 2).adf',
-			false, false], false,
-			[true, 16, 17, false], [], [['Fire-beam','Hold Fire 1'],['Roll on floor', 'Down-arrow + Fire 1'],['Bomb', 'Fire 2'],['Super-Bomb', 'Fire 1 + Fire 2']] 
+			false, false], [false, true],
+			[true, 16, 17, false], [], [['Fire-beam','Hold Fire 1'],['Roll on floor', 'Down-arrow + Fire 1'],['Bomb', 'Fire 2'],['Super-Bomb', 'Fire 1 + Fire 2']], false 
 		],
 		['Wings of Death', 'Thalion', '1990',
 			['Wings of Death (Disk 1).adf',
 			'Wings of Death (Disk 2).adf',
-			false, false], true,
+			false, false], [true, true],
 			[true, 16, 17, false],
-			['Press the LMB until the main-nemu<br />and insert the 2nd disk manualy.'], [] 
+			['Press the LMB until the main-menu<br />and insert the 2nd disk manualy.'], [], false 
 		],
 	],
 	[
 		['242', 'Virtual Dreams', '1992',
-			['242.adf',false,false,false], false,
-			[true, 16, 17, false], [], []
+			['242.adf',false,false,false], [false, true],
+			[true, 16, 17, false], [], [], false
 		], 
 		['9 Fingers', 'Spaceballs', '1993',
 			['9 Fingers (Disk 1).adf',
-			'9 Fingers (Disk 2).adf',false,false], false,
-			[true, 16, 17, false], [], []
+			'9 Fingers (Disk 2).adf',false,false], [false, true],
+			[true, 16, 17, false], [], [], false
 		], 
 		['Alpha and Omega', 'Pure Metal Coders', '1991',
 			['Alpha and Omega.adf',
-			false,false,false], true,
-			[true, 16, 17, false], [], []
+			false,false,false], [false, false],
+			[true, 16, 17, false], [], [], false
 		], 
 		['Copper Master', 'Angels', '1990',
-			['Copper Master.adf',false,false,false], false,
-			[true, 16, 17, false], [], []
+			['Copper Master.adf',false,false,false], [false, true],
+			[true, 16, 17, false], [], [], false
 		], 
 		['Deja Vu', 'Anarchy', '1992',
-			['Deja Vu.adf',false,false,false], false,
-			[true, 16, 17, false], [], []
+			['Deja Vu.adf',false,false,false], [false, true],
+			[true, 16, 17, false], [], [], false
 		], 
 		['Elysium', 'Sanity', '1991',
-			['Elysium.adf',false,false,false], false,
-			[true, 16, 17, false], [], []
+			['Elysium.adf',false,false,false], [false, true],
+			[true, 16, 17, false], [], [], false
 		], 
 		['Ecliptica', 'TRSI', '1991',
-			['Ecliptica.adf',false,false,false], false,
-			[true, 16, 17, false], [], []
+			['Ecliptica.adf',false,false,false], [false, true],
+			[true, 16, 17, false], [], [], false
 		], 
 		['Enigma', 'Phenomena', '1991',
-			['Enigma.adf',false,false,false], false,
-			[true, 16, 17, false], [], []
+			['Enigma.adf',false,false,false], [false, true],
+			[true, 16, 17, false], [], [], false
 		], 
 		['Global Trash', 'Silents', '1992',
-			['Global Trash.adf',false,false,false], false,
-			[true, 16, 17, false], [], []
+			['Global Trash.adf',false,false,false], [false, true],
+			[true, 16, 17, false], [], [], false
 		], 
 		['Hardwired', 'Crionics, Silents', '1992',
 			['Hardwired (Disk 1).adf',
 			'Hardwired (Disk 2).adf',
-			false,false], true,
+			false,false], [true, true],
 			[true, 16, 17, false],
-			['Insert the 2nd disk manualy,<br />click RMB when done.'], []
+			['Insert the 2nd disk manualy,<br />click RMB when done.'], [], true
 		], 
 		['Ice', 'Silents', '1991',
-			['Ice.adf',false,false,false], false,
-			[true, 16, 17, false], ['Press LMB at the intro-screen'], []
+			['Ice.adf',false,false,false], [false, true],
+			[true, 16, 17, false], ['Press LMB at the intro-screen'], [], false
 		], 
 		['Lost World', 'Balance DK', '1992',
-			['Lost World.adf',false,false,false], false,
-			[true, 16, 17, false], ['Press LMB at the intro-screen'], []
+			['Lost World.adf',false,false,false], [false, true],
+			[true, 16, 17, false], ['Press LMB at the intro-screen'], [], false
 		], 
 		['Mental Hangover', 'Scoopex', '1992',
-			['Mental Hangover.adf',false,false,false], false,
-			[true, 16, 17, false], ['Press LMB at the intro-screen'], []
+			['Mental Hangover.adf',false,false,false], [false, true],
+			[true, 16, 17, false], [], [], false
 		], 
 		['Multica', 'Andromeda', '1992',
-			['Multica.adf',false,false,false], false,
-			[true, 16, 17, false], ['Press LMB at the intro-screen'], []
+			['Multica.adf',false,false,false], [false, true],
+			[true, 16, 17, false], ['Press LMB at the intro-screen'], [], false
 		], 
 		['Project-X (demo rolling)', 'Team 17', '1992',
-			['Project-X (demo-rolling).adf',false,false,false], false,
-			[true, 16, 17, false], [], [['Skip level','Fire']]
+			['Project-X (demo-rolling).adf',false,false,false], [false, true],
+			[true, 16, 17, false], [], [['Skip level','Fire']], false
 		], 
 		['Rampage', 'TEK', '1994',
-			['Rampage.adf',false,false,false], false,
-			[true, 16, 17, false], ['Press LMB at the intro-screen'], []
+			['Rampage.adf',false,false,false], [false, false],
+			[true, 16, 17, false], ['Press LMB at the intro-screen'], [], false
 		], 
 		['State of the Art', 'Spaceballs', '1992',
-			['State of the Art.adf',false,false,false], false,
-			[true, 16, 17, false], [], []
+			['State of the Art.adf',false,false,false], [false, true],
+			[true, 16, 17, false], [], [], false
 		], 
 		['Static Chaos', 'Silents', '1992',
-			['Static Chaos.adf',false,false,false], false,
-			[true, 16, 17, false], [], []
+			['Static Chaos.adf',false,false,false], [false, true],
+			[true, 16, 17, false], [], [], false
+		], 
+		['Technological Death', 'Mad Elks', '1993',
+			['Technological Death.adf',false,false,false], [false, true],
+			[true, 16, 17, false], [], [], true
 		], 
 		['Total Destruction', 'Crionics', '1990',
-			['Total Destruction.adf',false,false,false], false,
-			[true, 16, 17, false], [], []
+			['Total Destruction.adf',false,false,false], [false, true],
+			[true, 16, 17, false], [], [], false
 		], 
 		['Wayfarer', 'Spaceballs', '1992',
-			['Wayfarer.adf',false,false,false], false,
-			[true, 16, 17, false], [], []
+			['Wayfarer.adf',false,false,false], [false, true],
+			[true, 16, 17, false], [], [], false
 		], 
 		['World of Commodore', 'Sanity', '1992',
-			['World of Commodore.adf',false,false,false], false,
-			[true, 16, 17, false], [], []
+			['World of Commodore.adf',false,false,false], [false, true],
+			[true, 16, 17, false], [], [], false
 		], 
 	]
 ];
@@ -247,11 +270,18 @@ var dskchg = false;
 var dskchgList = [];
 
 var cache = null;
+var info = null;
 var config = null;
 
 /*-----------------------------------------------------------------------*/
 
-function dechex(dec) { return dec.toString(16); }
+function urldecode(url) {
+	return decodeURIComponent(url.replace(/\+/g, ' '));
+}
+
+function dechex(dec) { 
+	return dec.toString(16);
+}
 	
 function Cache() {
 	var roms = [null,null];
@@ -488,6 +518,32 @@ function loadRemoteSync(url) {
 /* simple config */
 
 function setSimpleConfig() {
+	//document.getElementById('info_name').innerHTML = info.browser_name+' '+info.browser_version+' ('+info.os+')';
+	var e = document.getElementById('info_video');
+	if (info.video) {
+		var t = '';
+		if (info.video & SAEI_Video_WebGL) t += 'WebGL, '; 		
+		if (info.video & SAEI_Video_Canvas2D) t += 'Canvas, '; 
+		e.innerHTML = t.substr(0, t.length - 2);
+		e.style.color = (info.video & SAEI_Video_WebGL) ? 'green' : 'orange';
+	} else {
+		e.innerHTML = 'None';
+		e.style.color = 'orange';		
+	}
+	e = document.getElementById('info_audio');
+	if (info.audio) {
+		var t = '';
+		if (info.audio & SAEI_Audio_Webkit) t += 'Webkit, '; 		
+		if (info.audio & SAEI_Audio_Mozilla) t += 'Mozilla, '; 
+		e.innerHTML = t.substr(0, t.length - 2);
+		e.style.color = 'green';
+	} else {
+		e.innerHTML = 'None';
+		e.style.color = 'orange';		
+	}
+	e = document.getElementById('info_version').innerHTML = info.version;	
+	
+		
 	var s = document.getElementById('cfg_game');
 	if (s.length == 1) {
 		for (var i = 0; i < db[0].length; i++) {	
@@ -507,7 +563,9 @@ function setSimpleConfig() {
 		}		
 	}	
 	styleDisplayBlock('config_simple', 1);
-	document.getElementById('cfg_audio_enabled_1').checked = true;
+	document.getElementById('cfg_audio_enabled_1').checked = config.audio.enabled;
+	document.getElementById('cfg_video_enabled_1').checked = config.video.enabled;
+	document.getElementById('cfg_video_skip_1').checked = config.video.framerate != 1;	
 	document.getElementById('cfg_video_scale_1').checked = false;
 	unselect(document.getElementById('cfg_demo'));		
 	unselect(document.getElementById('cfg_game'));		
@@ -519,13 +577,11 @@ function setSimpleConfig() {
 function getSimpleFloppy() {
 	//console.log('loadDisks() %d %d', dbGrp, dbNum);
 	
-	config.floppy.speed = 1000; /* 1000 percent == x10 */
-
-	if (dbNum == 0) {
+	if (dbNum == 0) { /* nothing selected */
 		config.floppy.drive[0].type = SAEV_Config_Floppy_Type_35_DD;
 		config.floppy.drive[0].name = null;						
 		config.floppy.drive[0].data = null;
-		config.floppy.drive[1].type = SAEV_Config_Floppy_Type_35_DD;
+		config.floppy.drive[1].type = SAEV_Config_Floppy_Type_None;
 		config.floppy.drive[1].name = null;						
 		config.floppy.drive[1].data = null;
 		config.floppy.drive[2].type = SAEV_Config_Floppy_Type_None;
@@ -534,6 +590,7 @@ function getSimpleFloppy() {
 		config.floppy.drive[3].type = SAEV_Config_Floppy_Type_None;
 		config.floppy.drive[3].name = null;						
 		config.floppy.drive[3].data = null;
+		config.floppy.speed = SAEV_Config_Floppy_Speed_Original;
 		return true;
 	}
 
@@ -548,7 +605,7 @@ function getSimpleFloppy() {
 
 
 	dskchgList = [];
-	if (item[4]) {
+	if (item[4][0]) {
 		var i, filename, url;
 
 		for (i = 0; i < 4; i++) {
@@ -594,21 +651,26 @@ function getSimpleFloppy() {
 			}
 		}		
 	}
+	config.floppy.speed = item[4][1] ? SAEV_Config_Floppy_Speed_Turbo : SAEV_Config_Floppy_Speed_Original;
+	
 	return true;						
 }		
 function getSimpleConfig() {
 	var item = dbNum > 0 ? db[dbGrp - 1][dbNum - 1] : null;
-	var e, num;
 
 	config.cpu.speed = SAEV_Config_CPU_Speed_Original;
-	//config.cpu.speed = SAEV_Config_Floppy_Speed_Turbo;
+	config.cpu.compatible = true;
 
-	//config.chipset.type = SAEV_Config_Chipset_Type_OCS;
-	config.chipset.colLevel = SAEV_Config_Chipset_ColLevel_None;
+	config.chipset.mask = SAEV_Config_Chipset_Mask_OCS;
+	config.chipset.agnus_dip = false; /* A1000 */
+	config.chipset.collision_level = SAEV_Config_Chipset_ColLevel_None;
+
+	config.blitter.immediate = (item !== null && item[8]) ? true : false;
+	config.blitter.waiting = config.blitter.immediate ? 0 : 1;
 	
 	config.ram.chip.size = SAEV_Config_RAM_Chip_Size_512K;
 	config.ram.slow.size = SAEV_Config_RAM_Slow_Size_512K;
-	config.ram.fast.size = SAEV_Config_RAM_Fast_Size_512K;
+	config.ram.fast.size = SAEV_Config_RAM_Fast_Size_1M;
 
 	config.rom.name = aros_rom_file;
 	config.rom.size = SAEV_Config_ROM_Size_512K;
@@ -624,21 +686,22 @@ function getSimpleConfig() {
 	if (!getSimpleFloppy())
 		return false;
 			
-	e = document.getElementById('cfg_audio_enabled_1');
-	config.audio.enabled = e.checked ? true : false;
+	config.audio.enabled = document.getElementById('cfg_audio_enabled_1').checked ? true : false;
 	if (config.audio.enabled) {
 		config.audio.mode = SAEV_Config_Audio_Mode_Play_Best;
 		config.audio.channels = SAEV_Config_Audio_Channels_Stereo;
-		//config.audio.rate = SAEV_Config_Audio_Rate_48000;
 		config.audio.rate = SAEV_Config_Audio_Rate_44100;
 	}
+	/*if (info.audio == 0) {
+		config.audio.enabled = false;
+		document.getElementById('cfg_audio_enabled_1').checked = config.audio.enabled;
+	}*/
 		
-	config.video.enabled = true;
-	e = document.getElementById('cfg_video_scale_1');
-	config.video.scale = e.checked ? true : false;
-	config.video.ntsc = false;
-	config.video.skip = true;
 	config.video.id = 'myVideo';
+	config.video.enabled = document.getElementById('cfg_video_enabled_1').checked ? true : false;
+	config.video.scale = document.getElementById('cfg_video_scale_1').checked ? true : false;
+	config.video.framerate = document.getElementById('cfg_video_skip_1').checked ? 2 : 1;
+	config.video.ntsc = false;
 
 	config.keyboard.enabled = true;
 	config.keyboard.mapShift = (item !== null && item[5][3]) ? true : false;
@@ -667,6 +730,7 @@ function getSimpleConfig() {
 	config.hooks.floppy_step = hooks_floppy_step;
 	config.hooks.fps = hooks_fps;
 	config.hooks.cpu = hooks_cpu;
+	
 	return true;	
 }	
 
@@ -777,8 +841,24 @@ function setConfig() {
 	switch (config.cpu.speed) {
 		case SAEV_Config_CPU_Speed_Original: e[0].selected = true; break;
 		case SAEV_Config_CPU_Speed_Maximum: e[1].selected = true; break;
-	}
+	}	
 	
+	e = document.getElementById('cfg_chipset_type');
+	switch (config.chipset.mask) {
+		case SAEV_Config_Chipset_Mask_OCS: e[0].selected = true; break
+		case SAEV_Config_Chipset_Mask_ECS_AGNUS: e[1].selected = true; break
+		case SAEV_Config_Chipset_Mask_ECS_DENISE: e[2].selected = true; break
+	}
+	document.getElementById('cfg_chipset_cl_enabled').checked = config.chipset.collision_level != SAEV_Config_Chipset_ColLevel_None;		
+	switch (config.chipset.collision_level) {
+		case SAEV_Config_Chipset_ColLevel_Sprite_Sprite: document.getElementById('cfg_chipset_cl')[0].selected = true; break;
+		case SAEV_Config_Chipset_ColLevel_Sprite_Playfield: document.getElementById('cfg_chipset_cl')[1].selected = true; break;
+		case SAEV_Config_Chipset_ColLevel_Full: document.getElementById('cfg_chipset_cl')[2].selected = true; break;
+	}
+	document.getElementById('cfg_chipset_agnus_dip').checked = config.chipset.agnus_dip != 0;	
+	document.getElementById('cfg_blitter_immediate').checked = config.blitter.immediate != 0;	
+	styleDisplayInline('cfg_chipset_cl_grp', config.chipset.collision_level != SAEV_Config_Chipset_ColLevel_None);
+
 	var e = document.getElementById('cfg_mem_chip');
 	switch (config.ram.chip.size) {
 		case SAEV_Config_RAM_Chip_Size_256K: e[0].selected = true; break;
@@ -839,18 +919,13 @@ function setConfig() {
 		case SAEV_Config_Audio_Rate_44100: document.getElementById('cfg_audio_rate')[2].selected = true; break;
 		case SAEV_Config_Audio_Rate_48000: document.getElementById('cfg_audio_rate')[3].selected = true; break;
 	}
+	document.getElementById('cfg_audio_filter').checked = config.audio.filter != 0;		
 	styleDisplayTable('cfg_audio_grp', config.audio.enabled);
 
 	document.getElementById('cfg_video_enabled').checked = config.video.enabled != 0;	
-	document.getElementById('cfg_chipset_cl_enabled').checked = config.chipset.colLevel != SAEV_Config_Chipset_ColLevel_None;		
-	switch (config.chipset.colLevel) {
-		case SAEV_Config_Chipset_ColLevel_Sprite_Sprite: document.getElementById('cfg_chipset_cl')[0].selected = true; break;
-		case SAEV_Config_Chipset_ColLevel_Sprite_Playfield: document.getElementById('cfg_chipset_cl')[1].selected = true; break;
-	}
-	styleDisplayInline('cfg_chipset_cl_grp', config.chipset.colLevel != SAEV_Config_Chipset_ColLevel_None);
 	document.getElementById('cfg_video_scale').checked = config.video.scale;	
 	document.getElementById('cfg_video_ntsc').checked = config.video.ntsc != 0;	
-	document.getElementById('cfg_video_skip').checked = config.video.skip != 0;	
+	document.getElementById('cfg_video_skip').checked = config.video.framerate != 1;	
 	styleDisplayBlock('cfg_video_grp', config.video.enabled != 0); 	
 		
 	document.getElementById('cfg_keyborad_enabled').checked = config.keyboard.enabled != 0;	
@@ -892,21 +967,32 @@ function setConfig() {
 	styleDisplayInline('dskchg_grp', 1);
 }
 
+function getMask(type) {
+	switch (type) {
+		case SAEV_Config_Chipset_Type_OCS: return SAEV_Config_Chipset_Mask_OCS;
+		case SAEV_Config_Chipset_Type_ECS_AGNUS: return SAEV_Config_Chipset_Mask_ECS_AGNUS;
+		case SAEV_Config_Chipset_Type_ECS_DENISE: return SAEV_Config_Chipset_Mask_ECS_DENISE;
+	}
+}
+
 function getConfig() {
 	var e;
 
 	e = document.getElementById('cfg_cpu_speed');
 	config.cpu.speed = parseInt(getSelectValue(e));
-
-	//e = document.getElementById('cfg_chipset_type');
-	//config.chipset.type = parseInt(getSelectValue(e));
+	
+	e = document.getElementById('cfg_chipset_type');
+	config.chipset.mask = getMask(parseInt(getSelectValue(e)));
 	e = document.getElementById('cfg_chipset_cl_enabled');
 	if (e.checked) {
 		e = document.getElementById('cfg_chipset_cl');
-		config.chipset.colLevel = parseInt(getSelectValue(e));
+		config.chipset.collision_level = parseInt(getSelectValue(e));
 	} else
-		config.chipset.colLevel = SAEV_Config_Chipset_ColLevel_None;
-
+		config.chipset.collision_level = SAEV_Config_Chipset_ColLevel_None;
+	config.chipset.agnus_dip = document.getElementById('cfg_chipset_agnus_dip').checked ? true : false;	
+	config.blitter.immediate = document.getElementById('cfg_blitter_immediate').checked ? true : false;	
+	config.blitter.waiting = config.blitter.immediate ? 0: 1;
+		
 	e = document.getElementById('cfg_mem_chip');
 	config.ram.chip.size = parseInt(getSelectValue(e));
 	e = document.getElementById('cfg_mem_slow');
@@ -918,35 +1004,31 @@ function getConfig() {
 		alert('No Kickstart ROM.');
 		return false;
 	}
-	
+	e = document.getElementById('cfg_ext_addr');
+	config.ext.addr = parseInt(getSelectValue(e));
+
 	e = document.getElementById('cfg_floppy_speed');
 	config.floppy.speed = parseInt(getSelectValue(e));
 
-	e = document.getElementById('cfg_audio_enabled');
-	config.audio.enabled = e.checked ? true : false;
+	config.audio.enabled = document.getElementById('cfg_audio_enabled').checked ? true : false;
 	if (config.audio.enabled) {
 		e = document.getElementById('cfg_audio_mode');
 		config.audio.mode = parseInt(getSelectValue(e));
 		e = document.getElementById('cfg_audio_channels');
 		config.audio.channels = parseInt(getSelectValue(e));
 		e = document.getElementById('cfg_audio_rate');
-		config.audio.rate = parseInt(getSelectValue(e));
+		config.audio.rate = parseInt(getSelectValue(e));		
+		config.audio.filter = document.getElementById('cfg_audio_filter').checked ? true : false;
 	}
 
-	e = document.getElementById('cfg_video_enabled');
-	config.video.enabled = e.checked ? true : false;
-	e = document.getElementById('cfg_video_scale');
-	config.video.scale = e.checked ? true : false;
-	e = document.getElementById('cfg_video_ntsc');
-	config.video.ntsc = e.checked ? true : false;
-	e = document.getElementById('cfg_video_skip');
-	config.video.skip = e.checked ? true : false;
 	config.video.id = 'myVideo';
+	config.video.enabled = document.getElementById('cfg_video_enabled').checked ? true : false;
+	config.video.scale = document.getElementById('cfg_video_scale').checked ? true : false;
+	config.video.ntsc = document.getElementById('cfg_video_ntsc').checked ? true : false;
+	config.video.framerate = document.getElementById('cfg_video_skip').checked ? 2 : 1;
 
-	e = document.getElementById('cfg_keyborad_enabled');
-	config.keyboard.enabled = e.checked ? true : false;
-	e = document.getElementById('cfg_keyborad_mapshift');
-	config.keyboard.mapShift = e.checked ? true : false;
+	config.keyboard.enabled = document.getElementById('cfg_keyborad_enabled').checked ? true : false;
+	config.keyboard.mapShift = document.getElementById('cfg_keyborad_mapshift').checked ? true : false;
 
 	e = document.getElementById('cfg_ports_0');
 	config.ports[0].type = parseInt(getSelectValue(e));
@@ -977,15 +1059,18 @@ function getConfig() {
 		}
 	}		
 
-	e = document.getElementById('cfg_serial_enabled');
-	config.serial.enabled = e.checked ? true : false;
+	config.serial.enabled = document.getElementById('cfg_serial_enabled').checked ? true : false;
 
 	config.hooks.error = hooks_error;
 	config.hooks.power_led = hooks_power_led;
 	config.hooks.floppy_motor = hooks_floppy_motor;
 	config.hooks.floppy_step = hooks_floppy_step;
 	config.hooks.fps = hooks_fps;					
-	config.hooks.cpu = hooks_cpu;					
+	config.hooks.cpu = hooks_cpu;		
+		
+	if (config.chipset.mask != SAEV_Config_Chipset_Mask_OCS)
+		config.chipset.agnus_dip = false;
+
 	return true;	
 }	
 
@@ -995,16 +1080,55 @@ function getConfig() {
 function init() {
 	cache = new Cache();
 	
-	config = SAE({cmd:'init'});		
-	//config = SAE({cmd:'getConfig'}); 
+	SAE({cmd:'init'});		
+
+	info = SAE({cmd:'getInfo'}); 
+	config = SAE({cmd:'getConfig'}); 
+	//console.log(info);	
 	//console.log(config);	
+	
 	setSimpleConfig();
+
+	if (window.location.hash.length > 0) {
+		var name = urldecode(window.location.hash.substr(1));
+		var start = false;
+	
+		for (var i = 0; i < db[0].length; i++) {
+			if (db[0][i][0] == name) {
+				document.getElementById('cfg_game')[i+1].selected = true;
+				preSelect(1);
+				start = true;
+				break;
+			}		
+		}		
+		if (!start) {
+			for (var i = 0; i < db[1].length; i++) {
+				if (db[1][i][0] == name) {
+					document.getElementById('cfg_demo')[i+1].selected = true;
+					preSelect(2);
+					start = true;
+					break;
+				}		
+			}		
+		}
+		if (start)
+			simpleStart();
+	}
 }	
 
 function start() {
 	document.body.style.backgroundColor = '#000';
 	styleDisplayBlock('base', 0);
 	styleDisplayBlock('emul', 1);
+	
+	if (mode == 0) {	
+		var item = dbNum > 0 ? db[dbGrp - 1][dbNum - 1] : null;
+		if (item)
+			window.location.hash = item[0];
+		else
+			window.location.hash = '';
+	} else	
+		window.location.hash = '';
 	
 	//SAE({cmd:'setConfig',data:config});
 	/*var result = SAE({cmd:'start'});
@@ -1123,7 +1247,7 @@ function preSelect(grp)
 	document.getElementById('cfg_info_comp').innerHTML = item[1];
 	document.getElementById('cfg_info_year').innerHTML = item[2];
 	styleDisplayTable('cfg_info', 1);
-	styleDisplayInline('dskchg_grp', item[4] ? 1 : 0);	
+	styleDisplayInline('dskchg_grp', item[4][0] ? 1 : 0);	
 
 	if (item[6].length) {
 		document.getElementById('cfg_info_load').innerHTML = item[6];	
@@ -1245,6 +1369,7 @@ function floppyUpdate(n) {
 		 	
 		var e = document.getElementById('cfg_df'+n+'_type');
 		config.floppy.drive[n].type = parseInt(getSelectValue(e));
+		floppyEject(n);		
 	} else {
 		styleDisplayInline('cfg_df'+n+'_grp', 0); 	
 		floppyEject(n);		
@@ -1325,7 +1450,8 @@ function portUpdate2() {
 
 function hooks_error(err, msg) {
 	stop();
-	alert(msg);
+	if (msg !== null)
+		alert(msg);
 }	
 
 function hooks_power_led(on) {

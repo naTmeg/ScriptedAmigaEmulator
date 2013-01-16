@@ -197,14 +197,15 @@ function Memory() {
 		this.res_e0.data = new Uint16Array(this.res_e0.align); for (var i = 0; i < this.res_e0.align; i++) this.res_e0.data[i] = 0;	
 		this.res_f0.data = new Uint16Array(this.res_f0.align); for (var i = 0; i < this.res_f0.align; i++) this.res_f0.data[i] = 0;
 			
-		AMIGA.mem.copy_rom(AMIGA.config.rom.data);
+		this.copy_rom(AMIGA.config.rom.data);
 
 		if (AMIGA.config.ext.size != SAEV_Config_EXT_Size_None) {
 			if (AMIGA.config.ext.addr == SAEV_Config_EXT_Addr_E0)
-				AMIGA.mem.copy_e0(AMIGA.config.ext.data);           
+				this.copy_e0(AMIGA.config.ext.data);           
 			else if (AMIGA.config.ext.addr == SAEV_Config_EXT_Addr_F0)
-				AMIGA.mem.copy_f0(AMIGA.config.ext.data);           
+				this.copy_f0(AMIGA.config.ext.data);           
 		}
+		//this.mirror_rom_to_chipram();
 
 		/*if (AMIGA.config.rom.mode == 1) {
 			if (!this.aros.cached) {
@@ -281,7 +282,7 @@ function Memory() {
 			return (addr & 1) ? (this.res_f0.data[(addr - this.res_f0.lower) >>> 1] & 0xff) : (this.res_f0.data[(addr - this.res_f0.lower) >>> 1] >> 8);
 		} 
 		else if (addr >= this.res_d8.lower && addr < this.res_d8.upper) {
-			return (addr & 1) ? (this.res_d0.data[(addr - this.res_d0.lower) >>> 1] & 0xff) : (this.res_d0.data[(addr - this.res_d0.lower) >>> 1] >> 8);
+			return (addr & 1) ? (this.res_d8.data[(addr - this.res_d8.lower) >>> 1] & 0xff) : (this.res_d8.data[(addr - this.res_d8.lower) >>> 1] >> 8);
 		} 		
 		else if (addr >= this.ac_z2.lower && addr < this.ac_z2.upper) {
 			return AMIGA.expansion.load8(addr);
@@ -325,7 +326,7 @@ function Memory() {
 			return this.res_f0.data[(addr - this.res_f0.lower) >>> 1];
 		}
 		else if (addr >= this.res_d8.lower && addr < this.res_d8.upper - 1) {
-			return this.res_d0.data[(addr - this.res_d0.lower) >>> 1];
+			return this.res_d8.data[(addr - this.res_d8.lower) >>> 1];
 		}
 		//else BUG.info('Memory.load16() ILLEGAL MEMORY ACCESS addr $%08x', addr);	
 
@@ -372,8 +373,8 @@ function Memory() {
 			return ((this.res_f0.data[addr] << 16) | this.res_f0.data[addr + 1]) >>> 0;
 		}
 		else if (addr >= this.res_d8.lower && addr < this.res_d8.upper - 3) {
-			addr = (addr - this.res_d0.lower) >>> 1;
-			return ((this.res_d0.data[addr] << 16) | this.res_d0.data[addr + 1]) >>> 0;
+			addr = (addr - this.res_d8.lower) >>> 1;
+			return ((this.res_d8.data[addr] << 16) | this.res_d8.data[addr + 1]) >>> 0;
 		}
 		//else BUG.info('Memory.load32() ILLEGAL MEMORY ACCESS addr $%08x', addr);		
 
@@ -442,11 +443,11 @@ function Memory() {
 		}
 		else if (addr >= this.res_d8.lower && addr < this.res_d8.upper) {
 			if (addr & 1) {
-				addr = (addr - this.res_d0.lower) >>> 1;
-				this.res_d0.data[addr] = (this.res_d0.data[addr] & 0xff00) | value;
+				addr = (addr - this.res_d8.lower) >>> 1;
+				this.res_d8.data[addr] = (this.res_d8.data[addr] & 0xff00) | value;
 			} else {
-				addr = (addr - this.res_d0.lower) >>> 1;
-				this.res_d0.data[addr] = (value << 8) | (this.res_d0.data[addr] & 0x00ff);
+				addr = (addr - this.res_d8.lower) >>> 1;
+				this.res_d8.data[addr] = (value << 8) | (this.res_d8.data[addr] & 0x00ff);
 			}
 		}
 		else if (addr >= this.ac_z2.lower && addr < this.ac_z2.upper) {
@@ -486,7 +487,7 @@ function Memory() {
 			this.res_f0.data[(addr - this.res_f0.lower) >>> 1] = value;
 		}
 		else if (addr >= this.res_d8.lower && addr < this.res_d8.upper - 1) {
-			this.res_d0.data[(addr - this.res_d0.lower) >>> 1] = value;
+			this.res_d8.data[(addr - this.res_d8.lower) >>> 1] = value;
 		}
 		//else BUG.info('Memory.store16() ILLEGAL MEMORY ACCESS addr $%08x, val %04x', addr, value);		
 	}
@@ -532,9 +533,9 @@ function Memory() {
 			this.res_f0.data[addr + 1] = value & 0xffff;				
 		}
 		else if (addr >= this.res_d8.lower && addr < this.res_d8.upper - 3) {
-			addr = (addr - this.res_d0.lower) >>> 1;
-			this.res_d0.data[addr] = value >>> 16;
-			this.res_d0.data[addr + 1] = value & 0xffff;				
+			addr = (addr - this.res_d8.lower) >>> 1;
+			this.res_d8.data[addr] = value >>> 16;
+			this.res_d8.data[addr + 1] = value & 0xffff;				
 		}
 		//else if (!(addr & 0xc80000)) BUG.info('Memory.store32() ILLEGAL MEMORY ACCESS addr $%08x, val %08x', addr, value);		
 	}
@@ -555,7 +556,7 @@ function Memory() {
 			this.chip.data[addr >>> 1] = value;
 			AMIGA.custom.last_value = value;
 		} else BUG.info('store16_chip() ILLEGAL MEMORY ACCESS addr %x, value %x', addr, value);
-	}*/
+	}
 	this.load16_chip = function (addr) { 
 		if (addr < this.chip.size - 1)
 			AMIGA.custom.last_value = this.chip.data[addr >>> 1];
@@ -569,7 +570,7 @@ function Memory() {
 			this.chip.data[addr >>> 1] = AMIGA.custom.last_value = value;
 		else
 			AMIGA.custom.last_value = 0xffff;
-	}
+	}*/
 
 	this.copy_rom = function(data) {
 		//BUG.info('copyrom() size %d', data.length);
@@ -640,13 +641,13 @@ function Memory() {
 		}
 	}
 	
-	/*this.mirror_rom_to_chipram = function() {
+	this.mirror_rom_to_chipram = function() {
 		for (var i = 0; i < this.rom.size; i++)
 			this.chip.data[i] = this.rom.data[i];
 			
-		if (this.ext.size > 0) {
+		/*if (this.ext.size > 0) {
 			for (var i = 0; i < this.ext.size; i++)
 				this.chip.data[this.rom.size + i] = this.ext.data[i];			
-		}
-	}*/
+		}*/
+	}
 }

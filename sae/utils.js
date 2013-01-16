@@ -337,6 +337,12 @@ function dump(obj) {
 
 /*-----------------------------------------------------------------------*/
 
+function VSync(err, msg) {
+	this.error = err;
+	this.message = msg;
+}
+VSync.prototype = new Error;   
+
 function FatalError(err, msg) {
 	this.error = err;
 	this.message = msg;
@@ -417,3 +423,59 @@ function Debug() {
 		}
 	}	
 }
+
+/*-----------------------------------------------------------------------*/
+
+function Uint64(hi, lo) {
+	this.hi = hi;
+	this.lo = lo;
+
+	this.or = function(v) {
+		this.hi = (this.hi | v.hi) >>> 0;
+		this.lo = (this.lo | v.lo) >>> 0;		
+	} 	
+
+	this.lshift = function(n) {
+		if (n) {
+			if (n < 32) {
+				var m = Math.pow(2, n) - 1;
+				var t = this.lo & m;
+				this.hi = ((this.hi << n) | t) >>> 0;
+				this.lo = (this.lo << n) >>> 0;		
+
+				//BUG.info('lshift %d %x', n, m, t);
+			} else {
+				var t = this.lo;
+				this.hi = (t << (n-32)) >>> 0;	
+				this.lo = 0;
+
+				//BUG.info('lshift %d %x', n, t);
+			} 	
+		} 	
+	} 	
+
+	this.rshift = function(n) {    
+		if (n) {
+			if (n < 32) {
+				var m = Math.pow(2, n) - 1;
+				var t = this.hi & m;
+				this.hi = (this.hi >>> n) >>> 0;
+				this.lo = ((t << (32 - n)) | (this.lo >>> n)) >>> 0;		
+
+				//BUG.info('rshift %d %x %x', n, m, t);
+			} else {
+				var t = this.hi;
+				this.hi = 0;
+				this.lo = (t >>> (n-32)) >>> 0;	
+
+				//BUG.info('rshift %d %x %x', n, t);
+			} 	
+		} 	
+	} 	
+
+	this.print = function() {
+		BUG.info('$%08x%08x', this.hi, this.lo);
+	} 	
+} 	
+
+

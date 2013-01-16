@@ -5,11 +5,13 @@ a:hover		{ color:#2040c0; text-decoration:underline; }
 
 .alt { text-align:left; vertical-align:top; }
 .alm { text-align:left; vertical-align:middle; }
+.almsg { text-align:left; vertical-align:middle; font-size:x-small; color:gray; }
 .alb { text-align:left; vertical-align:bottom; }
 
 .act { text-align:center; vertical-align:top; }
 .acm { text-align:center; vertical-align:middle; }
 .acmsb { text-align:center; vertical-align:middle; font-size:x-small; font-weight:bold; }
+.acmsg { text-align:center; vertical-align:middle; font-size:x-small; color:gray; }
 .acb { text-align:center; vertical-align:bottom; }
 
 .art { text-align:right; vertical-align:top; }
@@ -17,6 +19,7 @@ a:hover		{ color:#2040c0; text-decoration:underline; }
 .armb { text-align:right; vertical-align:middle; font-weight:bold; }
 .arms { text-align:right; vertical-align:middle; font-size:x-small; }
 .armsb { text-align:right; vertical-align:middle; font-size:x-small; font-weight:bold; }
+.armsg { text-align:right; vertical-align:middle; font-size:x-small; color:gray; }
 .arb { text-align:right; vertical-align:bottom; }
 
 .fsxs { font-size:x-small; }
@@ -61,7 +64,6 @@ body {
 	width:100%;
 	margin:auto;
 	text-align:center;
-	background-color:#f8f8f8;
 }
 
 .foot {
@@ -71,18 +73,16 @@ body {
 	font-size:x-small;
 }
 
-#config {
-	width:800px;
+#xconfig {
+	width:400px;
 	margin:auto;
 	background-color:#fcfcfc;
 }
 #config_simple  {
-	width:760px;
-	padding:20px;
-	border:1px solid #ccc;
+	width:380px;
+	margin:auto;
 }
 .config_simple_hof  {
-	width:50%;
 	margin:auto;
 	padding:10px;
 	border:1px solid #ccc;
@@ -93,9 +93,11 @@ body {
 }
 
 #config_advanced {
-	width:760px;
-	padding:20px;
+	width:780px;
+	margin:auto;
+	padding:10px;
 	border:1px solid #ccc;
+	background-color:#f8f8f8;
 	display:none;
 }
 #config_advanced table {
@@ -185,7 +187,7 @@ body {
 	margin:auto;
 	padding:10px;
 	border:1px solid #ccc;
-	background-color:#fcfcfc;
+	background-color:#f8f8f8;
 }
 .readme table {
 	width:100%;

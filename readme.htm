@@ -14,14 +14,16 @@
 	</head>
 	<body>  
 		<div class="head">
-			<div style="height:8px"></div> 		
-			<img src="images/logo.png" alt="Scripted Amiga Emulator" />
 			<noscript>
 				<div class="noscript">This site does require javascript, obviously :)</div>  	
 			</noscript>
-			<div class="hr"></div>	
-		</div>	  	
-		<div style="height:20px"></div> 		
+			<div style="height:8px"></div> 		
+			<img src="images/logo.png" alt="Scripted Amiga Emulator" />
+			<div class="acmsg">
+				<i>Experimental</i> <a href="javascript:openNewTab('http://en.wikipedia.org/wiki/Amiga')">Amiga</a> emulator in pure JavaScript and HTML5
+			</div>		
+		</div>	  					
+		<div style="height:8px"></div> 			
 		<div class="readme">	
 			<table>
 				<tr>
@@ -32,20 +34,20 @@
 									<li>A very fast computer</li>
 									<li>A browser capable of HTML5 with:
 										<ul>
-											<li>WegGL</li>
-											<li>WebAudio</li>
+											<li>WegGL or Canvas 2D <span class="gray">(optional)</span></li>
+											<li>WebAudio <span class="gray">(optional)</span></li>
+											<li>FileReader <span class="gray">(GUI)</span></li>
 											<li>Typed arrays</li>
-											<li>FileReader (GUI)</li>
 										</ul>
 									</li>
 									<li>A ROM:
 										<ul>
-											<li>Amiga Kickstart 1.x-2.04 (not included for copyright reasons)</li>
-											<li>AROS Kickstart (included)</li>
+											<li>Amiga Kickstart 1.0-2.05 <span class="gray">(not included for copyright reasons)</span></li>
+											<li>AROS Kickstart <span class="gray">(included)</span></li>
 										</ul>
 									</li>
 									<li style="list-style-type:none"><br /></li>
-									<li>And a bunch of ADF-files to test (optional)</li>
+									<li>And a bunch of ADF-files to test <span class="gray">(optional)</span></li>
 								</ul>
 							</li>
 						</ul>
@@ -53,8 +55,8 @@
 					<td>
 						<table>
 							<tr><td colspan="2"><span class="fwb">Supported browsers</span></td></tr>
-							<tr><td class="armb" style="color:green">Chrome</td><td>Fastest</td></tr>
-							<tr><td class="armb" style="color:green">Firefox</td><td>Medium speed</td></tr>
+							<tr><td class="armb" style="color:green">Chrome</td><td>Very fast</td></tr>
+							<tr><td class="armb" style="color:orange">Firefox</td><td>Medium speed</td></tr>
 							<tr><td class="armb" style="color:orange">Opera</td><td>Slow speed, no audio</td></tr>
 							<tr><td class="armb" style="color:red">IE</td><td>No support</td></tr>
 							<tr><td class="armb">Other</td><td>Untested</td></tr>
@@ -86,30 +88,17 @@
 				<li><span class="fwb">Usage/Hints</span>
 					<ul>
 						<li>Press F11 for fullscreen. Most browsers support that.</li>
-						<li>If something does crash, try another memory setting or a different ROM. The original kickstart (1.3) work's best.</li>
+						<li>If something does crash, try another memory setting or a different ROM.<br />
+							The original kickstart (1.3) does work best.</li>
 					</ul>
 				</li>
 			</ul>
 			<ul>
 				<li><span class="fwb">Known bugs/problems</span>
 					<ul>
-						<li>There may be graphics-errors:
-						<ul>
-							<li>Graphics may be at a wrong position or a wrong color.</li>
-							<li>Fast blinking sprites are not displayed if 'Frameskip' is active.</li>
-							<li>Copper initiated color-changes within a scanline are not recognized.</li>
-							<li>The next update (0.8) will deal with this.</li>
-						</ul>
-						</li>
-						<li>Left/right shift/alt/ctrl are the same. That's a browser 'feature' and can't be fixed.</li>
-					</ul>
-				</li>
-			</ul>
-			<ul>
-				<li><span class="fwb">Missing features</span>
-					<ul>
-						<li>User-config</li>
-						<li>Maybe ECS support</li>
+						<li>Blinking sprites are not shown if "Frameskip" is active.</li>
+						<li>There may be short and heavy speed-fluctuations in the beginning of the emulation.</li>
+						<li>Left/right shift/alt/ctrl are the same. That's a browser "feature" and can't be fixed.</li>
 					</ul>
 				</li>
 			</ul>
@@ -121,7 +110,7 @@
 				</li>
 			</ul>
 			<ul>
-				<li><span class="fwb">Source code</span>
+				<li><span class="fwb">Source-code</span>
 					<ul>
 						<li><a href="javascript:openNewTab('https://github.com/naTmeg/ScriptedAmigaEmulator')">github.com/naTmeg/ScriptedAmigaEmulator</a></li>
 					</ul>
@@ -130,24 +119,25 @@
 			<ul>
 				<li><span class="fwb">Thanks</span>
 					<ul>
-						<li>Bernd Schmidt</li>
-						<li>WinUAE and AROS team.</li>
+						<li><a href="javascript:openNewTab('http://www.amigaemulator.org')">Bernd Schmidt</a></li>
+						<li><a href="javascript:openNewTab('http://winuae.net')">WinUAE</a> team</li> 
+						<li><a href="javascript:openNewTab('http://aros.org')">AROS</a> team</li>
 					</ul>
 				</li>
 			</ul>
 			<ul>
 				<li><span class="fwb">License</span>
 					<ul>
-						<li>This is a <b>free</b> project.</li>
+						<li>This is a free project.</li>
 						<li>You may use the emulator in your own website.</li>
-						<li>If you use the emulator in your own website, you <b>must</b> provide a link to this homepage.</li>
-						<li>If you use the emulator in your own website, you <b>must not</b> change the copyright header in the source-files.</li>
-						<li>Commercial use <b>in any form</b> is prohibited. This includes donations.</li>
+						<li>If you use the emulator in your own website, you must provide a link to this homepage.</li>
+						<li>If you use the emulator in your own website, you must not change the copyright header in the source-files.</li>
+						<li>Commercial use in any form is prohibited. This includes donations.</li>
 						<li>No warranty expressed or implied. Use at your own risk.</li>
 					</ul>
 				</li>
 			</ul>
-			<div class="hr"></div>
+			<!--<div class="hr"></div>
 			<table>
 				<tr><td colspan="3" class="acm"><span class="fwb">Fully working...</span></td></tr>
 				<tr>
@@ -158,7 +148,6 @@
 									<li>Alien Breed</li>
 									<li>Alien Breed Special Edition 92<span class="fwb"> (0.7)</span></li>
 									<li>Alien Breed Tower Assault<span class="fwb"> (0.6)</span></li>
-									<li>Alien Breed II - The horror continues<span class="fwb"> (0.7)</span></li>
 									<li>Boby Blows Galactic<span class="fwb"> (0.7)</span></li>
 									<li>Agony<span class="fwb"> (0.6.1)</span></li>
 									<li>Another World</li>
@@ -169,7 +158,7 @@
 									<li>Dynablaster<span class="fwb"> (0.7)</span></li>
 									<li>Firepower</li>
 									<li>Lotus Turbo Challenge 1/2<span class="fwb"> (0.6)</span></li>
-									<li>NorthPrince of Persia<span class="fwb"> (0.7)</span></li>
+									<li>North'n South<span class="fwb"> (0.7)</span></li>
 									<li>Pinball Dreams</li>
 									<li>Pinball Fantasies (the demo with 1 desk)</li>
 									<li>Prince of Persia<span class="fwb"> (0.7)</span></li>
@@ -217,10 +206,66 @@
 				</tr>
 				<tr><td colspan="3" class="acm"><span class="fwb">Note:</span> The lists corresponds to Kickstart 1.3</td></tr>
 			</table>
-			<div class="hr"></div>
+			<div class="hr"></div>-->
 			<ul>
 				<li><span class="fwb">History</span>
 					<ul>
+						<li>0.8.0 (16.01.2013):
+							<ul>
+								<li>Display
+									<ul>
+										<li>Ported and optimized playfield-code from WinUAE.<br />
+											This adds ECS and AGA support and fixes graphics-errors.<br />
+											The AGA part is commented out, because there is no 68020 yet.</li>
+										<li>Added support for drawing via 'Canvas 2D' if 'WebGL' is not avail.</li>
+										<li>Added support for auto-driver detection.</li>
+									</ul>
+								</li>							
+								<li>Audio
+									<ul>
+										<li>While disk access, audio performance is much better now.</li>
+										<li>Added support for the A500 lowpass-filter. Not enabled by default.</li>
+										<li>Added support for auto-driver detection.</li>
+									</ul>
+								</li>			
+								<li>Memory
+									<ul>
+										<li>To gain speed, all memory is now accessed directly and not via functions.<br />
+											So, don't care for a possible illegal memory access.</li>
+										<li>Fixed bug, where kickstart 1.2 failed to load.</li>
+										<li>Fixed incorrect extended-address bug.</li>
+									</ul>
+								</li>	
+								<li>CPU
+									<ul>
+										<li>Splitted address-types of ADDQ/SUBQ into separate functions for more speed.</li>
+										<li>Added bus-read/write cycles tables. For internal use only.</li>
+									</ul>
+								</li>	
+								<li>CIA
+									<ul>
+										<li>I decided to port the latest cia-code from WinUAE while i was trying to find a bug.<br />
+											Well, the bug is still there. Let's keep the code nevertheless.</li>
+									</ul>
+								</li>	
+								<li>GUI
+									<ul>
+										<li>Added info box of supported drivers.</li>
+										<li>Added a 'Chipset'-section and various options.</li>
+										<li>Packed the main GUI.</li>
+									</ul>
+								</li>			
+								<li>Common
+									<ul>
+										<li>Added support for easy URL sharing. E.g. to show the Multica-demo to a friend,<br />
+											one may send the link "http://scriptedamigaemulator.net/#Multica"<br />
+											and the demo will start immediately. (thanks mrdoob)</li>
+										<li>Many small optimizations.</li>
+									</ul>
+								</li>			
+							</ul>
+						</li>                                                                               
+						<li style="list-style-type:none"><br/></li>
 						<li>0.7.0 (24.12.2012):
 							<ul>
 								<li>Common
@@ -246,7 +291,8 @@
 								<li>Audio
 									<ul>
 										<li>Added a ring-buffer before output. No more "bagpipe"-like audio.</li>
-										<li>Added a option to just emulate the hardware, but not to play any sound, e.g. "Agony" was not starting, if audio was disabled.</li>
+										<li>Added a option to just emulate the hardware, but not to play any sound,<br />
+										e.g. "Agony" was not starting, if audio was disabled.</li>
 									</ul>
 								</li>			
 								<li>Display

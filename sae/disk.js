@@ -6,6 +6,9 @@
 * ©2012 Rupert Hausberger
 * Commercial use is prohibited.
 *
+***************************************************************************
+* Notes: Ported from WinUAE 2.5.0
+* 
 **************************************************************************/
 
 const LONGWRITEMODE = 0;
@@ -88,7 +91,7 @@ function Drive(number) {
 	this.cyl = 0;
 	this.motoroff = true;
 	this.motordelay = false; /* dskrdy needs some clock cycles before it changes after switching off motor */
-	this.state = 0;
+	//this.state = 0;
 	this.wrprot = false;
 	this.bigmfmbuf = new Uint16Array(0x4000 * DDHDMULT); for (var i = 0; i < 0x4000 * DDHDMULT; i++) this.bigmfmbuf[i] = 0;  
 	this.tracktiming = new Uint16Array(0x4000 * DDHDMULT); for (var i = 0; i < 0x4000 * DDHDMULT; i++) this.tracktiming[i] = 0;
@@ -436,7 +439,7 @@ function Drive(number) {
 
 			if (AMIGA.config.cpu.model <= 68010 && AMIGA.config.cpu.speed == SAEV_Config_CPU_Speed_Original) {
 				this.motordelay = true;
-				AMIGA.events.event2_newevent2(30, this.num, function(v) { AMIGA.disk.motordelay_func(v); });
+				AMIGA.events.newevent2(30, this.num, function(v) { AMIGA.disk.motordelay_func(v); });
 			}
 		}
 		this.motoroff = off;
@@ -847,6 +850,7 @@ function Disk() {
 			AMIGA.config.hooks.floppy_motor(i, false);
 			AMIGA.config.hooks.floppy_step(i, floppy[i].cyl);
 		}		
+		this.DSKLEN(0, 0);
 		for (var i = 0; i < MAX_FLOPPY_DRIVES; i++) {
 			this.eject(i);
 			this.insert(i);
@@ -1022,9 +1026,8 @@ function Disk() {
 		var disk_sync_cycle = data >> 8;
 		//BUG.info('Disk.handler() data $%x, flag %d, disk_sync_cycle %d', data, flag, disk_sync_cycle);
 
-		//AMIGA.events.eventtab[EV_DISK].active = false;
-		AMIGA.events.event2_remevent(EV2_DISK);
-
+		AMIGA.events.remevent(EV2_DISK);
+		
 		this.update(disk_sync_cycle);
 
 		if (flag & (DISK_REVOLUTION << 0)) this.fetchnextrevolution(0);
@@ -1036,7 +1039,9 @@ function Disk() {
 		if (flag & DISK_INDEXSYNC) {
 			if (!indexdecay) {
 				indexdecay = 2;
-				AMIGA.cia.setICR(CIA_B, 0x10, null); 
+				//AMIGA.cia.setICR(CIA_B, 0x10, null); 
+				//AMIGA.cia.diskindex(); 
+				AMIGA.cia.SetICRB(0x10, null);
 			}
 		}
 	}
@@ -1239,7 +1244,7 @@ function Disk() {
 	
 	this.doupdate_predict = function(startcycle) {
 		//BUG.info('Disk.doupdate_predict() startcycle %d', startcycle);
-		var finaleventcycle = AMIGA.events.maxhpos << 8;
+		var finaleventcycle = AMIGA.playfield.maxhpos << 8;
 		var finaleventflag = 0;
 		
 		for (var dr = 0; dr < MAX_FLOPPY_DRIVES; dr++) {
@@ -1252,7 +1257,7 @@ function Disk() {
 			var tword = word;
 			var countcycle = startcycle + (floppy[dr].floppybitcounter % floppy[dr].trackspeed);
 			var mfmpos = floppy[dr].mfmpos;
-			while (countcycle < (AMIGA.events.maxhpos << 8)) {
+			while (countcycle < (AMIGA.playfield.maxhpos << 8)) {
 				if (floppy[dr].tracktiming[0])
 					this.updatetrackspeed(dr, mfmpos);
 				if (dskdmaen != DSKDMA_WRITE || (dskdmaen == DSKDMA_WRITE && !dma_enable)) {
@@ -1297,18 +1302,8 @@ function Disk() {
 			}
 		}
 
-		if (finaleventflag && (finaleventcycle >>> 8) < AMIGA.events.maxhpos) {
-			AMIGA.events.event2_newevent(EV2_DISK, (finaleventcycle - startcycle) >>> 8, ((finaleventcycle >>> 8) << 8) | finaleventflag);	
-
-			/*var evtime = (finaleventcycle - startcycle) >>> 8;
-			if (evtime == 0) evtime = 1;
-			AMIGA.events.eventtab[EV_DISK].active = true;
-			AMIGA.events.eventtab[EV_DISK].oldcycles = AMIGA.events.currcycle;
-			AMIGA.events.eventtab[EV_DISK].evtime = AMIGA.events.currcycle + (evtime * CYCLE_UNIT);
-			AMIGA.events.eventtab[EV_DISK].data = ((finaleventcycle >>> 8) << 8) | finaleventflag;	
-			AMIGA.events.schedule();
-			*/
-		}
+		if (finaleventflag && (finaleventcycle >>> 8) < AMIGA.playfield.maxhpos)
+			AMIGA.events.newevent(EV2_DISK, (finaleventcycle - startcycle) >>> 8, ((finaleventcycle >>> 8) << 8) | finaleventflag);	
 	}
 
 	this.update = function(tohpos) {
@@ -1326,7 +1321,7 @@ function Disk() {
 			return;
 
 		disk_hpos += cycles;
-		if (disk_hpos >= (AMIGA.events.maxhpos << 8))
+		if (disk_hpos >= (AMIGA.playfield.maxhpos << 8))
 			disk_hpos %= (1 << 8);
 
 		for (dr = 0; dr < MAX_FLOPPY_DRIVES; dr++) {
@@ -1429,7 +1424,7 @@ function Disk() {
 				this.dmafinished();
 			return;
 		}
-		this.update(AMIGA.events.maxhpos);
+		this.update(AMIGA.playfield.maxhpos);
 	}
 	
 	this.update_adkcon = function(v) {

@@ -6,6 +6,9 @@
 * ©2012 Rupert Hausberger
 * Commercial use is prohibited.
 *
+***************************************************************************
+* Notes: Ported from WinUAE 2.5.0
+* 
 **************************************************************************/
 
 /*const DEBUG_CHANNEL_MASK = 15
@@ -70,9 +73,7 @@ function Filter() {
 	}		
 
 	this.filter = function(input, state) {
-		if (!this.on)
-			return input;
-
+		//if (!this.on) return input;
 		var o, fs = filter_state[state];
 
 		fs.rc1 = filter1_a0 * input  + (1 - filter1_a0) * fs.rc1 + DENORMAL_OFFSET;
@@ -83,12 +84,11 @@ function Filter() {
 			fs.rc3 = filter_a0 * no     + (1 - filter_a0) * fs.rc3;
 			fs.rc4 = filter_a0 * fs.rc3 + (1 - filter_a0) * fs.rc4;
 			fs.rc5 = filter_a0 * fs.rc4 + (1 - filter_a0) * fs.rc5;
-			o = fs.rc5;
+			o = Math.floor(fs.rc5);
 		} else
-			o = no;
+			o = Math.floor(no);
 
-		if (o > 32767) o = 32767; else if (o < -32768) o = -32768;
-		return o;
+		return o > 32767 ? 32767 : (o < -32768 ? -32768 : o);
 	}
 }
 
@@ -367,6 +367,9 @@ function Channel(num) {
 }
 
 function Audi0() {
+	const SAMPLE_BUFFER_SIZE = 8192 >> 0;
+	this.available = 0;
+
 	var channel = null;
 
 	var last_cycles = 0;
@@ -410,6 +413,35 @@ function Audi0() {
 
 	/*---------------------------------*/
 
+	//this.init = function()
+	{
+		var test;		
+
+		/*try {
+			test = new AudioContext();
+			test = null;
+			this.available |= SAEI_Audio_Default;
+		} catch (e) {}*/		
+
+		try {
+			test = new webkitAudioContext();
+			if (test && test.createJavaScriptNode)
+				this.available |= SAEI_Audio_Webkit;
+			test = null;
+		} catch (e) {}				
+
+		try {
+			test = new Audio();
+			if (test && test.mozSetup)
+				this.available |= SAEI_Audio_Mozilla;
+			test = null;
+		} catch (e) {}				
+
+ 		//console.log(this.available);		
+	}		
+
+	/*---------------------------------*/
+
 	function getRate(v) {
 		switch (v) {
 			case SAEV_Config_Audio_Rate_11025: return 11025;
@@ -420,30 +452,29 @@ function Audi0() {
 		}		
 	} 
 			
-	this.recalc_sample_evtime = function() {
-		var hpos, lines = 0;
+	this.calc_sample_evtime = function(freq, longframe, linetoggle) {
+		var lines = 0.0;
+		var hpos;
 
-		if (AMIGA.config.video.ntsc) {
-			hpos = 227.5;
+		if (linetoggle) {
+			hpos = AMIGA.playfield.maxhpos_short + 0.5;
 			lines += 0.5;
 		} else {
-			var longframe = (AMIGA.playfield.bplcon0 & 4) ? -1 : AMIGA.events.lofStore;
-			hpos = 227;
+			hpos = AMIGA.playfield.maxhpos_short + 0.0;
 			if (longframe < 0)
 				lines += 0.5;
 			else if (longframe > 0)
 				lines += 1.0;
 		}
-		lines += AMIGA.events.maxvpos;
-
-		scaled_sample_evtime_orig = Math.floor(hpos * lines * AMIGA.events.hz * CYCLE_UNIT / getRate(AMIGA.config.audio.rate));
+		lines += AMIGA.playfield.maxvpos_nom;
+		scaled_sample_evtime_orig = Math.floor(hpos * lines * freq * CYCLE_UNIT / getRate(AMIGA.config.audio.rate));
 		scaled_sample_evtime = scaled_sample_evtime_orig;
-		//sampler_evtime = hpos * lines * AMIGA.events.hz * CYCLE_UNIT;
-		
-		//scaled_sample_evtime = Math.floor((AMIGA.events.maxhpos * AMIGA.events.maxvpos * AMIGA.events.hz + getRate(AMIGA.config.audio.rate) - 1) / getRate(AMIGA.config.audio.rate)) * CYCLE_UNIT;		
-
-		console.log('Audio.recalc_sample_evtime() scaled_sample_evtime %f (%f) | hpos %d, lines %d', scaled_sample_evtime, scaled_sample_evtime * CYCLE_UNIT_INV, hpos, lines);	
-	}	
+/*#if 0
+		lines -= AMIGA.playfield.maxvpos_nom;
+		BUG.info('%d.%d %d.%d %.2f', maxhpos_short, linetoggle ? 5 : 0, maxvpos_nom + (lines == 1.0 ? 1 : 0), lines > 0 && lines < 1 ? 5 : 0, scaled_sample_evtime);
+#endif*/
+		BUG.info('Audio.calc_sample_evtime() scaled_sample_evtime %f (%f) | hpos %d, lines %d', scaled_sample_evtime, scaled_sample_evtime * CYCLE_UNIT_INV, hpos, lines);	
+	}
 
 	this.setup = function() { 		
 		if (channel === null) {
@@ -455,53 +486,32 @@ function Audi0() {
 			return;
 
 		if (driver.ctx === null) {
-			if (BrowserDetect.browser == 'Firefox') {
-				try {
-					driver.ctx = new Audio();
-					BUG.info('Audio.setup() using "Audio()"');
-				} catch (e) {}				
-			} else {
-				try {
-					driver.ctx = new AudioContext();
-					BUG.info('Audio.setup() using "AudioContext()"');
-				} catch (e) {
-					try {
-						driver.ctx = new webkitAudioContext();
-						BUG.info('Audio.setup() using "webkitAudioContext()"');
-					} catch (e) {}				
-				}				
-			}	
+			if (this.available & SAEI_Audio_Webkit)
+				driver.ctx = new webkitAudioContext();
+			else if (this.available & SAEI_Audio_Mozilla)
+				driver.ctx = new Audio();
 		}
 		if (driver.ctx === null) {
 			if (confirm('Can\'t initialise WebAudio. Continue without audio-playback?')) {
 				AMIGA.config.audio.mode = SAEV_Config_Audio_Mode_Emul;
 				return;
 			} else
-				Fatal(SAEE_Audio_WebAudio_Not_Avail, 'Can\'t initialise WebAudio.');       
+				Fatal(SAEE_Audio_WebAudio_Not_Avail, null);
 		}
 		
-		this.filter.setup(0);
+		this.filter.setup(AMIGA.config.audio.filter); /* A500 lowpass-filter */
 			
-		this.recalc_sample_evtime();		
+		var hz = AMIGA.config.video.ntsc ? 60 : 50;
+		this.calc_sample_evtime(hz, 1, AMIGA.config.video.ntsc);
 		
-		sampleBuffer.size = 8192 >> 0;
+		sampleBuffer.size = SAMPLE_BUFFER_SIZE;
 		sampleBuffer.realSize = sampleBuffer.size << 1;
 		sampleBuffer.data = new Float32Array(sampleBuffer.realSize << (AMIGA.config.audio.channels - 1));
 
-		ringBuffer.size = sampleBuffer.size << 1;
+		ringBuffer.size = sampleBuffer.size + (sampleBuffer.size >> 1);
 		ringBuffer.data = new Float32Array(ringBuffer.size << (AMIGA.config.audio.channels - 1));
 
-		if (BrowserDetect.browser == 'Firefox') {
-			driver.ctx.mozSetup(AMIGA.config.audio.channels, getRate(AMIGA.config.audio.rate));
-
-			/*driver.moz.currentWritePosition = 0;
-			driver.moz.prebufferSize = getRate(AMIGA.config.audio.rate) >> 1; //prebuffer 500ms
-			driver.moz.tail = null;*/
-			//driver.moz.interval = setInterval(mozHandler, Math.floor(1000 / (getRate(AMIGA.config.audio.rate) / sampleBuffer.size)));
-			driver.moz.interval = setInterval(mozHandler, Math.floor(1000 / AMIGA.events.hz * (sampleBuffer.size / (getRate(AMIGA.config.audio.rate) / AMIGA.events.hz))));
-
-			BUG.info('Audio.setup() enabled mozilla audio, channels %d, rate %d', AMIGA.config.audio.channels, getRate(AMIGA.config.audio.rate));
-		} else {
+		if (this.available & SAEI_Audio_Webkit) {
 			var inputs = BrowserDetect.browser == 'Safari' ? 1 : 0;				
 			//if (inputs == 1) BUG.info('Audio.setup() Safari fix enabled.');
 
@@ -510,32 +520,36 @@ function Audi0() {
 			driver.def.node.connect(driver.ctx.destination);
 			BUG.info('Audio.setup() enabled webkit audio, channels %d, rate %d', AMIGA.config.audio.channels, getRate(AMIGA.config.audio.rate));
 		}
+		else if (this.available & SAEI_Audio_Mozilla) {
+			driver.ctx.mozSetup(AMIGA.config.audio.channels, getRate(AMIGA.config.audio.rate));
+
+			/*driver.moz.currentWritePosition = 0;
+			driver.moz.prebufferSize = getRate(AMIGA.config.audio.rate) >> 1; //prebuffer 500ms
+			driver.moz.tail = null;*/
+			//driver.moz.interval = setInterval(mozHandler, Math.floor(1000 / (getRate(AMIGA.config.audio.rate) / sampleBuffer.size)));
+			driver.moz.interval = setInterval(mozHandler, Math.floor(1000 / hz * (sampleBuffer.size / (getRate(AMIGA.config.audio.rate) / hz))));
+
+			BUG.info('Audio.setup() enabled mozilla audio, channels %d, rate %d', AMIGA.config.audio.channels, getRate(AMIGA.config.audio.rate));
+		}
 	}
 
 	this.cleanup = function() {
 		if (driver.ctx !== null) {
-			if (BrowserDetect.browser == 'Firefox') {
-				clearInterval(driver.moz.interval);
-			} else {
+			if (this.available & SAEI_Audio_Webkit) {
 				driver.def.node.disconnect(0);				
 				driver.def.node = null;
+			}
+			else if (this.available & SAEI_Audio_Mozilla) {
+				clearInterval(driver.moz.interval);
 			}
 		}				
 	}
 		
 	this.pauseResume = function(pause) {
 		if (!AMIGA.config.audio.enabled || AMIGA.config.audio.mode == SAEV_Config_Audio_Mode_Emul) return;
-		
+
 		if (driver.ctx !== null) {
-			if (BrowserDetect.browser == 'Firefox') {
-				if (pause && !driver.paused) {
-					clearInterval(driver.moz.interval);
-					driver.paused = true;
-				} else if (!pause && driver.paused) {
-					driver.moz.interval = setInterval(mozHandler, 100);
-					driver.paused = false;
-				}
-			} else {
+			if (this.available & SAEI_Audio_Webkit) {		
 				if (driver.def.node) {
 					if (pause && !driver.paused) {
 						driver.def.node.disconnect(0);
@@ -546,20 +560,29 @@ function Audi0() {
 					}
 				}
 			}
+			else if (this.available & SAEI_Audio_Mozilla) {
+				if (pause && !driver.paused) {
+					clearInterval(driver.moz.interval);
+					driver.paused = true;
+				} else if (!pause && driver.paused) {
+					driver.moz.interval = setInterval(mozHandler, 100);
+					driver.paused = false;
+				}
+			}
 		}
 	}
 
 	this.reset = function() {
 		for (var i = 0; i < 4; i++)
 			channel[i].reset();
-
+			
 		last_cycles = AMIGA.events.currcycle;
 		next_sample_evtime = scaled_sample_evtime;
 		this.schedule();
 		AMIGA.events.schedule();
 
 		work_to_do = 0;
-		prevcon = -1;
+		prevcon = 0;
 
 		sampleBuffer.pos = 0;
 		sampleBuffer.rate.clr();				
@@ -592,7 +615,7 @@ function Audi0() {
 			ret = 1;
 			this.event_reset();
 		}
-		work_to_do = 4 * AMIGA.events.maxvpos * 50;
+		work_to_do = 4 * AMIGA.playfield.maxvpos_nom * 50;
 		return ret;
 	}
 
@@ -716,15 +739,15 @@ function Audi0() {
 	}
 
 	this.hsync = function() {
-		//if (!AMIGA.config.audio.enabled) return; /* done in events.hSyncPre() */
-		
 		if (work_to_do > 0) {
-			work_to_do--;
-			if (work_to_do == 0)
+			//work_to_do--;
+			if (--work_to_do == 0)
 				this.deactivate();
 		}
 		this.update();
 	}
+	
+	this.vsync = function() { }
 	
 	/*---------------------------------*/
 
@@ -763,7 +786,7 @@ function Audi0() {
 
 		if (per < PERIOD_MIN * CYCLE_UNIT)
 			per = PERIOD_MIN * CYCLE_UNIT;
-		if (per < PERIOD_MIN_NONCE * CYCLE_UNIT && !AMIGA.config.cpu.exact && channel[nr].dmaenstore)
+		if (per < PERIOD_MIN_NONCE * CYCLE_UNIT && channel[nr].dmaenstore)
 			per = PERIOD_MIN_NONCE * CYCLE_UNIT;
 
 		if (channel[nr].per == PERIOD_MAX - 1 && per != PERIOD_MAX - 1) {
@@ -853,8 +876,10 @@ function Audi0() {
  		data1 += data2;
 		data2 = data0 << 1;
 		data3 = data1 << 1;
-		data2 = this.filter.filter(data2, 0);
-		data3 = this.filter.filter(data3, 1);
+		if (AMIGA.config.audio.filter) {
+			data2 = this.filter.filter(data2, 0);
+			data3 = this.filter.filter(data3, 1);
+		}
 
 		if (sampleBuffer.pos < sampleBuffer.realSize) {			
 			if (AMIGA.config.audio.channels == SAEV_Config_Audio_Channels_Stereo) {			
@@ -910,8 +935,10 @@ function Audi0() {
  		data1 += data2;
 		data2 = data0 << 1;
 		data3 = data1 << 1;
-		data2 = this.filter.filter(data2, 0);
-		data3 = this.filter.filter(data3, 1);
+		if (AMIGA.config.audio.filter) {
+			data2 = this.filter.filter(data2, 0);
+			data3 = this.filter.filter(data3, 1);
+		}
 
 		if (sampleBuffer.pos < sampleBuffer.realSize) {			
 			if (AMIGA.config.audio.channels == SAEV_Config_Audio_Channels_Stereo) {			
@@ -921,7 +948,7 @@ function Audi0() {
 			} else
 				sampleBuffer.data[sampleBuffer.pos++] = inv32768 * ((data2 + data3) * 0.5);
 		} else
-			BUG.info('Audio.sample_handler() audio buffer over-run!');
+			BUG.info('Audio.sample_handler_crux() audio buffer over-run!');
 	}
 
 	this.sample_handler_rh = function() { 
@@ -938,23 +965,25 @@ function Audi0() {
 			var delta, ratio;
 
 			delta = channel[0].per;
-			ratio = ((channel[0].evtime % delta) << 8) / delta;
+			ratio = Math.floor(((channel[0].evtime % delta) << 8) / delta);
 			data0 = (data0 * (256 - ratio) + data0p * ratio) >> 8;
 			delta = channel[1].per;
-			ratio = ((channel[1].evtime % delta) << 8) / delta;
+			ratio = Math.floor(((channel[1].evtime % delta) << 8) / delta);
 			data1 = (data1 * (256 - ratio) + data1p * ratio) >> 8;
 			delta = channel[2].per;
-			ratio = ((channel[2].evtime % delta) << 8) / delta;
+			ratio = Math.floor(((channel[2].evtime % delta) << 8) / delta);
 			data1 += (data2 * (256 - ratio) + data2p * ratio) >> 8;
 			delta = channel[3].per;
-			ratio = ((channel[3].evtime % delta) << 8) / delta;
+			ratio = Math.floor(((channel[3].evtime % delta) << 8) / delta);
 			data0 += (data3 * (256 - ratio) + data3p * ratio) >> 8;
 		}
 
 		data2 = data0 << 1;
 		data3 = data1 << 1;
-		data2 = this.filter.filter(data2, 0);
-		data3 = this.filter.filter(data3, 1);
+		if (AMIGA.config.audio.filter) {
+			data2 = this.filter.filter(data2, 0);
+			data3 = this.filter.filter(data3, 1);
+		}
 
 		if (sampleBuffer.pos < sampleBuffer.realSize) {			
 			if (AMIGA.config.audio.channels == SAEV_Config_Audio_Channels_Stereo) {			
@@ -964,13 +993,13 @@ function Audi0() {
 			} else
 				sampleBuffer.data[sampleBuffer.pos++] = inv32768 * ((data2 + data3) * 0.5);
 		} else
-			BUG.info('Audio.sample_handler() audio buffer over-run!');
+			BUG.info('Audio.sample_handler_rh() audio buffer over-run!');
 	}
 	
 	/*---------------------------------*/
 	
 	//var avg = 0, cnt = 0;
-	
+		
 	function fillRingBuffer() {
 		if (sampleBuffer.pos == 0) return false;
 		
@@ -1042,10 +1071,8 @@ function Audi0() {
 				ringBuffer.usage = 0;	
 			}	
 		} 
-
 		//console.log(sampleBuffer.pos, ringBuffer.usage, rate);	
 		sampleBuffer.pos = 0;
-		
 		return [playBuffer, rate];
 	}
 	
