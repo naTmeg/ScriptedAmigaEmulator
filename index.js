@@ -145,7 +145,7 @@ const db = [
 		['Turrican II - The Final Fight', 'Rainbow Arts', '1991',
 			['Turrican II - The Final Fight (Disk 1).adf',
 			'Turrican II - The Final Fight (Disk 2).adf',
-			false, false], [false, true],
+			false, false], [true, true],
 			[true, 16, 17, false], [], [['Fire-beam','Hold Fire 1'],['Roll on floor', 'Down-arrow + Fire 1'],['Bomb', 'Fire 2'],['Super-Bomb', 'Fire 1 + Fire 2']], false 
 		],
 		['Wings of Death', 'Thalion', '1990',
@@ -1089,10 +1089,14 @@ function init() {
 	
 	setSimpleConfig();
 
-	if (window.location.hash.length > 0) {
-		var name = urldecode(window.location.hash.substr(1));
+	if (window.location.hash.length > 1) {
 		var start = false;
-	
+		var name = urldecode(window.location.hash.substr(1));
+		while (true) {
+			var tmp = name.replace('_', ' ');
+			if (tmp == name) break;
+			name = tmp;	
+		}					
 		for (var i = 0; i < db[0].length; i++) {
 			if (db[0][i][0] == name) {
 				document.getElementById('cfg_game')[i+1].selected = true;
@@ -1123,9 +1127,15 @@ function start() {
 	
 	if (mode == 0) {	
 		var item = dbNum > 0 ? db[dbGrp - 1][dbNum - 1] : null;
-		if (item)
-			window.location.hash = item[0];
-		else
+		if (item) {
+			var name = item[0];
+			while (true) {
+				var tmp = name.replace(' ', '_');
+				if (tmp == name) break;
+				name = tmp;	
+			}					
+			window.location.hash = name;
+		} else
 			window.location.hash = '';
 	} else	
 		window.location.hash = '';
