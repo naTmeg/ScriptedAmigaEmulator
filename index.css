@@ -73,16 +73,15 @@ body {
 	font-size:x-small;
 }
 
-#xconfig {
-	width:400px;
+#config_simple  {
+	width:780px;
+	padding:10px;
 	margin:auto;
+	border:1px solid #ccc;
 	background-color:#fcfcfc;
 }
-#config_simple  {
-	width:380px;
-	margin:auto;
-}
 .config_simple_hof  {
+	width:480px;
 	margin:auto;
 	padding:10px;
 	border:1px solid #ccc;
@@ -187,7 +186,7 @@ body {
 	margin:auto;
 	padding:10px;
 	border:1px solid #ccc;
-	background-color:#f8f8f8;
+	background-color:#fcfcfc;
 }
 .readme table {
 	width:100%;

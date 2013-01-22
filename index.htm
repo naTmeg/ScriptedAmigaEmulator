@@ -39,18 +39,32 @@
 					<div class="noscript">This site does require javascript, obviously :)</div>  	
 				</noscript>
 				<div style="height:8px"></div> 		
-				<img src="images/logo.png" alt="Scripted Amiga Emulator" />
-				<div class="acmsg" style="line-height:16px">
-					<i>Experimental</i> <a href="javascript:openNewTab('http://en.wikipedia.org/wiki/Amiga')">Amiga</a> emulator in pure JavaScript and HTML5<br />
-					based on <a href="javascript:openNewTab('http://www.amigaemulator.org')">UAE</a>/<a href="javascript:openNewTab('http://winuae.net')">WinUAE</a>, 
-					powered by <a href="javascript:openNewTab('http://aros.org')">AROS</a>
-				</div>		
+				<img src="images/logo.png" alt="Scripted Amiga Emulator" />	
 			</div>	  					
-			<div style="height:8px"></div> 		
+ 		
 			<div id="config">			  	
-				<div id="config_simple">				
+				<div id="config_simple">	
+					<h3>Welcome!</h3>
+					This site is the homepage of the project <a href="javascript:openNewTab('https://github.com/naTmeg/ScriptedAmigaEmulator')">SAE</a>,
+					an <i>experimental</i> <a href="javascript:openNewTab('http://en.wikipedia.org/wiki/Amiga')">Amiga</a> emulator in pure JavaScript and HTML5.<br />
+					SAE is based on <a href="javascript:openNewTab('http://winuae.net')">WinUAE</a> and does use the <a href="javascript:openNewTab('http://aros.org')">AROS</a>-kickstart replacement. 
+					For more details, please see the <a href="javascript:openNewTab('readme.htm')">description</a>.<br /> 					
+					<br />     		
+					Below you find a collection of pre-installed games and demos to play and test. Press the 'Config'-button to use your own roms or file-images, with advanced options.<br />
+					<br />
+					<span style="font-size:x-small;color:orange">
+					Update 22.01.2013: The new game-database is now online. It's quite empty yet and will be filled with freeware and public-domain titles.<br /> 					
+					<br />
+					</span>				 
+					<span class="info">
+					<span class="fwb">Your game or demo online</span><br />		
+					If you want to have your game or demo on this site, please <a href="mailto:rupert_hausberger@gmx.net">contact</a> me.
+					It would be published under a free license, with a link to your homepage and would be free to play for everyone.
+					This is a non-profit site and an open-source project.<br />
+					<br />
+					</span>
 					<div class="config_simple_hof">
-						<div class="acm">
+						<!--<div class="acm">
 							<span class="fwb">Browser</span>		
 						</div>
 						<table>		
@@ -69,10 +83,10 @@
 						</table>		
 						<div style="height:10px"></div> 													
 						<div class="hr"></div> 
-						<div style="height:10px"></div> 													
-						<div class="acm">
+						<div style="height:10px"></div>--> 													
+						<!--<div class="acm">
 							<span class="fwb">Hall of fame</span>		
-						</div>
+						</div>-->
 						<table>		
 							<tr>
 								<td class="armsb">Game</td>  
@@ -103,6 +117,7 @@
 								<td><input id="cfg_video_scale_1" type="checkbox" /><span class="info">(double video-size via hardware)</span></td>			
 							</tr>
 						</table>					
+						<div style="height:5px"></div> 
 						<div class="hr"></div> 
 						<table id="cfg_info">
 							<tr>
@@ -110,12 +125,20 @@
 								<td><span id="cfg_info_name"></span></td>
 							</tr>
 							<tr>
-								<td class="armsb">From</td>
+								<td class="armsb">Year</td>
+								<td><span id="cfg_info_year"></span></td>
+							</tr>
+							<tr>
+								<td class="armsb">Developer</td>
 								<td><span id="cfg_info_comp"></span></td>
 							</tr>
 							<tr>
-								<td class="armsb">Year</td>
-								<td><span id="cfg_info_year"></span></td>
+								<td class="armsb">Publisher</td>
+								<td><span id="cfg_info_publ"></span></td>
+							</tr>
+							<tr>
+								<td class="armsb">License</td>
+								<td><span id="cfg_info_lic"></span></td>
 							</tr>
 							<tr id="cfg_info_ctrl_grp">
 								<td class="armsb">Controls</td>
@@ -589,6 +612,7 @@
 			<div style="height:6px"></div> 		
 			<div id="foot" class="foot" style="line-height:14px">
 				<span class="gray">2012-2013 Rupert Hausberger</span> | 
+				<span class="gray">ver 0.8.1</span> | 
 				<a href="javascript:openNewTab('https://github.com/naTmeg/ScriptedAmigaEmulator')">Source-code</a> | 
 				<a href="javascript:openNewTab('readme.htm')">Description</a>
 			</div>		

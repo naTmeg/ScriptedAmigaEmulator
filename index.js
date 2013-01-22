@@ -12,148 +12,24 @@
 * 
 **************************************************************************/
 
+const URL_TEAM_HOI = '<a href="javascript:openNewTab(\'http://www.sevensheaven.nl\')">Team Hoi</a>';
+const URL_RETROGURU = '<a href="javascript:openNewTab(\'http://www.retroguru.com\')">retroguru</a>';
+
 const db = [
 	/* name company year [disks] [change, turbo] [en,f1,f2,map] load [keys] immediate */			
 	[
-		['Agony', 'Psygnosis', '1992',
-			['Agony (Disk 1).adf',
-			'Agony (Disk 2).adf',
-			'Agony (Disk 3).adf',
-			false], [false, true],
-			[true, 16, 17, false],
-			['Press the LMB to skip the intro.'], [['Weapon menu', 'Space']], false 
+		['Hoi', [URL_TEAM_HOI, 'Hollyware', 'Freeware'], '1992',
+			['Hoi (Disk 1).adf',
+			'Hoi (Disk 2).adf', false, false], [true, true],
+			[true, 16, 17, false], ['Press the LMB to skip the intro and insert the 2nd disk manually.'], [], false 
 		],
-		['Alien Breed', 'Team 17', '1991',
-			['Alien Breed (Disk 1).adf',
-			'Alien Breed (Disk 2).adf',
-			false, false], [true, true],
-			[true, 16, 17, false],
-			['Insert the 2nd disk manualy and HOLD the fire button.'], [['Show map', 'M']], false 
+		['Sqrxz', [URL_RETROGURU, '-', 'Freeware'], '2012',
+			['sqrxz.adf', false, false, false], [false, true],
+			[true, 16, 17, false], ['The color-stripes are normal, just wait...'], [], false 
 		],
-		['Alien Breed II - The Horror Continues', 'Team 17', '1993',
-			['Alien Breed II - The Horror Continues (Disk 1).adf',
-			'Alien Breed II - The Horror Continues (Disk 2).adf',
-			'Alien Breed II - The Horror Continues (Disk 3).adf', false], [false, false],
-			[true, 16, 17, false],
-			['Press the LMB to skip the intro.'], [['Show map', 'M']], false 
-		],
-		['Alien Breed - Tower Assault', 'Team 17', '1994',
-			['Alien Breed - Tower Assault (Disk 1).adf',
-			'Alien Breed - Tower Assault (Disk 2).adf',
-			'Alien Breed - Tower Assault (Disk 3).adf',
-			'Alien Breed - Tower Assault (Disk 4).adf'], [false, true],
-			[true, 8, 17, false],
-			['Press ESC to skip the intro.'], [['Show map', 'M']], false 
-		],
-		/*['Another World', 'Delphine - U.S. Gold', '1991',
-			['Another World (Disk 1).adf',
-			'Another World (Disk 2).adf',
-			false, false], [false, true],
-			[true, 16, 17, false], ['Select 2x OK when asked.'], [], true 
-		],*/
-		['Blood Money', 'DMA Design', '1989',
-			['Blood Money (Disk 1).adf',
-			'Blood Money (Disk 2).adf',
-			false, false], [true, false],
-			[true, 16, 17, false],
-			['Press the LMB until the main-nemu<br />and insert the 2nd disk manualy.'], [], false 
-		],
-		['Body Blows Galactic', 'Team 17', '1993',
-			['Body Blows Galactic (Disk 1).adf',
-			'Body Blows Galactic (Disk 2).adf',
-			'Body Blows Galactic (Disk 3).adf',
-			false], [false, false],
-			[true, 16, 17, false], ['Press the LMB to skip the intro.'], [], false 
-		],
-		/*['Dyna Blaster', 'Ubi Soft', '1992',
-			['Dyna Blaster.adf',
-			false, false, false], [false, false],
-			[true, 16, 17, false], ['Press the LMB to skip the intro.'], [], false 
-		],*/
-		['Lemmings', 'Psygnosis', '1991',
-			['Lemmings (Disk 1).adf',
-			'Lemmings (Disk 2).adf',
-			false, false], [false, true],
-			[false, 0, 0, false], [], [['with','Mouse']], false 
-		],
-		['Lotus Turbo Challenge 2', 'Gremlin', '1991',
-			['Lotus Turbo Challenge 2.adf',
-			false, false, false], [false, true],
-			[true, 16, 17, false], ['Press the LMB to skip the intro.'], [], false 
-		],
-		['Pac-Mania', 'Grandslam', '1988',
-			['Pac-Mania.adf',
-			false, false, false], [false, true],
-			[true, 16, 17, false], [], [], false 
-		],
-		['Pinball Dreams', 'DICE', '1992',
-			['Pinball Dreams (Disk 1).adf',
-			'Pinball Dreams (Disk 2).adf',
-			false, false], [false, true],
-			[false, 0, 0, true], [], [['Select table','F1-F4'],['Start game','F1-F8'],['Shoot Ball','Down-Arrow'],['Flip','L/R-Arrows'],['Shake table','Space'],['Change table','ESC and then y/z'],['En/Disable music','M']], false 
-		],
-		['Pinball Fantasies', 'DICE', '1992',
-			['Pinball Fantasies (Disk 1).adf',
-			'Pinball Fantasies (Disk 2).adf',
-			'Pinball Fantasies (Disk 3).adf',
-			false], [true, true],
-			[false, 0, 0, true],
-			['When asked to remove write protection from disk, press the LMB.'],
-			[['Select table','F1-F4'],['Start game','F1-F8'],['Shoot Ball','Down-Arrow'],['Flip','L/R-Arrows'],['Shake table','Space'],['Change table','ESC and then y/z'],['En/Disable music','M']], false 
-		],
-		['Prince of Persia', 'Domark', '1991',
-			['Prince of Persia.adf',
-			false, false, false], [false, true],
-			[true, 16, 17, false], ['Press the LMB to skip the intro.'], [], false 
-		],
-		['Project-X - Special Edition 93', 'Team 17', '1993',
-			['Project-X - Special Edition 93 (Disk 1).adf',
-			'Project-X - Special Edition 93 (Disk 2).adf',
-			'Project-X - Special Edition 93 (Disk 3).adf',
-			false], [false, true],
-			[true, 16, 17, false],
-			['Press the LMB to skip the intro.'], [['Select weapon', 'Space (not in trainer mode)']], false 
-		],
-		['Rick Dangerous', 'Firebird', '1989',
-			['Rick Dangerous.adf',
-			false, false, false], [false, true],
-			[true, 16, 17, false], [], [], false 
-		],
-		['Shadow of the Beast II', 'Reflections', '1990',
-			['Shadow of the Beast II (Disk 1).adf',
-			'Shadow of the Beast II (Disk 2).adf',
-			'Shadow of the Beast II (Disk 3).adf',
-			false], [true, true],
-			[true, 16, 17, false],
-			['Change the disks manualy when asked.'], [], false 
-		],
-		['Superfrog', 'Team 17', '1993',
-			['Superfrog (Disk 1).adf',
-			'Superfrog (Disk 2).adf',
-			'Superfrog (Disk 3).adf',
-			'Superfrog (Disk 4).adf'], [true, false],
-			[true, 16, 17, false],
-			['Change the disks manualy when asked.'], [], false 
-		],
-		['Terminator 2 - Judgment Day', 'Ocean', '1991',
-			['Terminator 2 - Judgment Day (Disk 1).adf',
-			'Terminator 2 - Judgment Day (Disk 2).adf',
-			false, false], [true, false],
-			[true, 16, 17, false],
-			['Press the LMB to skip the intro<br />and insert the 2nd disk manualy.'], [], true 
-		],
-		['Turrican II - The Final Fight', 'Rainbow Arts', '1991',
-			['Turrican II - The Final Fight (Disk 1).adf',
-			'Turrican II - The Final Fight (Disk 2).adf',
-			false, false], [true, true],
-			[true, 16, 17, false], [], [['Fire-beam','Hold Fire 1'],['Roll on floor', 'Down-arrow + Fire 1'],['Bomb', 'Fire 2'],['Super-Bomb', 'Fire 1 + Fire 2']], false 
-		],
-		['Wings of Death', 'Thalion', '1990',
-			['Wings of Death (Disk 1).adf',
-			'Wings of Death (Disk 2).adf',
-			false, false], [true, true],
-			[true, 16, 17, false],
-			['Press the LMB until the main-menu<br />and insert the 2nd disk manualy.'], [], false 
+		['Sqrxz 2', [URL_RETROGURU, '-', 'Freeware'], '2012',
+			['sqrxz2.adf', false, false, false], [false, true],
+			[true, 16, 17, false], ['After the start, click the RMB for the trainer menu.<br />The color-stripes are normal, just wait...'], [], false 
 		],
 	],
 	[
@@ -200,7 +76,7 @@ const db = [
 			'Hardwired (Disk 2).adf',
 			false,false], [true, true],
 			[true, 16, 17, false],
-			['Insert the 2nd disk manualy,<br />click RMB when done.'], [], true
+			['Insert the 2nd disk manually and<br />click the RMB when done.'], [], true
 		], 
 		['Ice', 'Silents', '1991',
 			['Ice.adf',false,false,false], [false, true],
@@ -249,7 +125,7 @@ const db = [
 		['World of Commodore', 'Sanity', '1992',
 			['World of Commodore.adf',false,false,false], [false, true],
 			[true, 16, 17, false], [], [], false
-		], 
+		] 
 	]
 ];
 var dbGrp = 0;
@@ -519,7 +395,7 @@ function loadRemoteSync(url) {
 
 function setSimpleConfig() {
 	//document.getElementById('info_name').innerHTML = info.browser_name+' '+info.browser_version+' ('+info.os+')';
-	var e = document.getElementById('info_video');
+	/*var e = document.getElementById('info_video');
 	if (info.video) {
 		var t = '';
 		if (info.video & SAEI_Video_WebGL) t += 'WebGL, '; 		
@@ -541,7 +417,7 @@ function setSimpleConfig() {
 		e.innerHTML = 'None';
 		e.style.color = 'orange';		
 	}
-	e = document.getElementById('info_version').innerHTML = info.version;	
+	e = document.getElementById('info_version').innerHTML = info.version;*/	
 	
 		
 	var s = document.getElementById('cfg_game');
@@ -1254,7 +1130,15 @@ function preSelect(grp)
 	var item = db[grp - 1][num - 1];
 		
 	document.getElementById('cfg_info_name').innerHTML = item[0];
-	document.getElementById('cfg_info_comp').innerHTML = item[1];
+	if (typeof(item[1]) == 'object') {
+		document.getElementById('cfg_info_comp').innerHTML = item[1][0];
+		document.getElementById('cfg_info_publ').innerHTML = item[1][1];
+		document.getElementById('cfg_info_lic').innerHTML = item[1][2];
+	} else {
+		document.getElementById('cfg_info_comp').innerHTML = item[1];
+		document.getElementById('cfg_info_publ').innerHTML = '-';		
+		document.getElementById('cfg_info_lic').innerHTML = '-';		
+	}
 	document.getElementById('cfg_info_year').innerHTML = item[2];
 	styleDisplayTable('cfg_info', 1);
 	styleDisplayInline('dskchg_grp', item[4][0] ? 1 : 0);	
