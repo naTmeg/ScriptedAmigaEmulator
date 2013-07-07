@@ -235,7 +235,7 @@ function Cache() {
                roms[num] = data;
                return data;
             } else
-               alert('Wrong checksum for ' + url + ' (is $' + dechex(crc32(data)) + ', should $' + dechex(crc) + ')');
+               alert('Wrong checksum for ' + url + ' (is $' + dechex(crc32(data)) + ', should $' + dechex(crc) + ')\n\nFlush the browser-cache with "Ctrl+Shift+Del" and press F5 to reload...');
          } else
             alert('Wrong file-length for ' + url + ' (' + size + ')');
       }
