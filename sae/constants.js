@@ -10,20 +10,14 @@
 
 const SAEV_Version = 0;
 const SAEV_Revision = 8;
-const SAEV_Revision_Sub = 0;
-
-/*-----------------------------------------------------------------------*/
-
-const SAEV_Null = null;
-
-const SAEV_True = true;
-const SAEV_False = false;
+const SAEV_Revision_Sub = 1;
 
 /*-----------------------------------------------------------------------*/
 /* info */
 
-const SAEI_Audio_Webkit = 1;
-const SAEI_Audio_Mozilla = 2;
+const SAEI_Audio_Default = 1;
+const SAEI_Audio_Webkit = 2;
+const SAEI_Audio_Mozilla = 4;
 
 const SAEI_Video_Canvas2D = 1;
 const SAEI_Video_WebGL = 2;
@@ -83,7 +77,7 @@ const SAEV_Config_EXT_Size_None = 0;
 const SAEV_Config_EXT_Size_256K = 1;
 const SAEV_Config_EXT_Size_512K = 2;
 
-const SAEV_Config_EXT_Addr_A0 = 1;
+//const SAEV_Config_EXT_Addr_A0 = 1;
 const SAEV_Config_EXT_Addr_E0 = 2;
 const SAEV_Config_EXT_Addr_F0 = 3;
 
@@ -138,7 +132,7 @@ const SAEV_Config_RTC_Type_RF5C01A = 2;
 /*-----------------------------------------------------------------------*/
 /* erros */
 
-const SAEE_None = 0;
+//const SAEE_None = 0;
 
 const SAEE_CPU_Internal = 1;
 const SAEE_CPU_68020_Required = 2;
@@ -148,31 +142,24 @@ const SAEE_Disk_File_Too_Big = 3;
 const SAEE_Video_Shader_Error = 4;
 const SAEE_Video_ID_Not_Found = 5;
 const SAEE_Video_Canvas_Not_Supported = 6;
-const SAEE_Video_WebGL_Not_Avail = 7;
+//const SAEE_Video_WebGL_Not_Avail = 7;
 
 const SAEE_Audio_WebAudio_Not_Avail = 8;
 
 /*-----------------------------------------------------------------------*/
 /* methods */
 
-const SAEM_Init = 1;
+/*const SAEM_Init = 1;
 const SAEM_Start = 2;
 const SAEM_Stop = 3;
 const SAEM_Pause = 4;
 const SAEM_Reset = 5;
 const SAEM_Insert = 6;
-const SAEM_Eject = 7;
+const SAEM_Eject = 7;*/
 
 /*-----------------------------------------------------------------------*/
-/*-----------------------------------------------------------------------*/
-/* debug */
-
-var BUG = null;
-
 /*-----------------------------------------------------------------------*/
 /* amiga */
-
-var AMIGA = null;
 
 const ST_STOP  = 0;
 const ST_CYCLE = 1;
@@ -251,8 +238,6 @@ const DMAF_BZERO	= 1 << 13;
 const DMAF_BBUSY	= 1 << 14;
 const DMAF_SETCLR	= 1 << 15;
 
-const INT_PROCESSING_DELAY = 3 * CYCLE_UNIT;
-
 /*-----------------------------------------------------------------------*/
 /* blitter  */
 
@@ -301,7 +286,7 @@ const EQU_ENDLINE_NTSC = 10;
 const CSMASK_ECS_AGNUS = 1;
 const CSMASK_ECS_DENISE = 2;
 const CSMASK_AGA = 4;
-const CSMASK_MASK = (CSMASK_ECS_AGNUS | CSMASK_ECS_DENISE | CSMASK_AGA);
+//const CSMASK_MASK = (CSMASK_ECS_AGNUS | CSMASK_ECS_DENISE | CSMASK_AGA);
 
 const CHIPSET_CLOCK_PAL  = 3546895;
 const CHIPSET_CLOCK_NTSC = 3579545;
@@ -338,7 +323,7 @@ const HARD_DDF_START = 0x18;
 const MAX_PLANES = 6; /* 8 = AGA */
 
 const AMIGA_WIDTH_MAX = 752 / 2;
-const AMIGA_HEIGHT_MAX = 574 / 2;
+//const AMIGA_HEIGHT_MAX = 574 / 2;
 
 const DIW_DDF_OFFSET = 1;
 const HBLANK_OFFSET = 9;
@@ -366,13 +351,13 @@ const COLOR_CHANGE_BRDBLANK = 0x80000000;
 
 const BPLCON_DENISE_DELAY = 1;
 
-const SPRITE_DEBUG = 0;
-const SPRITE_DEBUG_MINY = 0x0;
-const SPRITE_DEBUG_MAXY = 0x100;
-const SPR0_HPOS = 0x15;
-const MAX_SPRITES = 8;
+//const SPRITE_DEBUG = 0;
+//const SPRITE_DEBUG_MINY = 0x0;
+//const SPRITE_DEBUG_MAXY = 0x100;
 //const AUTOSCALE_SPRITES = 1;
 //const SPRBORDER = 0;
+const SPR0_HPOS = 0x15;
+const MAX_SPRITES = 8;
 
 const MAX_PIXELS_PER_LINE = 1760;
 
@@ -381,8 +366,6 @@ const MAX_REG_CHANGE = ((MAXVPOS + 1) * 2 * MAXHPOS);
 
 const MAX_STOP = 30000;
 const NO_BLOCK = -3;
-
-const FRAMES_UNTIL_RES_SWITCH = 1;
 
 const MAX_WORDS_PER_LINE = 100;
 

@@ -34,11 +34,11 @@ function Config() {
 			size: 0
 		},
 		slow: {
-			size: 0,
-		},
+			size: 0
+      },
 		fast: {
-			size: 0,
-		}
+			size: 0
+      }
 	};
 	this.rom = {
 		size: 0,
@@ -177,7 +177,7 @@ function Config() {
 		c.video.scanlines = 0 ? true : false;
 		c.video.extrawidth = 0;
 		c.video.xcenter = 0;
-		c.video.ycenter = 0  
+		c.video.ycenter = 0;
 	
 		c.audio.enabled = true;
 		//c.audio.mode = SAEV_Config_Audio_Mode_Play_Best;
@@ -203,11 +203,16 @@ function Config() {
 		c.cia.tod = 0;   
 		c.cia.tod_hack = true;   
 
-		c.hooks.error = function(err, msg) {}
-		c.hooks.power_led = function(on) {}
-		c.hooks.floppy_motor = function(unit, on) {}
-		c.hooks.floppy_step = function(unit, cyl) {}
-		c.hooks.fps = function(fps) {}	
+		c.hooks.error = function (err, msg) {
+      };
+		c.hooks.power_led = function (on) {
+      };
+		c.hooks.floppy_motor = function (unit, on) {
+      };
+		c.hooks.floppy_step = function (unit, cyl) {
+      };
+		c.hooks.fps = function (fps) {
+      };
 		c.hooks.cpu = function(usage) {}	
 	}
 	configSetDefaults(this);

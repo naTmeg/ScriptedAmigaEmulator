@@ -41,7 +41,7 @@ body {
 	left:0;
 	margin:0;
 	padding:0;
-	font-family:verdana;
+	font-family:verdana,serif;
 	font-size:small;
 	background-color:#fff;
 }
@@ -81,7 +81,7 @@ body {
 	background-color:#fcfcfc;
 }
 .config_simple_hof  {
-	width:480px;
+	width:380px;
 	margin:auto;
 	padding:10px;
 	border:1px solid #ccc;
@@ -114,7 +114,6 @@ body {
 	width:auto;
 }
 #config select {
-	border:0;
 	border:1px solid #ccc;
 }
 #config .button {
@@ -195,7 +194,7 @@ body {
 	vertical-align:top;
 }
 
-div.float_box {
+/*div.float_box {
 	overflow: hidden;
 	width: 100%;
 }
@@ -204,4 +203,4 @@ div.float_item {
 }
 div.float_clear {
 	clear: both;
-}
+}*/

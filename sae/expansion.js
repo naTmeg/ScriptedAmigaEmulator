@@ -14,7 +14,7 @@ function Board_A2058() {
 	const MEM_2MB		= 0x06;
 	const MEM_1MB		= 0x05;
 	const MEM_512KB	= 0x04;
-	const MEM_256KB	= 0x03;
+	//const MEM_256KB	= 0x03;
 	//const MEM_128KB	= 0x02;
 	//const MEM_64KB		= 0x01;
  
@@ -80,74 +80,74 @@ function Expansion() {
 	var boards = [];
 	var board = 0;
 
-	this.setup = function() {
-		mem.data = new Uint16Array(0x8000);
-		boards = [];
-		if (AMIGA.mem.fast.size > 0)
-			boards[0] = new Board_A2058();		
-		else
-			boards[0] = new Board_Dummy();		
+	this.setup = function () {
+      mem.data = new Uint16Array(0x8000);
+      boards = [];
+      if (AMIGA.mem.fast.size > 0)
+         boards[0] = new Board_A2058();
+      else
+         boards[0] = new Board_Dummy();
 
-		for (var i = 1; i < MAX_EXPANSION_BOARDS; i++)
-			boards[i] = new Board_Dummy();			  
-	}
+      for (var i = 1; i < MAX_EXPANSION_BOARDS; i++)
+         boards[i] = new Board_Dummy();
+   };
 	
-	this.reset = function() {
-		board = 0;
-		this.config(board);
-	}
+	this.reset = function () {
+      board = 0;
+      this.config(board);
+   };
 	
-	this.clear = function() {
-		for (var i = 0; i < mem.data.length; i++)
-			mem.data[i] = 0;	
-	}
+	this.clear = function () {
+      for (var i = 0; i < mem.data.length; i++)
+         mem.data[i] = 0;
+   };
 	
 	this.write = function (addr, value) {
-		mem.data[(addr >> 1)] = (value & 0xf0) << 8;
-		mem.data[(addr >> 1) + 1] = (value & 0x0f) << 12;
-	}
+      mem.data[(addr >> 1)] = (value & 0xf0) << 8;
+      mem.data[(addr >> 1) + 1] = (value & 0x0f) << 12;
+   };
 
 	this.load8 = function (addr) {
-		addr &= 0xffff;
-		var value = (mem.data[addr >>> 1] >> ((addr & 1) ? 0 : 8)) & 0xff;
-		if (addr == 0 || addr == 2 || addr == 0x40 || addr == 0x42)
-			return value;
-		return ~value & 0xff;
-	}
+      addr &= 0xffff;
+      var value = (mem.data[addr >>> 1] >> ((addr & 1) ? 0 : 8)) & 0xff;
+      if (addr == 0 || addr == 2 || addr == 0x40 || addr == 0x42)
+         return value;
+      return ~value & 0xff;
+   };
 
 	this.store8 = function (addr, value) {
-		switch (addr & 0xff) {
-			case 0x30:
-			case 0x32:
-				mem.hi = 0;
-				mem.lo = 0;
-				this.write(0x48, 0x00);
-				break;
+      switch (addr & 0xff) {
+         case 0x30:
+         case 0x32:
+            mem.hi = 0;
+            mem.lo = 0;
+            this.write(0x48, 0x00);
+            break;
 
-			case 0x48:    
-				mem.hi = value;
-				//BUG.info('Expansion.store8() board %d done.', board + 1);
-				++board;
-				if (board <= MAX_EXPANSION_BOARDS)
-					this.config(board);
-				else
-					this.clear();
-				break;
+         case 0x48:
+            mem.hi = value;
+            //BUG.info('Expansion.store8() board %d done.', board + 1);
+            ++board;
+            if (board <= MAX_EXPANSION_BOARDS)
+               this.config(board);
+            else
+               this.clear();
+            break;
 
-			case 0x4a:	
-				mem.lo = value;
-				break;
+         case 0x4a:
+            mem.lo = value;
+            break;
 
-			case 0x4c:
-				//BUG.info('Expansion.store8() board %d faild.', board + 1);
-				++board;
-				if (board <= MAX_EXPANSION_BOARDS)
-					this.config(board);
-				else
-					this.clear();
-				break;
-		}
-	}	
+         case 0x4c:
+            //BUG.info('Expansion.store8() board %d faild.', board + 1);
+            ++board;
+            if (board <= MAX_EXPANSION_BOARDS)
+               this.config(board);
+            else
+               this.clear();
+            break;
+      }
+   };
 	
 	this.config = function(board) {
 		var info = boards[board].info();

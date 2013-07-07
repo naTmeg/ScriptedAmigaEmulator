@@ -14,15 +14,45 @@
 
 const URL_TEAM_HOI = '<a href="javascript:openNewTab(\'http://www.sevensheaven.nl\')">Team Hoi</a>';
 const URL_RETROGURU = '<a href="javascript:openNewTab(\'http://www.retroguru.com\')">retroguru</a>';
+const URL_LOEWENSTEIN = '<a href="javascript:openNewTab(\'http://www.richard-loewenstein.de\')">Richard Löwenstein</a>';
 
 const db = [
 	/* name company year [disks] [change, turbo] [en,f1,f2,map] load [keys] immediate */			
 	[
+		['Air Ace II', ['SEUCK', '-', 'Public Domain'], '1989',
+			['Air Ace II.adf', false, false, false], [false, true],
+			[true, 16, 17, false], ['...takes very long.'], [], false 
+		],
+		['Asteroids', ['Vertical Developments', '-', 'Public Domain'], '1979',
+			['Asteroids.adf', false, false, false], [false, true],
+			[true, 16, 17, false], [], [], false 
+		],
+		['Crazy Sue', ['Jumpshoe, Hironymous', '-', 'Public Domain'], '1991',
+			['Crazy Sue.adf', false, false, false], [false, true],
+			[true, 16, 17, false], ['...can take some time.'], [], false 
+		],
+		['Deluxe Galaga 2.4', ['Edgar Vigdal', '-', 'Freeware'], '1994',
+			['Deluxe Galaga.adf', false, false, false], [false, true],
+			[true, 16, 17, false], [], [], false 
+		],
 		['Hoi', [URL_TEAM_HOI, 'Hollyware', 'Freeware'], '1992',
 			['Hoi (Disk 1).adf',
 			'Hoi (Disk 2).adf', false, false], [true, true],
-			[true, 16, 17, false], ['Press the LMB to skip the intro and insert the 2nd disk manually.'], [], false 
+			[true, 16, 17, false], ['Press the LMB to skip the intro and insert the 2nd disk manually.<br /><br />'+
+			'<span title="After the disk-change, place the \'LVL\'-pointer in the far lower right of the green quarter screen. The bottom \'L\' must be positioned in the corner precisely. Click the LMB, then shift the \'LVL\' pointer to the absolute top left of the screen (as far as it can be moved in that direction). Click the LMB again. Any of the first four levels may now be selected for game play. Press the F4 key during game play for twelve lives. Note: Level 5 can only be accessed by completing level 4.">Cheat (move mouse-over)</span>'], [], false 			
 		],
+		['Norse Gods', [URL_LOEWENSTEIN, '-', 'Freeware'], '1991',
+			['Norse Gods.adf', false, false, false], [false, true],
+			[true, 16, 17, false], [], [], false 
+		],
+		['Pollymorf', ['Andrew Campbell', '-', 'Public Domain'], '1993',
+			['Pollymorf.adf', false, false, false], [false, true],
+			[true, 16, 17, false], ['...takes some time, just wait.'], [], false 
+		],
+		/*['Rectum', ['Mathias Olsson', '-', 'Freeware'], '1992',
+			['Rectum.adf', false, false, false], [false, true],
+			[true, 16, 17, false], ['Press the LMB to skip the intro...'], [], false 
+		],*/
 		['Sqrxz', [URL_RETROGURU, '-', 'Freeware'], '2012',
 			['sqrxz.adf', false, false, false], [false, true],
 			[true, 16, 17, false], ['The color-stripes are normal, just wait...'], [], false 
@@ -31,6 +61,14 @@ const db = [
 			['sqrxz2.adf', false, false, false], [false, true],
 			[true, 16, 17, false], ['After the start, click the RMB for the trainer menu.<br />The color-stripes are normal, just wait...'], [], false 
 		],
+		['Super Obliteration', ['David Papworth', '-', 'Freeware'], '1993',
+			['Super Obliteration.adf', false, false, false], [false, true],
+			[true, 16, 17, false], [], [], false 
+		],
+		['Tanx', ['Robertz Gaz', '-', 'Public Domain'], '1991',
+			['Tanx.adf', false, false, false], [false, true],
+			[true, 16, 17, false], [], [], false 
+		]
 	],
 	[
 		['242', 'Virtual Dreams', '1992',
@@ -77,6 +115,10 @@ const db = [
 			false,false], [true, true],
 			[true, 16, 17, false],
 			['Insert the 2nd disk manually and<br />click the RMB when done.'], [], true
+		], 
+		['HipHop Hater', 'Mathias Olsson', '1991',
+			['HipHop Hater.adf',false,false,false], [false, true],
+			[true, 16, 17, false], [], [], false
 		], 
 		['Ice', 'Silents', '1991',
 			['Ice.adf',false,false,false], [false, true],
@@ -134,12 +176,12 @@ var dbNum = 0;
 const aros_rom_file = 'aros-amiga-m68k-rom.bin';
 const aros_rom_url = 'http://'+window.location.hostname+'/db/'+aros_rom_file;
 const aros_rom_size = 0x80000;
-const aros_rom_crc = 0xea48b4d1; //0xfc4635e1;
+const aros_rom_crc = 0x48dfadd; //0xea48b4d1
 const aros_ext_file = 'aros-amiga-m68k-ext.bin';
 const aros_ext_url = 'http://'+window.location.hostname+'/db/'+aros_ext_file;
 const aros_ext_size = 0x80000;
-const aros_ext_crc = 0x60871435; //0xc612f82e;
-	
+const aros_ext_crc = 0xaaf211d6; //0x60871435
+
 var mode = 0;
 var paused = false;
 var dskchg = false;
@@ -163,42 +205,42 @@ function Cache() {
 	var roms = [null,null];
 	var disks = [];
 
-	this.loadRom = function(num) {
-		if (roms[num]) { 
-			console.log('loadRom.loadRom() %d is cached', num);
-			return roms[num];
-		}
-		console.log('loadRom.loadRom() downloading %d', num);
-		
-		var url, size, crc;
-		switch (num) {
-			case 0:
-				url = aros_rom_url;
-				size = aros_rom_size;
-				crc = aros_rom_crc; 
-				break;
-			case 1:
-				url = aros_ext_url;
-				size = aros_ext_size;
-				crc = aros_ext_crc;
-				break;
-		}		
-		var data = loadRemoteSync(url);
-		if (typeof(data) == 'number') {
-			alert('Can\'t download '+url+' (http status: '+data+')');				
-		} else {
-			if (data.length == size) {
-				//console.log(dechex(crc32(data)));
-				if (crc32(data) == crc) { 
-					roms[num] = data;
-					return data;
-				} else
-					alert('Wrong checksum for '+url+' (is $'+dechex(crc32(data))+', should $'+dechex(crc)+')'); 
-			} else
-				alert('Wrong file-length for '+url+' ('+size+')');					
-		}
-		return null;
-	}			
+	this.loadRom = function (num) {
+      if (roms[num]) {
+         console.log('loadRom.loadRom() %d is cached', num);
+         return roms[num];
+      }
+      console.log('loadRom.loadRom() downloading %d', num);
+
+      var url, size, crc;
+      switch (num) {
+         case 0:
+            url = aros_rom_url;
+            size = aros_rom_size;
+            crc = aros_rom_crc;
+            break;
+         case 1:
+            url = aros_ext_url;
+            size = aros_ext_size;
+            crc = aros_ext_crc;
+            break;
+      }
+      var data = loadRemoteSync(url);
+      if (typeof(data) == 'number') {
+         alert('Can\'t download ' + url + ' (http status: ' + data + ')');
+      } else {
+         if (data.length == size) {
+            //console.log(dechex(crc32(data)));
+            if (crc32(data) == crc) {
+               roms[num] = data;
+               return data;
+            } else
+               alert('Wrong checksum for ' + url + ' (is $' + dechex(crc32(data)) + ', should $' + dechex(crc) + ')');
+         } else
+            alert('Wrong file-length for ' + url + ' (' + size + ')');
+      }
+      return null;
+   };
 	
 	this.loadDisk = function(url) {
 		for (var i = 0; i < disks.length; i++) {
@@ -230,7 +272,7 @@ function Cache() {
 /*-----------------------------------------------------------------------*/
 /* utils */
 		
-function dump(obj) {
+/*function dump(obj) {
 	var out = '';
 	if (obj) {
 		for (var i in obj) {
@@ -238,10 +280,7 @@ function dump(obj) {
 		}         
 	}
 	alert(out);
-	/*var pre = document.createElement('pre');
-	pre.innerHTML = out;
-	document.body.appendChild(pre);*/
-}
+}*/
 
 function crc32(str, crc) {
 
@@ -289,11 +328,6 @@ function crc32(str, crc) {
 	return crc < 0 ? crc + 0x100000000 : crc;
 }
 
-function openNewTab(url) {
-	window.open(url, '_blank');
-	window.focus();
-}
-
 function getSelectValue(e) {
 	for (var i = 0; i < e.length; i++) {
 		if (e[i].selected) return e[i].value;
@@ -329,7 +363,7 @@ function disabled(id, d) {
 	document.getElementById(id).disabled = d ? 'disabled' : '';				
 }	
 	
-function toggleFullScreen() {
+/*function toggleFullScreen() {
   if ((document.fullScreenElement && document.fullScreenElement !== null) ||    // alternative standard method
       (!document.mozFullScreenElement && !document.webkitFullScreenElement)) {  // current working methods
     if (document.documentElement.requestFullScreen) {
@@ -348,40 +382,40 @@ function toggleFullScreen() {
       document.webkitCancelFullScreen();
     }
   }
-}
+}*/
 
-function loadLocalId(id, callback) {
+/*function loadLocalId(id, callback) {
 	var e = document.getElementById(id).files[0];
 	var reader = new FileReader();
 	reader.onload = callback;
 	reader.readAsBinaryString(e);
-}
+}*/
 function loadLocal(e, callback) {
 	var reader = new FileReader();
 	reader.onload = callback;
 	reader.readAsBinaryString(e);
 }
 
-function loadRemote(url, size, crc, callback) {
+/*function loadRemote(url, size, crc, callback) {
 	var req = new XMLHttpRequest();
 	req.open('GET', url, true);	
 	req.overrideMimeType('text\/plain; charset=x-user-defined');
-	req.onreadystatechange = function(e) {
-		if (req.readyState == 4) {
-			if (req.status == 200) {
-				if (req.responseText.length == size) {
-					if (crc === false || crc32(req.responseText) == crc)
-						callback(0, req.responseText);
-					else
-						callback(1, crc32(req.responseText));
-				} else
-					callback(2, req.responseText.length);
-			} else
-				callback(3, req.status);
-		}
-	}
+	req.onreadystatechange = function (e) {
+      if (req.readyState == 4) {
+         if (req.status == 200) {
+            if (req.responseText.length == size) {
+               if (crc === false || crc32(req.responseText) == crc)
+                  callback(0, req.responseText);
+               else
+                  callback(1, crc32(req.responseText));
+            } else
+               callback(2, req.responseText.length);
+         } else
+            callback(3, req.status);
+      }
+   };
 	req.send(null);			
-}
+}*/
 function loadRemoteSync(url) {
 	var req = new XMLHttpRequest();
 	req.open('GET', url, false);	
@@ -539,7 +573,7 @@ function getSimpleConfig() {
 
 	config.chipset.mask = SAEV_Config_Chipset_Mask_OCS;
 	config.chipset.agnus_dip = false; /* A1000 */
-	config.chipset.collision_level = SAEV_Config_Chipset_ColLevel_None;
+	config.chipset.collision_level = (item !== null && item[0] == 'Deluxe Galaga 2.4') ? SAEV_Config_Chipset_ColLevel_Sprite_Playfield : SAEV_Config_Chipset_ColLevel_None;
 
 	config.blitter.immediate = (item !== null && item[8]) ? true : false;
 	config.blitter.waiting = config.blitter.immediate ? 0 : 1;
@@ -680,6 +714,7 @@ function fireButtonName(fire) {
 		case 145: return 'Scroll lock';
 		case 49: return '1';
 		case 50: return '2';
+      default: return 'ERROR';
 	}
 }
 
@@ -721,8 +756,8 @@ function setConfig() {
 	
 	e = document.getElementById('cfg_chipset_type');
 	switch (config.chipset.mask) {
-		case SAEV_Config_Chipset_Mask_OCS: e[0].selected = true; break
-		case SAEV_Config_Chipset_Mask_ECS_AGNUS: e[1].selected = true; break
+		case SAEV_Config_Chipset_Mask_OCS: e[0].selected = true; break;
+		case SAEV_Config_Chipset_Mask_ECS_AGNUS: e[1].selected = true; break;
 		case SAEV_Config_Chipset_Mask_ECS_DENISE: e[2].selected = true; break
 	}
 	document.getElementById('cfg_chipset_cl_enabled').checked = config.chipset.collision_level != SAEV_Config_Chipset_ColLevel_None;		
@@ -809,7 +844,6 @@ function setConfig() {
 	styleDisplayBlock('cfg_keyborad_grp', config.keyboard.enabled != 0); 	
 	
 	document.getElementById('cfg_ports_0_enabled').checked = config.ports[0].type != SAEV_Config_Ports_Type_None;
-	e = document.getElementById('cfg_ports_0');
 	switch (config.ports[0].type) {
 		case SAEV_Config_Ports_Type_Mouse: document.getElementById('cfg_ports_0')[0].selected = true; break;
 		case SAEV_Config_Ports_Type_Joy0: document.getElementById('cfg_ports_0')[1].selected = true; break;
@@ -824,8 +858,7 @@ function setConfig() {
 	styleDisplayInline('cfg_ports_0_grp', config.ports[0].type != SAEV_Config_Ports_Type_None); 	
 	styleDisplayInline('cfg_ports_0_grp2', config.ports[0].type == SAEV_Config_Ports_Type_Joy0); 
 	
-	e = document.getElementById('cfg_ports_1_enabled').checked = config.ports[1].type != SAEV_Config_Ports_Type_None;
-	e = document.getElementById('cfg_ports_1');
+	document.getElementById('cfg_ports_1_enabled').checked = config.ports[1].type != SAEV_Config_Ports_Type_None;
 	switch (config.ports[1].type) {
 		case SAEV_Config_Ports_Type_Joy1: document.getElementById('cfg_ports_1')[0].selected = true; break;
 	}	
@@ -838,7 +871,7 @@ function setConfig() {
 	setFireButton('cfg_ports_1_fire_2', config.ports[1].fire[1]);
 	styleDisplayInline('cfg_ports_1_grp', config.ports[1].type == SAEV_Config_Ports_Type_Joy1); 	
 	
-	e = document.getElementById('cfg_serial_enabled').checked = config.serial.enabled != 0;	
+	document.getElementById('cfg_serial_enabled').checked = config.serial.enabled != 0;
 
 	styleDisplayInline('dskchg_grp', 1);
 }
@@ -848,6 +881,7 @@ function getMask(type) {
 		case SAEV_Config_Chipset_Type_OCS: return SAEV_Config_Chipset_Mask_OCS;
 		case SAEV_Config_Chipset_Type_ECS_AGNUS: return SAEV_Config_Chipset_Mask_ECS_AGNUS;
 		case SAEV_Config_Chipset_Type_ECS_DENISE: return SAEV_Config_Chipset_Mask_ECS_DENISE;
+      default: return SAEV_Config_Chipset_Mask_OCS;
 	}
 }
 
@@ -1059,7 +1093,9 @@ function stop() {
 	if (paused) {
 		var e = document.getElementById('status_pr');
 		e.value = 'pause';	
-		e.onclick = function() { pause(1); }
+		e.onclick = function () {
+         pause(1);
+      };
 		paused = false;
 	}
 	if (dskchg)
@@ -1078,14 +1114,16 @@ function stop() {
 	document.body.style.backgroundColor = '#fff';
 }	
 
-function reset(p) {
+function reset() {
 	SAE({cmd:'reset'});		
 }	
 
 function pause(p) {
 	var e = document.getElementById('status_pr');
 	e.innerHTML = p ? 'Resume' : 'Pause';	
-	e.onclick = function() { pause(1 - p); }
+	e.onclick = function () {
+      pause(1 - p);
+   };
 		
 	paused = p;
 
@@ -1203,7 +1241,8 @@ function romAROS() {
 	document.getElementById('cfg_ext_addr')[0].selected = true;
 	styleDisplayInline('cfg_ext_remove', 1);
 	styleDisplayTableRow('cfg_ext_addr_grp', 1); 	
-	disabled('cfg_rom_aros', 0);				
+	disabled('cfg_rom_aros', 0);
+   return true;
 }
 
 function romSelect() {
@@ -1273,7 +1312,7 @@ function floppyUpdate(n) {
 
 function floppyInsert(n) {
 	var e = document.getElementById('cfg_df'+n+'_file').files[0];
-	var ok = false;	
+	var ok = true; //false;
 
 	if (!e) return;
 	/*if (e.size == 0xDC000)  {
@@ -1290,7 +1329,7 @@ function floppyInsert(n) {
 	} else 
 		alert('Invalid diskimage-size, 880 or 1460 kb.');
 	*/
-	ok = true;
+
 	if (ok)
 		loadLocal(e, function (event) {  
 			config.floppy.drive[n].name = e.name;						
@@ -1435,7 +1474,7 @@ function dskchgInsert() {
 	if (!dskchg) return;
 	var n = getSelectValue(document.getElementById('cfg_dskchg_unit'));
 	var e = document.getElementById('cfg_dskchg_file').files[0];
-	var ok = false;
+   var ok = true; //false;
 
 	if (!e) return;
 	/*if (e.size == 0xDC000)  {
@@ -1450,8 +1489,7 @@ function dskchgInsert() {
 			alert('DF'+n+' is configured as DD-drive (880kb), but you selected a HD-diskimage (1760kb).');
 	} else 
 		alert('Invalid diskimage-size, 880 or 1460 kb.');
-	*/	       
-	ok = true;
+	*/
 	if (ok) {
 		loadLocal(e, function (event) {  
 			dskchgClose();		

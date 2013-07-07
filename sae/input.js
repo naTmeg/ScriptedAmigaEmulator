@@ -19,55 +19,55 @@ function Mouse() {
 	var lx = -1;
 	var ly = -1;
 
-	this.reset = function() {
-		this.button = [0, 0, 0];
-		cx = cy = 0;
-		lx = ly = -1;
-	}
+	this.reset = function () {
+      this.button = [0, 0, 0];
+      cx = cy = 0;
+      lx = ly = -1;
+   };
 
 	this.mousedown = function (e) {
-		e = e || window.event;
-		if (!e) return;
+      e = e || window.event;
+      if (!e) return;
 
-		this.button[e.button] = true;
-	}
+      this.button[e.button] = true;
+   };
 
 	this.mouseup = function (e) {
-		e = e || window.event;
-		if (!e) return;
+      e = e || window.event;
+      if (!e) return;
 
-		this.button[e.button] = false;
-	}
+      this.button[e.button] = false;
+   };
 
 	this.mouseover = function (e) {
-		//AMIGA.video.hideCursor(1);
-		this.mousemove(e);
-		lx = cx;
-		ly = cy;
-	}
+      //AMIGA.video.hideCursor(1);
+      this.mousemove(e);
+      lx = cx;
+      ly = cy;
+   };
 
 	this.mouseout = function (e) {
-		//AMIGA.video.hideCursor(0);
-		this.mouseup(e);
-	}
+      //AMIGA.video.hideCursor(0);
+      this.mouseup(e);
+   };
 
 	this.mousemove = function (e) {
-		e = e || window.event;
-		if (!e || !AMIGA.video) return;
+      e = e || window.event;
+      if (!e || !AMIGA.video) return;
 
-		if (e.pageX || e.pageY) {
-			cx = e.pageX;
-			cy = e.pageY;
-		} else if (e.clientX || e.clientY) {
-			cx = e.clientX;
-			cy = e.clientY;
-		}
-		if (lx == -1) {
-			lx = cx;
-			ly = cy;
-		}
-		//BUG.info('USER() mousemove %d %d', cx, cy);
-	}
+      if (e.pageX || e.pageY) {
+         cx = e.pageX;
+         cy = e.pageY;
+      } else if (e.clientX || e.clientY) {
+         cx = e.clientX;
+         cy = e.clientY;
+      }
+      if (lx == -1) {
+         lx = cx;
+         ly = cy;
+      }
+      //BUG.info('USER() mousemove %d %d', cx, cy);
+   };
 
 	this.update = function() {
 		if (lx != -1) {
@@ -97,13 +97,11 @@ function Joystick(type) {
 	this.button = [false, false, false];
 	this.state = [false, false, false, false];
 	this.dir = 0;
-	var x = 0;
-	var y = 0;
 
-	this.reset = function() {
-		this.button = [false, false, false];
-		this.state = [false, false, false, false];
-	}
+	this.reset = function () {
+      this.button = [false, false, false];
+      this.state = [false, false, false, false];
+   };
 
 	this.update = function() {
 		var u = this.state[1];
@@ -144,7 +142,7 @@ function Keyboard() {
 	const RAWKEY_0                 = 0x0A;
 	const RAWKEY_MINUS             = 0x0B;
 	const RAWKEY_EQUAL             = 0x0C;
-	const RAWKEY_BACKSLASH         = 0x0D;
+	//const RAWKEY_BACKSLASH         = 0x0D;
 	const RAWKEY_KP_0              = 0x0F;
 	const RAWKEY_Q                 = 0x10;
 	const RAWKEY_W                 = 0x11;
@@ -194,7 +192,7 @@ function Keyboard() {
 	const RAWKEY_SPACE             = 0x40;
 	const RAWKEY_BACKSPACE         = 0x41;
 	const RAWKEY_TAB               = 0x42;
-	const RAWKEY_KP_ENTER          = 0x43;
+	//const RAWKEY_KP_ENTER          = 0x43;
 	const RAWKEY_RETURN            = 0x44;
 	const RAWKEY_ESCAPE            = 0x45;
 	const RAWKEY_DELETE            = 0x46;
@@ -226,7 +224,7 @@ function Keyboard() {
 	const RAWKEY_CAPSLOCK          = 0x62;
 	const RAWKEY_CONTROL           = 0x63;
 	const RAWKEY_LALT              = 0x64;
-	const RAWKEY_RALT              = 0x65;
+	//const RAWKEY_RALT              = 0x65;
 	const RAWKEY_LAMIGA            = 0x66;
 	const RAWKEY_RAMIGA            = 0x67;
 	/*const RAWKEY_SCRLOCK           = 0x6B;
@@ -247,9 +245,9 @@ function Keyboard() {
 	const RAWKEY_NM_WHEEL_LEFT     = 0x7C;
 	const RAWKEY_NM_WHEEL_RIGHT    = 0x7D;
 	const RAWKEY_NM_BUTTON_FOURTH  = 0x7E;*/	
- 	const RAWKEY_BAD_CODE			= 0xF9;
+ 	/*const RAWKEY_BAD_CODE			= 0xF9;
  	const RAWKEY_BUFFER_OVERFLOW	= 0xFA;
- 	const RAWKEY_SELFTEST_FAILED	= 0xFC;
+ 	const RAWKEY_SELFTEST_FAILED	= 0xFC;*/
  	const RAWKEY_INIT_POWER_UP		= 0xFD;
  	const RAWKEY_TERM_POWER_UP		= 0xFE;
 
@@ -486,214 +484,313 @@ function Keyboard() {
 	function _onkeydown(e) { AMIGA.input.keyboard.handleKey(e, true); } 
 	function _onkeyup(e) { AMIGA.input.keyboard.handleKey(e, false); } 
 
-	this.setup = function() {
-		/*document.onkeydown = function (e) {
-			AMIGA.input.keyboard.keydownup(e, true);
-		}
-		document.onkeyup = function (e) {
-			AMIGA.input.keyboard.keydownup(e, false);
-		}*/		
-		window.document.addEventListener('keydown', _onkeydown, false);
-		window.document.addEventListener('keyup', _onkeyup, false);
-	}
+	this.setup = function () {
+      /*document.onkeydown = function (e) {
+       AMIGA.input.keyboard.keydownup(e, true);
+       }
+       document.onkeyup = function (e) {
+       AMIGA.input.keyboard.keydownup(e, false);
+       }*/
+      window.document.addEventListener('keydown', _onkeydown, false);
+      window.document.addEventListener('keyup', _onkeyup, false);
+   };
 
-	this.cleanup = function() {
-		//BUG.info('Keyboard.cleanup()');
-		//document.onkeydown = null;
-		//document.onkeyup = null;
-		window.document.removeEventListener('keydown', _onkeydown, false);
-		window.document.removeEventListener('keyup', _onkeyup, false);
-	}
+	this.cleanup = function () {
+      //BUG.info('Keyboard.cleanup()');
+      //document.onkeydown = null;
+      //document.onkeyup = null;
+      window.document.removeEventListener('keydown', _onkeydown, false);
+      window.document.removeEventListener('keyup', _onkeyup, false);
+   };
 
-	this.reset = function() {
-		for (var i = 0; i < MAXKEYS; i++) keyState[i] = false;
-		state = 0;
-		code = 0;
-		first = last = 0;
-		hsynccnt = 0;
-		this.lostsynccnt = 0;   
-	}
+	this.reset = function () {
+      for (var i = 0; i < MAXKEYS; i++) keyState[i] = false;
+      state = 0;
+      code = 0;
+      first = last = 0;
+      hsynccnt = 0;
+      this.lostsynccnt = 0;
+   };
 
-	this.keysAvail = function() {
-		return first != last;
-	}
+	this.keysAvail = function () {
+      return first != last;
+   };
 
-	this.nextKey = function() {
-		//assert (first != last);
-		var key = keyBuf[last];
-		if (++last == KEYBUFSIZE) last = 0;
-		return key;
-	}
+	this.nextKey = function () {
+      //assert (first != last);
+      var key = keyBuf[last];
+      if (++last == KEYBUFSIZE) last = 0;
+      return key;
+   };
 
 	this.recordKey = function (kc) {
-		var next = first + 1;
+      var next = first + 1;
 
-		if (next == KEYBUFSIZE) next = 0;
-		if (next == last) {
-			BUG.info('Keyboard() buffer overrun!');
-			return false;
-		}
-		keyBuf[first] = kc;
-		first = next;
-		return true;
-	}
+      if (next == KEYBUFSIZE) next = 0;
+      if (next == last) {
+         BUG.info('Keyboard() buffer overrun!');
+         return false;
+      }
+      keyBuf[first] = kc;
+      first = next;
+      return true;
+   };
 	
-	this.processKey = function (code, down) {	
-		/* Caps-lock */
-		if (code == 20) {
-			if (down) {
-				capsLock = !capsLock;
-				if (!capsLock) return;
-			} else {
-				if (capsLock) return;
-			}
-		} 		
-		
-		/* joystick emul */
-		if (AMIGA.config.ports[0].type == SAEV_Config_Ports_Type_Joy0) {
-			var l,u,r,d,f1,f2;			
-			switch (AMIGA.config.ports[0].move) {
-				case SAEV_Config_Ports_Move_Arrows: { l = 37; u = 38; r = 39; d = 40; break; }
-				case SAEV_Config_Ports_Move_Numpad: { l = 100; u = 104; r = 102; d = 101; break; }
-				case SAEV_Config_Ports_Move_WASD: { l = 65; u = 87; r = 68; d = 83; break; }
-			}
-			f1 = AMIGA.config.ports[0].fire[0]; 	
-			f2 = AMIGA.config.ports[0].fire[1]; 		
-			switch (code) {
-				case f1: { AMIGA.input.joystick[0].button[0] = down; break; }
-				case f2: { AMIGA.input.joystick[0].button[1] = down; break; }
-				case l: { AMIGA.input.joystick[0].state[0] = down; if (down && AMIGA.input.joystick[0].state[2]) AMIGA.input.joystick[0].state[2] = false; break; }
-				case u: { AMIGA.input.joystick[0].state[1] = down; if (down && AMIGA.input.joystick[0].state[3]) AMIGA.input.joystick[0].state[3] = false; break; }
-				case r: { AMIGA.input.joystick[0].state[2] = down; if (down && AMIGA.input.joystick[0].state[0]) AMIGA.input.joystick[0].state[0] = false; break; }
-				case d: { AMIGA.input.joystick[0].state[3] = down; if (down && AMIGA.input.joystick[0].state[1]) AMIGA.input.joystick[0].state[1] = false; break; }
-			}
-		}
-		if (AMIGA.config.ports[1].type == SAEV_Config_Ports_Type_Joy1) {
-			var l,u,r,d,f1,f2;			
-			switch (AMIGA.config.ports[1].move) {
-				case SAEV_Config_Ports_Move_Arrows: { l = 37; u = 38; r = 39; d = 40; break; }
-				case SAEV_Config_Ports_Move_Numpad: { l = 100; u = 104; r = 102; d = 101; break; }
-				case SAEV_Config_Ports_Move_WASD: { l = 65; u = 87; r = 68; d = 83; break; }
-			}
-			f1 = AMIGA.config.ports[1].fire[0]; 	
-			f2 = AMIGA.config.ports[1].fire[1]; 				
-			switch (code) {
-				case f1: { AMIGA.input.joystick[1].button[0] = down; break; }
-				case f2: { AMIGA.input.joystick[1].button[1] = down; break; }
-				case l: { AMIGA.input.joystick[1].state[0] = down; if (down && AMIGA.input.joystick[1].state[2]) AMIGA.input.joystick[1].state[2] = false; break; }
-				case u: { AMIGA.input.joystick[1].state[1] = down; if (down && AMIGA.input.joystick[1].state[3]) AMIGA.input.joystick[1].state[3] = false; break; }
-				case r: { AMIGA.input.joystick[1].state[2] = down; if (down && AMIGA.input.joystick[1].state[0]) AMIGA.input.joystick[1].state[0] = false; break; }
-				case d: { AMIGA.input.joystick[1].state[3] = down; if (down && AMIGA.input.joystick[1].state[1]) AMIGA.input.joystick[1].state[1] = false; break; }
-			}
-		}
-		
-		if (!AMIGA.config.keyboard.enabled)
-			return;
+	this.processKey = function (code, down) {
+      /* Caps-lock */
+      if (code == 20) {
+         if (down) {
+            capsLock = !capsLock;
+            if (!capsLock) return;
+         } else {
+            if (capsLock) return;
+         }
+      }
 
-		/* map shift-keys (team17 pinball games) */
-		if (AMIGA.config.keyboard.mapShift) {
-			switch (code) {
-				case 37: { //left arrow 
-					var rawkey = RAWKEY_LSHIFT;
-					if (!down) {
-						this.recordKey((rawkey << 1) | 1);
-					} else {
-						this.recordKey(rawkey << 1);
-					}
-					//break;
-					return;
-				}
-				case 39: { //right arrow 
-					var rawkey = RAWKEY_RSHIFT;
-					if (!down) {
-						this.recordKey((rawkey << 1) | 1);
-					} else {
-						this.recordKey(rawkey << 1);
-					}
-					//break;
-					return;
-				}
-			}
-		}
+      /* joystick emul */
+      if (AMIGA.config.ports[0].type == SAEV_Config_Ports_Type_Joy0) {
+         var l, u, r, d, f1, f2;
+         switch (AMIGA.config.ports[0].move) {
+            case SAEV_Config_Ports_Move_Arrows:
+            {
+               l = 37;
+               u = 38;
+               r = 39;
+               d = 40;
+               break;
+            }
+            case SAEV_Config_Ports_Move_Numpad:
+            {
+               l = 100;
+               u = 104;
+               r = 102;
+               d = 101;
+               break;
+            }
+            case SAEV_Config_Ports_Move_WASD:
+            {
+               l = 65;
+               u = 87;
+               r = 68;
+               d = 83;
+               break;
+            }
+         }
+         f1 = AMIGA.config.ports[0].fire[0];
+         f2 = AMIGA.config.ports[0].fire[1];
+         switch (code) {
+            case f1:
+            {
+               AMIGA.input.joystick[0].button[0] = down;
+               break;
+            }
+            case f2:
+            {
+               AMIGA.input.joystick[0].button[1] = down;
+               break;
+            }
+            case l:
+            {
+               AMIGA.input.joystick[0].state[0] = down;
+               if (down && AMIGA.input.joystick[0].state[2]) AMIGA.input.joystick[0].state[2] = false;
+               break;
+            }
+            case u:
+            {
+               AMIGA.input.joystick[0].state[1] = down;
+               if (down && AMIGA.input.joystick[0].state[3]) AMIGA.input.joystick[0].state[3] = false;
+               break;
+            }
+            case r:
+            {
+               AMIGA.input.joystick[0].state[2] = down;
+               if (down && AMIGA.input.joystick[0].state[0]) AMIGA.input.joystick[0].state[0] = false;
+               break;
+            }
+            case d:
+            {
+               AMIGA.input.joystick[0].state[3] = down;
+               if (down && AMIGA.input.joystick[0].state[1]) AMIGA.input.joystick[0].state[1] = false;
+               break;
+            }
+         }
+      }
+      if (AMIGA.config.ports[1].type == SAEV_Config_Ports_Type_Joy1) {
+         var l, u, r, d, f1, f2;
+         switch (AMIGA.config.ports[1].move) {
+            case SAEV_Config_Ports_Move_Arrows:
+            {
+               l = 37;
+               u = 38;
+               r = 39;
+               d = 40;
+               break;
+            }
+            case SAEV_Config_Ports_Move_Numpad:
+            {
+               l = 100;
+               u = 104;
+               r = 102;
+               d = 101;
+               break;
+            }
+            case SAEV_Config_Ports_Move_WASD:
+            {
+               l = 65;
+               u = 87;
+               r = 68;
+               d = 83;
+               break;
+            }
+         }
+         f1 = AMIGA.config.ports[1].fire[0];
+         f2 = AMIGA.config.ports[1].fire[1];
+         switch (code) {
+            case f1:
+            {
+               AMIGA.input.joystick[1].button[0] = down;
+               break;
+            }
+            case f2:
+            {
+               AMIGA.input.joystick[1].button[1] = down;
+               break;
+            }
+            case l:
+            {
+               AMIGA.input.joystick[1].state[0] = down;
+               if (down && AMIGA.input.joystick[1].state[2]) AMIGA.input.joystick[1].state[2] = false;
+               break;
+            }
+            case u:
+            {
+               AMIGA.input.joystick[1].state[1] = down;
+               if (down && AMIGA.input.joystick[1].state[3]) AMIGA.input.joystick[1].state[3] = false;
+               break;
+            }
+            case r:
+            {
+               AMIGA.input.joystick[1].state[2] = down;
+               if (down && AMIGA.input.joystick[1].state[0]) AMIGA.input.joystick[1].state[0] = false;
+               break;
+            }
+            case d:
+            {
+               AMIGA.input.joystick[1].state[3] = down;
+               if (down && AMIGA.input.joystick[1].state[1]) AMIGA.input.joystick[1].state[1] = false;
+               break;
+            }
+         }
+      }
 
-		var rawkey = false;
-		if (BrowserDetect.browser == 'Firefox') {
-			if (typeof(mozKeyCodeMap[code]) != 'undefined') 
-				rawkey = mozKeyCodeMap[code];
-		} else {
-			if (typeof(defKeyCodeMap[code]) != 'undefined') 
-				rawkey = defKeyCodeMap[code];			
-		}
-		//BUG.info('Keyboard.processKey() code %d $%04x, rawkey $%04x', code, code, rawkey);
+      if (!AMIGA.config.keyboard.enabled)
+         return;
 
-		if (rawkey !== false) {
-			if (down) 
-				this.recordKey(rawkey << 1);
-			else
-				this.recordKey((rawkey << 1) | 1);			
-		}
-	}
+      /* map shift-keys (team17 pinball games) */
+      if (AMIGA.config.keyboard.mapShift) {
+         switch (code) {
+            case 37:
+            { //left arrow
+               if (!down) {
+                  this.recordKey((RAWKEY_LSHIFT << 1) | 1);
+               } else {
+                  this.recordKey(RAWKEY_LSHIFT << 1);
+               }
+               //break;
+               return;
+            }
+            case 39:
+            { //right arrow
+               if (!down) {
+                  this.recordKey((RAWKEY_RSHIFT << 1) | 1);
+               } else {
+                  this.recordKey(RAWKEY_RSHIFT << 1);
+               }
+               //break;
+               return;
+            }
+         }
+      }
+
+      var rawkey = false;
+      if (BrowserDetect.browser == 'Firefox') {
+         if (typeof(mozKeyCodeMap[code]) != 'undefined')
+            rawkey = mozKeyCodeMap[code];
+      } else {
+         if (typeof(defKeyCodeMap[code]) != 'undefined')
+            rawkey = defKeyCodeMap[code];
+      }
+      //BUG.info('Keyboard.processKey() code %d $%04x, rawkey $%04x', code, code, rawkey);
+
+      if (rawkey !== false) {
+         if (down)
+            this.recordKey(rawkey << 1);
+         else
+            this.recordKey((rawkey << 1) | 1);
+      }
+   };
 	
 	this.handleKey = function (e, down) {
-		e = e || window.event;
-		var code = e.which ? e.which : e.keyCode;
+      e = e || window.event;
+      var code = e.which ? e.which : e.keyCode;
 
-		if (AMIGA.config.keyboard.enabled && code != 122 && code != 123) //all but F11 F12
-			e.preventDefault();
-		
-		//BUG.info('Keyboard.handleKey() down %d, code %d, alt %d, shift %d, ctrl %d', down?1:0, code, e.altKey?1:0, e.shiftKey?1:0, e.ctrlKey?1:0);
+      if (AMIGA.config.keyboard.enabled && code != 122 && code != 123) //all but F11 F12
+         e.preventDefault();
 
-		/* Ctrl-Alt fix */
-		if (!down && code == 17 && keyState[18]) { 
-			keyState[18] = false;
-			this.processKey(18, keyState[18]);
-		}
-		
-		var oldstate = keyState[code];
-		if (down && !keyState[code]) {
-			keyState[code] = true;
-		}
-		else if (!down) {
-			keyState[code] = false;
-		}			
-		if (keyState[code] != oldstate) {	
-			this.processKey(code, keyState[code]);
-		}
-	}
+      //BUG.info('Keyboard.handleKey() down %d, code %d, alt %d, shift %d, ctrl %d', down?1:0, code, e.altKey?1:0, e.shiftKey?1:0, e.ctrlKey?1:0);
+
+      /* Ctrl-Alt fix */
+      if (!down && code == 17 && keyState[18]) {
+         keyState[18] = false;
+         this.processKey(18, keyState[18]);
+      }
+
+      var oldstate = keyState[code];
+      if (down && !keyState[code]) {
+         keyState[code] = true;
+      }
+      else if (!down) {
+         keyState[code] = false;
+      }
+      if (keyState[code] != oldstate) {
+         this.processKey(code, keyState[code]);
+      }
+   };
 
 	this.setCode = function (keycode) {
-		code = ~((keycode << 1) | (keycode >> 7)) & 0xff;
-	}
+      code = ~((keycode << 1) | (keycode >> 7)) & 0xff;
+   };
 
-	this.keyReq = function() {
-		this.lostsynccnt = 8 * AMIGA.playfield.maxvpos * 8; /* 8 frames * 8 bits */
+	this.keyReq = function () {
+      this.lostsynccnt = 8 * AMIGA.playfield.maxvpos * 8;
+      /* 8 frames * 8 bits */
 
-		//AMIGA.cia.setICR(CIA_A, 8, code);
-		AMIGA.cia.SetICRA(8, code);
-	}
+      //AMIGA.cia.setICR(CIA_A, 8, code);
+      AMIGA.cia.SetICRA(8, code);
+   };
 
-	this.hsync = function() {
-		if ((this.keysAvail() || state < 3) && !this.lostsynccnt && ((++hsynccnt) & 15) == 0) {
-			switch (state) {
-				case 0:
-					code = 0;
-					state++;
-					break;
-				case 1:
-					this.setCode(RAWKEY_INIT_POWER_UP);
-					state++;
-					break;
-				case 2:
-					this.setCode(RAWKEY_TERM_POWER_UP);
-					state++;
-					break;
-				case 3:
-					code = ~this.nextKey() & 0xff;
-					break;
-			}
-			this.keyReq();
-		}
-	}
+	this.hsync = function () {
+      if ((this.keysAvail() || state < 3) && !this.lostsynccnt && ((++hsynccnt) & 15) == 0) {
+         switch (state) {
+            case 0:
+               code = 0;
+               state++;
+               break;
+            case 1:
+               this.setCode(RAWKEY_INIT_POWER_UP);
+               state++;
+               break;
+            case 2:
+               this.setCode(RAWKEY_TERM_POWER_UP);
+               state++;
+               break;
+            case 3:
+               code = ~this.nextKey() & 0xff;
+               break;
+         }
+         this.keyReq();
+      }
+   };
 
 	this.vsync = function() {
 		if (this.lostsynccnt > 0) {
@@ -719,82 +816,82 @@ function Input() {
 		count: 0
 	};
 
-	this.setup = function() {
-		this.keyboard.setup();
-	}
+	this.setup = function () {
+      this.keyboard.setup();
+   };
 	
-	this.cleanup = function() {
-		this.keyboard.cleanup();
-	}
+	this.cleanup = function () {
+      this.keyboard.cleanup();
+   };
 
-	this.reset = function() {
-		this.mouse.reset();
-		this.joystick[0].reset();
-		this.joystick[1].reset();
-		this.keyboard.reset();
-		potgo.data = 0;
-		potgo.count = 0;
-	}
+	this.reset = function () {
+      this.mouse.reset();
+      this.joystick[0].reset();
+      this.joystick[1].reset();
+      this.keyboard.reset();
+      potgo.data = 0;
+      potgo.count = 0;
+   };
 
 	this.POTGO = function (v) {
-		//BUG.info('Input.POTGO() $%04x', v);
-		potgo.data = v;
-	}
+      //BUG.info('Input.POTGO() $%04x', v);
+      potgo.data = v;
+   };
 
-	this.POTGOR = function() {
-		var v = (potgo.data | (potgo.data << 1)) & 0xaa00;
-		v |= v >> 1;
+	this.POTGOR = function () {
+      var v = (potgo.data | (potgo.data << 1)) & 0xaa00;
+      v |= v >> 1;
 
-		if (AMIGA.config.ports[0].type == SAEV_Config_Ports_Type_Mouse) {
-			if (this.mouse.button[2]) v &= 0xfbff;
-			if (this.mouse.button[1]) v &= 0xfeff;
-		} else if (AMIGA.config.ports[0].type == SAEV_Config_Ports_Type_Joy0) {
-			if (this.joystick[0].button[1]) v &= 0xfbff;
-			if (this.joystick[0].button[2]) v &= 0xfeff;
-		}
-		if (AMIGA.config.ports[1].type == SAEV_Config_Ports_Type_Joy1) {
-			if (this.joystick[1].button[1]) v &= 0xbfff;
-			if (this.joystick[1].button[2]) v &= 0xefff;
-		}
-		//BUG.info('Input.POTGOR() $%04x', v);
-		return v;
-	}
+      if (AMIGA.config.ports[0].type == SAEV_Config_Ports_Type_Mouse) {
+         if (this.mouse.button[2]) v &= 0xfbff;
+         if (this.mouse.button[1]) v &= 0xfeff;
+      } else if (AMIGA.config.ports[0].type == SAEV_Config_Ports_Type_Joy0) {
+         if (this.joystick[0].button[1]) v &= 0xfbff;
+         if (this.joystick[0].button[2]) v &= 0xfeff;
+      }
+      if (AMIGA.config.ports[1].type == SAEV_Config_Ports_Type_Joy1) {
+         if (this.joystick[1].button[1]) v &= 0xbfff;
+         if (this.joystick[1].button[2]) v &= 0xefff;
+      }
+      //BUG.info('Input.POTGOR() $%04x', v);
+      return v;
+   };
 
-	this.POT0DAT = function() {
-		if (AMIGA.config.ports[0].type == SAEV_Config_Ports_Type_Mouse) {
-			if (this.mouse.button[2]) potgo.count = (potgo.count & 0xff00) | ((potgo.count + 1) & 0xff);
-			if (this.mouse.button[1]) potgo.count = (potgo.count + 0x100) & 0xffff;
-		}
-		//BUG.info('Input.POT0DAT() $%04x', v);
-		return potgo.count;
-	}
+	this.POT0DAT = function () {
+      if (AMIGA.config.ports[0].type == SAEV_Config_Ports_Type_Mouse) {
+         if (this.mouse.button[2]) potgo.count = (potgo.count & 0xff00) | ((potgo.count + 1) & 0xff);
+         if (this.mouse.button[1]) potgo.count = (potgo.count + 0x100) & 0xffff;
+      }
+      //BUG.info('Input.POT0DAT() $%04x', v);
+      return potgo.count;
+   };
 
-	this.POT1DAT = function() {
-		//BUG.info('Input.POT1DAT() NOT IMPLEMENTED');
-		return 0xffff;
-	}
+	this.POT1DAT = function () {
+      //BUG.info('Input.POT1DAT() NOT IMPLEMENTED');
+      return 0xffff;
+   };
 
-	this.JOY0DAT = function() {
-		if (AMIGA.config.ports[0].type == SAEV_Config_Ports_Type_Mouse) {
-			this.mouse.update();
-			return this.mouse.pos;
-		} else if (AMIGA.config.ports[0].type == SAEV_Config_Ports_Type_Joy0) {
-			this.joystick[0].update();
-			return this.joystick[0].dir;
-		}
-		return 0xffff;
-	}
+	this.JOY0DAT = function () {
+      if (AMIGA.config.ports[0].type == SAEV_Config_Ports_Type_Mouse) {
+         this.mouse.update();
+         return this.mouse.pos;
+      } else if (AMIGA.config.ports[0].type == SAEV_Config_Ports_Type_Joy0) {
+         this.joystick[0].update();
+         return this.joystick[0].dir;
+      }
+      return 0xffff;
+   };
 
-	this.JOY1DAT = function() {
-		if (AMIGA.config.ports[1].type == SAEV_Config_Ports_Type_Mouse) {
-			this.mouse.update();
-			return this.mouse.pos;
-		} else if (AMIGA.config.ports[1].type == SAEV_Config_Ports_Type_Joy1) {
-			this.joystick[1].update();
-			return this.joystick[1].dir;
-		}
-		return 0xffff;
-	}
+	this.JOY1DAT = function () {
+      if (AMIGA.config.ports[1].type == SAEV_Config_Ports_Type_Mouse) {
+         this.mouse.update();
+         return this.mouse.pos;
+      } else if (AMIGA.config.ports[1].type == SAEV_Config_Ports_Type_Joy1) {
+         this.joystick[1].update();
+         return this.joystick[1].dir;
+      }
+      return 0xffff;
+   };
 
 	this.JOYTEST = function (v) {
 		//BUG.info('Input.JOYTEST() $%04x', v);

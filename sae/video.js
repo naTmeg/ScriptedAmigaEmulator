@@ -60,7 +60,6 @@ function Vide0() {
  				this.available |= SAEI_Video_Canvas2D;
 				test2 = null; 
 			}
-			test = null; 
 		}
 		test = document.createElement('canvas');
 		if (test && test.getContext) {
@@ -143,92 +142,104 @@ function Vide0() {
 		ctx.colorMask(true, true, true, false);
 	}
 	
-	this.setup = function() {
-		if (!AMIGA.config.video.enabled) return;
-		if (open) this.cleanup();
+	this.setup = function () {
+      if (!AMIGA.config.video.enabled) return;
+      if (open) this.cleanup();
 
-		div = document.getElementById(AMIGA.config.video.id);
-		if (!div)
-			Fatal(SAEE_Video_ID_Not_Found, 'Video DIV-element not found. Check your code. (Malformed-DIV-name: '+AMIGA.config.video.id+')');
+      div = document.getElementById(AMIGA.config.video.id);
+      if (!div)
+         Fatal(SAEE_Video_ID_Not_Found, 'Video DIV-element not found. Check your code. (Malformed-DIV-name: ' + AMIGA.config.video.id + ')');
 
-		scale = (this.available & SAEI_Video_WebGL) ? AMIGA.config.video.scale : false;
-		width = VIDEO_WIDTH << (scale ? 1 : 0);
-		height = VIDEO_HEIGHT << (scale ? 1 : 0);
-		size = width * height;
-		//BUG.info('Video.init() %d x %d, %s mode', width, height, AMIGA.config.video.ntsc ? 'ntsc' : 'pal');
+      scale = (this.available & SAEI_Video_WebGL) ? AMIGA.config.video.scale : false;
+      width = VIDEO_WIDTH << (scale ? 1 : 0);
+      height = VIDEO_HEIGHT << (scale ? 1 : 0);
+      size = width * height;
+      //BUG.info('Video.init() %d x %d, %s mode', width, height, AMIGA.config.video.ntsc ? 'ntsc' : 'pal');
 
- 		if (this.available & SAEI_Video_Canvas2D) {
-			canvas = document.createElement('canvas');
-			canvas.width = width; 
-			canvas.height = height;
-			canvas.oncontextmenu = function() { return false; }
-			if (AMIGA.config.ports[0].type == SAEV_Config_Ports_Type_Mouse) {
-				canvas.onmousedown = function(e) { AMIGA.input.mouse.mousedown(e); }
-				canvas.onmouseup = function(e) { AMIGA.input.mouse.mouseup(e); }
-				canvas.onmouseover = function(e) { AMIGA.input.mouse.mouseover(e); }
-				canvas.onmouseout = function(e) { AMIGA.input.mouse.mouseout(e); }
-				canvas.onmousemove = function(e) { AMIGA.input.mouse.mousemove(e); }
-			}			
-			if (this.available & SAEI_Video_WebGL) {
-				ctx = canvas.getContext('experimental-webgl', glParams) || canvas.getContext('webgl', glParams);
-				initGL();
-				pixels = new Uint16Array(size);
-				for (var i = 0; i < size; i++) pixels[i] = 0;
-				
-				this.drawpixel = drawpixel_gl; 
-				this.drawline = drawline_gl; 		
-				this.render = render_gl; 	
-				this.show = show_gl; 		
-			} else {
-				ctx = canvas.getContext('2d'); 
-				imagedata = ctx.createImageData(width, height);		
-				pixels = imagedata.data;
-	
-				this.drawpixel = drawpixel_2d; 
-				this.drawline = drawline_2d; 		
-				this.render = render_2d; 	
-				this.show = show_2d;
-			}
-		} else {
-			if (!confirm('Cant\'t initialise "WebGL" nor "Canvas 2D". Continue without video-playback?'))
-				Fatal(SAEE_Video_Canvas_Not_Supported, null);
-			else
-				AMIGA.config.video.enabled = false;
-		}
-					
-		video = document.createElement('div');
-		video.style.width = width + 'px';
-		video.style.height = height + 'px';
-		video.style.margin = 'auto';
-		video.style.webkitTouchCallout = 'none';
-		video.style.webkitUserSelect = 'none';
-		video.style.khtmlUserSelect = 'none';
-		video.style.mozUserSelect = 'none';
-		video.style.msUserSelect = 'none';
-		video.style.userSelect = 'none';
-		if (AMIGA.config.video.enabled)
-			video.appendChild(canvas);
+      if (this.available & SAEI_Video_Canvas2D) {
+         canvas = document.createElement('canvas');
+         canvas.width = width;
+         canvas.height = height;
+         canvas.oncontextmenu = function () {
+            return false;
+         };
+         if (AMIGA.config.ports[0].type == SAEV_Config_Ports_Type_Mouse) {
+            canvas.onmousedown = function (e) {
+               AMIGA.input.mouse.mousedown(e);
+            };
+            canvas.onmouseup = function (e) {
+               AMIGA.input.mouse.mouseup(e);
+            };
+            canvas.onmouseover = function (e) {
+               AMIGA.input.mouse.mouseover(e);
+            };
+            canvas.onmouseout = function (e) {
+               AMIGA.input.mouse.mouseout(e);
+            };
+            canvas.onmousemove = function (e) {
+               AMIGA.input.mouse.mousemove(e);
+            }
+         }
+         if (this.available & SAEI_Video_WebGL) {
+            ctx = canvas.getContext('experimental-webgl', glParams) || canvas.getContext('webgl', glParams);
+            initGL();
+            pixels = new Uint16Array(size);
+            for (var i = 0; i < size; i++) pixels[i] = 0;
 
-		div.appendChild(video);
-		open = true;  
-	}
+            //this.drawpixel = drawpixel_gl;
+            this.drawline = drawline_gl;
+            this.render = render_gl;
+            this.show = show_gl;
+         } else {
+            ctx = canvas.getContext('2d');
+            imagedata = ctx.createImageData(width, height);
+            pixels = imagedata.data;
 
-	this.cleanup = function() {
-		if (open) {
-			div.removeChild(video);
-			canvas = null;
-			imagedata = null;
-			pixels = null;
-			video = null;
-			open = false;
-		}
-	}
+            //this.drawpixel = drawpixel_2d;
+            this.drawline = drawline_2d;
+            this.render = render_2d;
+            this.show = show_2d;
+         }
+      } else {
+         if (!confirm('Cant\'t initialise "WebGL" nor "Canvas 2D". Continue without video-playback?'))
+            Fatal(SAEE_Video_Canvas_Not_Supported, null);
+         else
+            AMIGA.config.video.enabled = false;
+      }
+
+      video = document.createElement('div');
+      video.style.width = width + 'px';
+      video.style.height = height + 'px';
+      video.style.margin = 'auto';
+      video.style.webkitTouchCallout = 'none';
+      video.style.webkitUserSelect = 'none';
+      video.style.khtmlUserSelect = 'none';
+      video.style.mozUserSelect = 'none';
+      video.style.msUserSelect = 'none';
+      video.style.userSelect = 'none';
+      if (AMIGA.config.video.enabled)
+         video.appendChild(canvas);
+
+      div.appendChild(video);
+      open = true;
+   };
+
+	this.cleanup = function () {
+      if (open) {
+         div.removeChild(video);
+         canvas = null;
+         imagedata = null;
+         pixels = null;
+         video = null;
+         open = false;
+      }
+   };
 	
 	/*---------------------------------*/
 
-	this.hideCursor = function(hide) {
-		canvas.style.cursor = hide ?  'none' : 'auto';
-	}
+	/*this.hideCursor = function (hide) {
+      canvas.style.cursor = hide ? 'none' : 'auto';
+   };*/
 	
 	/*this.clear_pixels = function () {
 		for (var i = 0; i < size; i++) 
@@ -238,9 +249,9 @@ function Vide0() {
 	/*---------------------------------*/
 	/* Canvas 2D */
 	
-	function drawpixel_2d(x, y, rgb) {
+	/*function drawpixel_2d(x, y, rgb) {
 		pixels[y * width + x] = rgb;
-	}
+	}*/
 	
 	function drawline_2d(y, data, offs) {
 		var yoffs = (y * width) << 2;
@@ -261,9 +272,9 @@ function Vide0() {
 	/*---------------------------------*/
 	/* WebGL */
 		
-	function drawpixel_gl(x, y, rgb) {
+	/*function drawpixel_gl(x, y, rgb) {
 		pixels[y * width + x] = rgb;
-	}
+	}*/
 	
 	function drawline_gl(y, data, offs) {
 		var yoffs = y * width;

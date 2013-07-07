@@ -51,26 +51,26 @@ function Filter() {
 		return 1 / (1 + 1 / omega);
 	}
 
-	this.setup = function(on) {
-		this.on = on;
-		var rate = getRate(AMIGA.config.audio.rate);
-		filter1_a0 = calc(rate, 6200);
-		filter2_a0 = calc(rate, 20000);
-		filter_a0 = calc(rate, 7000);
-		/*console.log(rate);
-		console.log(filter1_a0);
-		console.log(filter2_a0);
-		console.log(filter_a0);*/
-	}		
+	this.setup = function (on) {
+      this.on = on;
+      var rate = getRate(AMIGA.config.audio.rate);
+      filter1_a0 = calc(rate, 6200);
+      filter2_a0 = calc(rate, 20000);
+      filter_a0 = calc(rate, 7000);
+      /*console.log(rate);
+       console.log(filter1_a0);
+       console.log(filter2_a0);
+       console.log(filter_a0);*/
+   };
 
-	this.reset = function() {
-		filter_state = [
-			{ rc1:0,rc2:0,rc3:0,rc4:0,rc5:0 },
-			{ rc1:0,rc2:0,rc3:0,rc4:0,rc5:0 },
-			{ rc1:0,rc2:0,rc3:0,rc4:0,rc5:0 },
-			{ rc1:0,rc2:0,rc3:0,rc4:0,rc5:0 }
-		];
-	}		
+	this.reset = function () {
+      filter_state = [
+         { rc1: 0, rc2: 0, rc3: 0, rc4: 0, rc5: 0 },
+         { rc1: 0, rc2: 0, rc3: 0, rc4: 0, rc5: 0 },
+         { rc1: 0, rc2: 0, rc3: 0, rc4: 0, rc5: 0 },
+         { rc1: 0, rc2: 0, rc3: 0, rc4: 0, rc5: 0 }
+      ];
+   };
 
 	this.filter = function(input, state) {
 		//if (!this.on) return input;
@@ -94,7 +94,6 @@ function Filter() {
 
 function Channel(num) {
 	this.num = num;
-	this.adk_mask = 0;
 	this.enabled = false;
 	this.evtime = 0;
 	this.dmaenstore = false;
@@ -118,102 +117,101 @@ function Channel(num) {
 	this.ptx_written = false;
 	this.ptx_tofetch = false;
 	
-	this.reset = function() {
-		this.adk_mask = 0;
-		this.enabled = false;
-		this.evtime = CYCLE_MAX;
-		this.dmaenstore = false;
-		this.intreq = false;
-		this.dr = false;
-		this.dsr = false;
-		this.pbufldl = false;
-		this.dat_written = false;
-		this.state = 0;
-		this.lc = 0;
-		this.pt = 0;
-		this.per = PERIOD_MAX - 1;
-		this.vol = 0;
-		this.len = 0;
-		this.wlen = 0;
-		this.dat = 0;
-		this.dat2 = 0;
-		this.current_sample = 0;
-		this.last_sample = 0;
-		this.ptx = 0;
-		this.ptx_written = false;
-		this.ptx_tofetch = false;
-	}
+	this.reset = function () {
+      this.enabled = false;
+      this.evtime = CYCLE_MAX;
+      this.dmaenstore = false;
+      this.intreq = false;
+      this.dr = false;
+      this.dsr = false;
+      this.pbufldl = false;
+      this.dat_written = false;
+      this.state = 0;
+      this.lc = 0;
+      this.pt = 0;
+      this.per = PERIOD_MAX - 1;
+      this.vol = 0;
+      this.len = 0;
+      this.wlen = 0;
+      this.dat = 0;
+      this.dat2 = 0;
+      this.current_sample = 0;
+      this.last_sample = 0;
+      this.ptx = 0;
+      this.ptx_written = false;
+      this.ptx_tofetch = false;
+   };
 	
 	//const audio_channel_mask = 15;
-	this.newsample = function(sample) {
-		//if (debugchannel(this.num)) BUG.info('Audio.channel[%d].newsample() %02x', nr, sample);
-		//if (!(audio_channel_mask & (1 << this.num))) sample = 0;
-		if (sample & 0x80) sample -= 0x100;
-		this.last_sample = this.current_sample;
-		this.current_sample = sample;
-	}
+	this.newsample = function (sample) {
+      //if (debugchannel(this.num)) BUG.info('Audio.channel[%d].newsample() %02x', nr, sample);
+      //if (!(audio_channel_mask & (1 << this.num))) sample = 0;
+      if (sample & 0x80) sample -= 0x100;
+      this.last_sample = this.current_sample;
+      this.current_sample = sample;
+   };
 	
-	this.isirq = function() {
-		return (AMIGA.INTREQR() & (0x80 << this.num)) != 0;
-	}
+	this.isirq = function () {
+      return (AMIGA.INTREQR() & (0x80 << this.num)) != 0;
+   };
 
-	this.setirq = function(which) {
-		//if (debugchannel(this.num) && this.wlen > 1) BUG.info('Audio.channel[%d].setirq() %d, %d', this.num, which, this.isirq() ? 1 : 0);
-		AMIGA.INTREQ_0(INTF_SETCLR | (0x80 << this.num));
-	}
+	this.setirq = function (which) {
+      //if (debugchannel(this.num) && this.wlen > 1) BUG.info('Audio.channel[%d].setirq() %d, %d', this.num, which, this.isirq() ? 1 : 0);
+      AMIGA.INTREQ_0(INTF_SETCLR | (0x80 << this.num));
+   };
 
-	this.zerostate = function() {
-		//if (debugchannel(this.num)) BUG.info('Audio.channel[%d].zerostate()', this.num);
-		this.state = 0;
-		this.evtime = CYCLE_MAX;
-		this.intreq = false;
-		this.dmaenstore = false;
-	}
+	this.zerostate = function () {
+      //if (debugchannel(this.num)) BUG.info('Audio.channel[%d].zerostate()', this.num);
+      this.state = 0;
+      this.evtime = CYCLE_MAX;
+      this.intreq = false;
+      this.dmaenstore = false;
+   };
 	
-	this.setdr = function() {
-		//if (debugchannel(this.num) && this.dr) BUG.info('Audio.channel[%d].setdr() DR already active (STATE %d)', this.num, this.state);
-		this.dr = true;
-		if (this.wlen == 1) {
-			this.dsr = true;
-			//if (debugchannel(this.num) && this.wlen > 1) BUG.info('Audio.channel[%d].setdr() DSR on, pt %08x', this.num, this.pt);
-		}
-	}
+	this.setdr = function () {
+      //if (debugchannel(this.num) && this.dr) BUG.info('Audio.channel[%d].setdr() DR already active (STATE %d)', this.num, this.state);
+      this.dr = true;
+      if (this.wlen == 1) {
+         this.dsr = true;
+         //if (debugchannel(this.num) && this.wlen > 1) BUG.info('Audio.channel[%d].setdr() DSR on, pt %08x', this.num, this.pt);
+      }
+   };
 
-	this.loaddat = function(modper) {
-		var audav = (AMIGA.adkcon & (0x01 << this.num)) != 0;
-		var audap = (AMIGA.adkcon & (0x10 << this.num)) != 0;
-		if (audav || (modper && audap)) {
-			if (this.num >= 3)
-				return;
-			if (modper && audap) {
-				if (this.dat == 0)
-					AMIGA.audio.channel[this.num + 1].per = PERIOD_MAX;
-				else if (this.dat > PERIOD_MIN)
-					AMIGA.audio.channel[this.num + 1].per = this.dat * CYCLE_UNIT;
-				else
-					AMIGA.audio.channel[this.num + 1].per = PERIOD_MIN * CYCLE_UNIT;
-			} else if (audav) {
-				AMIGA.audio.channel[this.num + 1].vol = this.dat;
-				AMIGA.audio.channel[this.num + 1].vol &= 127;
-				if (AMIGA.audio.channel[this.num + 1].vol > 64)
-					AMIGA.audio.channel[this.num + 1].vol = 64;
-			}
-		} else {
-			//if (debugchannel(this.num)) BUG.info('Audio.channel[%d].loaddat() new %04x, old %04x', this.num, this.dat, this.dat2);
-			this.dat2 = this.dat;
-		}
-	}
+	this.loaddat = function (modper) {
+      var audav = (AMIGA.adkcon & (0x01 << this.num)) != 0;
+      var audap = (AMIGA.adkcon & (0x10 << this.num)) != 0;
+      if (audav || (modper && audap)) {
+         if (this.num >= 3)
+            return;
+         if (modper && audap) {
+            if (this.dat == 0)
+               AMIGA.audio.channel[this.num + 1].per = PERIOD_MAX;
+            else if (this.dat > PERIOD_MIN)
+               AMIGA.audio.channel[this.num + 1].per = this.dat * CYCLE_UNIT;
+            else
+               AMIGA.audio.channel[this.num + 1].per = PERIOD_MIN * CYCLE_UNIT;
+         } else if (audav) {
+            AMIGA.audio.channel[this.num + 1].vol = this.dat;
+            AMIGA.audio.channel[this.num + 1].vol &= 127;
+            if (AMIGA.audio.channel[this.num + 1].vol > 64)
+               AMIGA.audio.channel[this.num + 1].vol = 64;
+         }
+      } else {
+         //if (debugchannel(this.num)) BUG.info('Audio.channel[%d].loaddat() new %04x, old %04x', this.num, this.dat, this.dat2);
+         this.dat2 = this.dat;
+      }
+   };
 
-	this.loadper = function() {
-		this.evtime = this.per;
-		if (this.evtime < CYCLE_UNIT)
-			BUG.info('Audio.channel[%d].loadper() bug %d', this.num, this.evtime);
-	}
+	this.loadper = function () {
+      this.evtime = this.per;
+      if (this.evtime < CYCLE_UNIT)
+         BUG.info('Audio.channel[%d].loadper() bug %d', this.num, this.evtime);
+   };
 	
-	this.state_channel = function(perfin) {
-		this.state_channel2(perfin);
-		this.dat_written = false;
-	}
+	this.state_channel = function (perfin) {
+      this.state_channel2(perfin);
+      this.dat_written = false;
+   };
 
 	this.state_channel2 = function(perfin) {
 		var chan_ena = ((AMIGA.dmacon & DMAF_DMAEN) && (AMIGA.dmacon & (1 << this.num))) ? true : false;
@@ -399,7 +397,7 @@ function Audi0() {
 		realSize: 0,
 		data:0,
 		pos: 0,
-		rate: new mavg(10)
+		rate: new MAvg(10)
 	};	
 	var ringBuffer = {
 		size: 0,
@@ -417,18 +415,19 @@ function Audi0() {
 	{
 		var test;		
 
-		/*try {
-			test = new AudioContext();
-			test = null;
-			this.available |= SAEI_Audio_Default;
-		} catch (e) {}*/		
-
 		try {
-			test = new webkitAudioContext();
+			test = new AudioContext();
 			if (test && test.createJavaScriptNode)
-				this.available |= SAEI_Audio_Webkit;
+				this.available |= SAEI_Audio_Default;
 			test = null;
-		} catch (e) {}				
+		} catch (e) {
+			try {
+				test = new webkitAudioContext(); 
+				if (test && test.createJavaScriptNode)
+					this.available |= SAEI_Audio_Webkit;
+				test = null;
+			} catch (e) {}							
+		}		
 
 		try {
 			test = new Audio();
@@ -452,549 +451,549 @@ function Audi0() {
 		}		
 	} 
 			
-	this.calc_sample_evtime = function(freq, longframe, linetoggle) {
-		var lines = 0.0;
-		var hpos;
+	this.calc_sample_evtime = function (freq, longframe, linetoggle) {
+      var lines = 0.0;
+      var hpos;
 
-		if (linetoggle) {
-			hpos = AMIGA.playfield.maxhpos_short + 0.5;
-			lines += 0.5;
-		} else {
-			hpos = AMIGA.playfield.maxhpos_short + 0.0;
-			if (longframe < 0)
-				lines += 0.5;
-			else if (longframe > 0)
-				lines += 1.0;
-		}
-		lines += AMIGA.playfield.maxvpos_nom;
-		scaled_sample_evtime_orig = Math.floor(hpos * lines * freq * CYCLE_UNIT / getRate(AMIGA.config.audio.rate));
-		scaled_sample_evtime = scaled_sample_evtime_orig;
-/*#if 0
-		lines -= AMIGA.playfield.maxvpos_nom;
-		BUG.info('%d.%d %d.%d %.2f', maxhpos_short, linetoggle ? 5 : 0, maxvpos_nom + (lines == 1.0 ? 1 : 0), lines > 0 && lines < 1 ? 5 : 0, scaled_sample_evtime);
-#endif*/
-		BUG.info('Audio.calc_sample_evtime() scaled_sample_evtime %f (%f) | hpos %d, lines %d', scaled_sample_evtime, scaled_sample_evtime * CYCLE_UNIT_INV, hpos, lines);	
-	}
+      if (linetoggle) {
+         hpos = AMIGA.playfield.maxhpos_short + 0.5;
+         lines += 0.5;
+      } else {
+         hpos = AMIGA.playfield.maxhpos_short + 0.0;
+         if (longframe < 0)
+            lines += 0.5;
+         else if (longframe > 0)
+            lines += 1.0;
+      }
+      lines += AMIGA.playfield.maxvpos_nom;
+      scaled_sample_evtime_orig = Math.floor(hpos * lines * freq * CYCLE_UNIT / getRate(AMIGA.config.audio.rate));
+      scaled_sample_evtime = scaled_sample_evtime_orig;
+      /*#if 0
+       lines -= AMIGA.playfield.maxvpos_nom;
+       BUG.info('%d.%d %d.%d %.2f', maxhpos_short, linetoggle ? 5 : 0, maxvpos_nom + (lines == 1.0 ? 1 : 0), lines > 0 && lines < 1 ? 5 : 0, scaled_sample_evtime);
+       #endif*/
+      BUG.info('Audio.calc_sample_evtime() scaled_sample_evtime %f (%f) | hpos %d, lines %d', scaled_sample_evtime, scaled_sample_evtime * CYCLE_UNIT_INV, hpos, lines);
+   };
 
-	this.setup = function() { 		
-		if (channel === null) {
-			channel = [];
-			for (var i = 0; i < 4; i++)
-				channel[i] = new Channel(i);
-		}		
-		if (!AMIGA.config.audio.enabled || AMIGA.config.audio.mode == SAEV_Config_Audio_Mode_Emul)
-			return;
+	this.setup = function () {
+      if (channel === null) {
+         channel = [];
+         for (var i = 0; i < 4; i++)
+            channel[i] = new Channel(i);
+      }
+      if (!AMIGA.config.audio.enabled || AMIGA.config.audio.mode == SAEV_Config_Audio_Mode_Emul)
+         return;
 
-		if (driver.ctx === null) {
-			if (this.available & SAEI_Audio_Webkit)
-				driver.ctx = new webkitAudioContext();
-			else if (this.available & SAEI_Audio_Mozilla)
-				driver.ctx = new Audio();
-		}
-		if (driver.ctx === null) {
-			if (confirm('Can\'t initialise WebAudio. Continue without audio-playback?')) {
-				AMIGA.config.audio.mode = SAEV_Config_Audio_Mode_Emul;
-				return;
-			} else
-				Fatal(SAEE_Audio_WebAudio_Not_Avail, null);
-		}
+      if (driver.ctx === null) {
+         if (this.available & SAEI_Audio_Default)
+            driver.ctx = new AudioContext();
+         else if (this.available & SAEI_Audio_Webkit)
+      		driver.ctx = new webkitAudioContext();
+         else if (this.available & SAEI_Audio_Mozilla)
+            driver.ctx = new Audio();
+      }
+      if (driver.ctx === null) {
+         if (confirm('Can\'t initialise WebAudio. Continue without audio-playback?')) {
+            AMIGA.config.audio.mode = SAEV_Config_Audio_Mode_Emul;
+            return;
+         } else
+            Fatal(SAEE_Audio_WebAudio_Not_Avail, null);
+      }
+
+      this.filter.setup(AMIGA.config.audio.filter);
+      /* A500 lowpass-filter */
+
+      var hz = AMIGA.config.video.ntsc ? 60 : 50;
+      this.calc_sample_evtime(hz, 1, AMIGA.config.video.ntsc);
+
+      sampleBuffer.size = SAMPLE_BUFFER_SIZE;
+      sampleBuffer.realSize = sampleBuffer.size << 1;
+      sampleBuffer.data = new Float32Array(sampleBuffer.realSize << (AMIGA.config.audio.channels - 1));
+
+      ringBuffer.size = sampleBuffer.size + (sampleBuffer.size >> 1);
+      ringBuffer.data = new Float32Array(ringBuffer.size << (AMIGA.config.audio.channels - 1));
+
+      if ((this.available & SAEI_Audio_Default) || (this.available & SAEI_Audio_Webkit)) {
+         var inputs = BrowserDetect.browser == 'Safari' ? 1 : 0;
+         //if (inputs == 1) BUG.info('Audio.setup() Safari fix enabled.');
+
+         driver.def.node = driver.ctx.createJavaScriptNode(sampleBuffer.size, inputs, AMIGA.config.audio.channels);
+         driver.def.node.onaudioprocess = defFill;
+         driver.def.node.connect(driver.ctx.destination);
+         BUG.info('Audio.setup() enabled webkit audio, channels %d, rate %d', AMIGA.config.audio.channels, getRate(AMIGA.config.audio.rate));
+      }
+      else if (this.available & SAEI_Audio_Mozilla) {
+         driver.ctx.mozSetup(AMIGA.config.audio.channels, getRate(AMIGA.config.audio.rate));
+
+         /*driver.moz.currentWritePosition = 0;
+          driver.moz.prebufferSize = getRate(AMIGA.config.audio.rate) >> 1; //prebuffer 500ms
+          driver.moz.tail = null;*/
+         //driver.moz.interval = setInterval(mozHandler, Math.floor(1000 / (getRate(AMIGA.config.audio.rate) / sampleBuffer.size)));
+         driver.moz.interval = setInterval(mozHandler, Math.floor(1000 / hz * (sampleBuffer.size / (getRate(AMIGA.config.audio.rate) / hz))));
+
+         BUG.info('Audio.setup() enabled mozilla audio, channels %d, rate %d', AMIGA.config.audio.channels, getRate(AMIGA.config.audio.rate));
+      }
+   };
+
+	this.cleanup = function () {
+      if (driver.ctx !== null) {
+         if ((this.available & SAEI_Audio_Default) || (this.available & SAEI_Audio_Webkit)) {
+            driver.def.node.disconnect(0);
+            driver.def.node = null;
+         }
+         else if (this.available & SAEI_Audio_Mozilla) {
+            clearInterval(driver.moz.interval);
+         }
+      }
+   };
 		
-		this.filter.setup(AMIGA.config.audio.filter); /* A500 lowpass-filter */
-			
-		var hz = AMIGA.config.video.ntsc ? 60 : 50;
-		this.calc_sample_evtime(hz, 1, AMIGA.config.video.ntsc);
-		
-		sampleBuffer.size = SAMPLE_BUFFER_SIZE;
-		sampleBuffer.realSize = sampleBuffer.size << 1;
-		sampleBuffer.data = new Float32Array(sampleBuffer.realSize << (AMIGA.config.audio.channels - 1));
+	this.pauseResume = function (pause) {
+      if (!AMIGA.config.audio.enabled || AMIGA.config.audio.mode == SAEV_Config_Audio_Mode_Emul) return;
 
-		ringBuffer.size = sampleBuffer.size + (sampleBuffer.size >> 1);
-		ringBuffer.data = new Float32Array(ringBuffer.size << (AMIGA.config.audio.channels - 1));
+      if (driver.ctx !== null) {
+         if ((this.available & SAEI_Audio_Default) || (this.available & SAEI_Audio_Webkit)) {
+            if (driver.def.node) {
+               if (pause && !driver.paused) {
+                  driver.def.node.disconnect(0);
+                  driver.paused = true;
+               } else if (!pause && driver.paused) {
+                  driver.def.node.connect(driver.ctx.destination);
+                  driver.paused = false;
+               }
+            }
+         }
+         else if (this.available & SAEI_Audio_Mozilla) {
+            if (pause && !driver.paused) {
+               clearInterval(driver.moz.interval);
+               driver.paused = true;
+            } else if (!pause && driver.paused) {
+               driver.moz.interval = setInterval(mozHandler, 100);
+               driver.paused = false;
+            }
+         }
+      }
+   };
 
-		if (this.available & SAEI_Audio_Webkit) {
-			var inputs = BrowserDetect.browser == 'Safari' ? 1 : 0;				
-			//if (inputs == 1) BUG.info('Audio.setup() Safari fix enabled.');
+	this.reset = function () {
+      for (var i = 0; i < 4; i++)
+         channel[i].reset();
 
-			driver.def.node = driver.ctx.createJavaScriptNode(sampleBuffer.size, inputs, AMIGA.config.audio.channels);  
-			driver.def.node.onaudioprocess = defFill;
-			driver.def.node.connect(driver.ctx.destination);
-			BUG.info('Audio.setup() enabled webkit audio, channels %d, rate %d', AMIGA.config.audio.channels, getRate(AMIGA.config.audio.rate));
-		}
-		else if (this.available & SAEI_Audio_Mozilla) {
-			driver.ctx.mozSetup(AMIGA.config.audio.channels, getRate(AMIGA.config.audio.rate));
+      last_cycles = AMIGA.events.currcycle;
+      next_sample_evtime = scaled_sample_evtime;
+      this.schedule();
+      AMIGA.events.schedule();
 
-			/*driver.moz.currentWritePosition = 0;
-			driver.moz.prebufferSize = getRate(AMIGA.config.audio.rate) >> 1; //prebuffer 500ms
-			driver.moz.tail = null;*/
-			//driver.moz.interval = setInterval(mozHandler, Math.floor(1000 / (getRate(AMIGA.config.audio.rate) / sampleBuffer.size)));
-			driver.moz.interval = setInterval(mozHandler, Math.floor(1000 / hz * (sampleBuffer.size / (getRate(AMIGA.config.audio.rate) / hz))));
+      work_to_do = 0;
+      prevcon = 0;
 
-			BUG.info('Audio.setup() enabled mozilla audio, channels %d, rate %d', AMIGA.config.audio.channels, getRate(AMIGA.config.audio.rate));
-		}
-	}
+      sampleBuffer.pos = 0;
+      sampleBuffer.rate.clr();
 
-	this.cleanup = function() {
-		if (driver.ctx !== null) {
-			if (this.available & SAEI_Audio_Webkit) {
-				driver.def.node.disconnect(0);				
-				driver.def.node = null;
-			}
-			else if (this.available & SAEI_Audio_Mozilla) {
-				clearInterval(driver.moz.interval);
-			}
-		}				
-	}
-		
-	this.pauseResume = function(pause) {
-		if (!AMIGA.config.audio.enabled || AMIGA.config.audio.mode == SAEV_Config_Audio_Mode_Emul) return;
+      ringBuffer.usage = 0;
+      ringBuffer.readPos = 0;
+      ringBuffer.writePos = 0;
 
-		if (driver.ctx !== null) {
-			if (this.available & SAEI_Audio_Webkit) {		
-				if (driver.def.node) {
-					if (pause && !driver.paused) {
-						driver.def.node.disconnect(0);
-						driver.paused = true;             
-					} else if (!pause && driver.paused) {
-						driver.def.node.connect(driver.ctx.destination);
-						driver.paused = false;
-					}
-				}
-			}
-			else if (this.available & SAEI_Audio_Mozilla) {
-				if (pause && !driver.paused) {
-					clearInterval(driver.moz.interval);
-					driver.paused = true;
-				} else if (!pause && driver.paused) {
-					driver.moz.interval = setInterval(mozHandler, 100);
-					driver.paused = false;
-				}
-			}
-		}
-	}
-
-	this.reset = function() {
-		for (var i = 0; i < 4; i++)
-			channel[i].reset();
-			
-		last_cycles = AMIGA.events.currcycle;
-		next_sample_evtime = scaled_sample_evtime;
-		this.schedule();
-		AMIGA.events.schedule();
-
-		work_to_do = 0;
-		prevcon = 0;
-
-		sampleBuffer.pos = 0;
-		sampleBuffer.rate.clr();				
-		
-		ringBuffer.usage = 0;
-		ringBuffer.readPos = 0;
-		ringBuffer.writePos = 0;
-		
-		this.filter.reset();
-	}
+      this.filter.reset();
+   };
 	
 	/*---------------------------------*/
 
-	this.event_reset = function() {
-		for (var i = 0; i < 4; i++)
-			channel[i].zerostate();
+	this.event_reset = function () {
+      for (var i = 0; i < 4; i++)
+         channel[i].zerostate();
 
-		last_cycles = AMIGA.events.currcycle;
-		next_sample_evtime = scaled_sample_evtime;
-		this.schedule();
-		AMIGA.events.schedule();
-	}
+      last_cycles = AMIGA.events.currcycle;
+      next_sample_evtime = scaled_sample_evtime;
+      this.schedule();
+      AMIGA.events.schedule();
+   };
 
-	this.activate = function() {
-		//BUG.info('Audio.activate()');
-		var ret = 0;
+	this.activate = function () {
+      //BUG.info('Audio.activate()');
+      var ret = 0;
 
-		if (!work_to_do) {
-			this.pauseResume(0);
-			ret = 1;
-			this.event_reset();
-		}
-		work_to_do = 4 * AMIGA.playfield.maxvpos_nom * 50;
-		return ret;
-	}
+      if (!work_to_do) {
+         this.pauseResume(0);
+         ret = 1;
+         this.event_reset();
+      }
+      work_to_do = 4 * AMIGA.playfield.maxvpos_nom * 50;
+      return ret;
+   };
 
-	this.deactivate = function() {
-		//BUG.info('Audio.deactivate()');
-		this.pauseResume(1);
-		sampleBuffer.pos = 0;
-		sampleBuffer.rate.clr();				
-		this.event_reset();
-	}
+	this.deactivate = function () {
+      //BUG.info('Audio.deactivate()');
+      this.pauseResume(1);
+      sampleBuffer.pos = 0;
+      sampleBuffer.rate.clr();
+      this.event_reset();
+   };
 
-	this.state_machine = function() {
-		this.update();
-		for (var i = 0; i < 4; i++)
-			channel[i].state_channel(false);
+	this.state_machine = function () {
+      this.update();
+      for (var i = 0; i < 4; i++)
+         channel[i].state_channel(false);
 
-		this.schedule();
-		AMIGA.events.schedule();
-	}
+      this.schedule();
+      AMIGA.events.schedule();
+   };
 
-	this.schedule = function() {
-		var best = CYCLE_MAX;
+	this.schedule = function () {
+      var best = CYCLE_MAX;
 
-		AMIGA.events.eventtab[EV_AUDIO].active = false;
-		AMIGA.events.eventtab[EV_AUDIO].oldcycles = AMIGA.events.currcycle;
-		
-		for (var i = 0; i < 4; i++) {
-			if (channel[i].evtime != CYCLE_MAX) {
-				if (best > channel[i].evtime) {
-					best = channel[i].evtime;
-					AMIGA.events.eventtab[EV_AUDIO].active = true;
-				}
-			}
-		}
-		AMIGA.events.eventtab[EV_AUDIO].evtime = AMIGA.events.currcycle + best;
-	}
+      AMIGA.events.eventtab[EV_AUDIO].active = false;
+      AMIGA.events.eventtab[EV_AUDIO].oldcycles = AMIGA.events.currcycle;
 
-	this.update = function() {
-		if (!AMIGA.config.audio.enabled || !work_to_do) {
-			last_cycles = AMIGA.events.currcycle;
-			return;
-		}
+      for (var i = 0; i < 4; i++) {
+         if (channel[i].evtime != CYCLE_MAX) {
+            if (best > channel[i].evtime) {
+               best = channel[i].evtime;
+               AMIGA.events.eventtab[EV_AUDIO].active = true;
+            }
+         }
+      }
+      AMIGA.events.eventtab[EV_AUDIO].evtime = AMIGA.events.currcycle + best;
+   };
 
-		var n_cycles = AMIGA.events.currcycle - last_cycles;
-		while (n_cycles > 0) {
-			var best_evtime = n_cycles + 1;
-			var i, rounded;
+	this.update = function () {
+      if (!AMIGA.config.audio.enabled || !work_to_do) {
+         last_cycles = AMIGA.events.currcycle;
+         return;
+      }
 
-			for (i = 0; i < 4; i++) {
-				if (channel[i].evtime != CYCLE_MAX && best_evtime > channel[i].evtime)
-					best_evtime = channel[i].evtime;
-			}
+      var n_cycles = AMIGA.events.currcycle - last_cycles;
+      while (n_cycles > 0) {
+         var best_evtime = n_cycles + 1;
+         var i, rounded;
 
-			rounded = Math.floor(next_sample_evtime);
-			if ((next_sample_evtime - rounded) >= 0.5)
-				rounded++;
+         for (i = 0; i < 4; i++) {
+            if (channel[i].evtime != CYCLE_MAX && best_evtime > channel[i].evtime)
+               best_evtime = channel[i].evtime;
+         }
 
-			if (AMIGA.config.audio.mode != SAEV_Config_Audio_Mode_Emul && best_evtime > rounded)
-				best_evtime = rounded;
+         rounded = Math.floor(next_sample_evtime);
+         if ((next_sample_evtime - rounded) >= 0.5)
+            rounded++;
 
-			if (best_evtime > n_cycles)
-				best_evtime = n_cycles;
+         if (AMIGA.config.audio.mode != SAEV_Config_Audio_Mode_Emul && best_evtime > rounded)
+            best_evtime = rounded;
 
-			next_sample_evtime -= best_evtime;
+         if (best_evtime > n_cycles)
+            best_evtime = n_cycles;
 
-			/*if (AMIGA.config.audio.mode != SAEV_Config_Audio_Mode_Emul) {
-				if (sample_prehandler)
-					sample_prehandler (best_evtime / CYCLE_UNIT);
-			}*/
+         next_sample_evtime -= best_evtime;
 
-			for (i = 0; i < 4; i++) {
-				if (channel[i].evtime != CYCLE_MAX)
-					channel[i].evtime -= best_evtime;
-			}
-			n_cycles -= best_evtime;
+         /*if (AMIGA.config.audio.mode != SAEV_Config_Audio_Mode_Emul) {
+          if (sample_prehandler)
+          sample_prehandler (best_evtime / CYCLE_UNIT);
+          }*/
 
-			if (AMIGA.config.audio.mode != SAEV_Config_Audio_Mode_Emul) {
-				if (rounded == best_evtime) {
-					next_sample_evtime += scaled_sample_evtime;
-					
-					this.sample_handler_def();
-					//this.sample_handler_crux();
-					//this.sample_handler_rh();
-				}
-			}
-			
-			for (i = 0; i < 4; i++) {
-				if (channel[i].evtime == 0) {
-					channel[i].state_channel(true);
-					if (channel[i].evtime == 0) {
-						BUG.info('Audio.update() sound bug in channel %d (evtime == 0)', i);
-						channel[i].evtime = CYCLE_MAX;
-					}
-				}
-			}
-		}
-		last_cycles = AMIGA.events.currcycle - n_cycles;
-	}
+         for (i = 0; i < 4; i++) {
+            if (channel[i].evtime != CYCLE_MAX)
+               channel[i].evtime -= best_evtime;
+         }
+         n_cycles -= best_evtime;
 
-	this.update_adkmasks = function() {
-		var t = AMIGA.adkcon | (AMIGA.adkcon >> 4);
+         if (AMIGA.config.audio.mode != SAEV_Config_Audio_Mode_Emul) {
+            if (rounded == best_evtime) {
+               next_sample_evtime += scaled_sample_evtime;
 
-		channel[0].adk_mask = ((t >> 0) & 1) == 0 ? 0xffffffff : 0;
-		channel[1].adk_mask = ((t >> 1) & 1) == 0 ? 0xffffffff : 0;
-		channel[2].adk_mask = ((t >> 2) & 1) == 0 ? 0xffffffff : 0;
-		channel[3].adk_mask = ((t >> 3) & 1) == 0 ? 0xffffffff : 0;
-		channel[0].enabled = ((t >> 0) & 1) == 0;
-		channel[1].enabled = ((t >> 1) & 1) == 0;
-		channel[2].enabled = ((t >> 2) & 1) == 0;
-		channel[3].enabled = ((t >> 3) & 1) == 0;
-		
-		if ((prevcon & 0xff) != (AMIGA.adkcon & 0xff)) {
-			this.activate();
-			prevcon = AMIGA.adkcon;
-		}
-	}
+               this.sample_handler_def();
+               //this.sample_handler_crux();
+               //this.sample_handler_rh();
+            }
+         }
 
-	this.handler = function() {
-		this.update();
-		this.schedule();
-	}
+         for (i = 0; i < 4; i++) {
+            if (channel[i].evtime == 0) {
+               channel[i].state_channel(true);
+               if (channel[i].evtime == 0) {
+                  BUG.info('Audio.update() sound bug in channel %d (evtime == 0)', i);
+                  channel[i].evtime = CYCLE_MAX;
+               }
+            }
+         }
+      }
+      last_cycles = AMIGA.events.currcycle - n_cycles;
+   };
 
-	this.hsync = function() {
-		if (work_to_do > 0) {
-			//work_to_do--;
-			if (--work_to_do == 0)
-				this.deactivate();
-		}
-		this.update();
-	}
+	this.update_adkmasks = function () {
+      var t = AMIGA.adkcon | (AMIGA.adkcon >> 4);
+
+      channel[0].enabled = ((t >> 0) & 1) == 0;
+      channel[1].enabled = ((t >> 1) & 1) == 0;
+      channel[2].enabled = ((t >> 2) & 1) == 0;
+      channel[3].enabled = ((t >> 3) & 1) == 0;
+
+      if ((prevcon & 0xff) != (AMIGA.adkcon & 0xff)) {
+         this.activate();
+         prevcon = AMIGA.adkcon;
+      }
+   };
+
+	this.handler = function () {
+      this.update();
+      this.schedule();
+   };
+
+	this.hsync = function () {
+      if (work_to_do > 0) {
+         //work_to_do--;
+         if (--work_to_do == 0)
+            this.deactivate();
+      }
+      this.update();
+   };
 	
-	this.vsync = function() { }
+	this.vsync = function () {
+   };
 	
 	/*---------------------------------*/
 
-	this.AUDxDAT = function(nr, v) {
-		//BUG.info('AUD%dDAT %x', nr, v);
-		channel[nr].dat = v;
-		channel[nr].dat_written = true;
-		if (channel[nr].state == 2 || channel[nr].state == 3) {
-			var chan_ena = ((AMIGA.dmacon & DMAF_DMAEN) && (AMIGA.dmacon & (1 << nr))) ? true : false;
-			if (chan_ena) {
-				if (channel[nr].wlen == 1) {
-					channel[nr].wlen = channel[nr].len;
-					channel[nr].intreq = true;
-				} else {
-					//channel[nr].wlen = (channel[nr].wlen - 1) & 0xffff;
-					if ((--channel[nr].wlen) < 0) channel[nr].wlen = 0xffff;
-				}
-			}
-		} else {
-			this.activate();
-			this.update();
-			channel[nr].state_channel(false);
-			this.schedule();
-			AMIGA.events.schedule();
-		}
-		channel[nr].dat_written = false;
-	}
+	this.AUDxDAT = function (nr, v) {
+      //BUG.info('AUD%dDAT %x', nr, v);
+      channel[nr].dat = v;
+      channel[nr].dat_written = true;
+      if (channel[nr].state == 2 || channel[nr].state == 3) {
+         var chan_ena = ((AMIGA.dmacon & DMAF_DMAEN) && (AMIGA.dmacon & (1 << nr))) ? true : false;
+         if (chan_ena) {
+            if (channel[nr].wlen == 1) {
+               channel[nr].wlen = channel[nr].len;
+               channel[nr].intreq = true;
+            } else {
+               //channel[nr].wlen = (channel[nr].wlen - 1) & 0xffff;
+               if ((--channel[nr].wlen) < 0) channel[nr].wlen = 0xffff;
+            }
+         }
+      } else {
+         this.activate();
+         this.update();
+         channel[nr].state_channel(false);
+         this.schedule();
+         AMIGA.events.schedule();
+      }
+      channel[nr].dat_written = false;
+   };
 
-	this.AUDxPER = function(nr, v) {
-		this.activate();
-		this.update();
+	this.AUDxPER = function (nr, v) {
+      this.activate();
+      this.update();
 
-		var per = v * CYCLE_UNIT;
-		if (per == 0)
-			per = PERIOD_MAX - 1;
+      var per = v * CYCLE_UNIT;
+      if (per == 0)
+         per = PERIOD_MAX - 1;
 
-		if (per < PERIOD_MIN * CYCLE_UNIT)
-			per = PERIOD_MIN * CYCLE_UNIT;
-		if (per < PERIOD_MIN_NONCE * CYCLE_UNIT && channel[nr].dmaenstore)
-			per = PERIOD_MIN_NONCE * CYCLE_UNIT;
+      if (per < PERIOD_MIN * CYCLE_UNIT)
+         per = PERIOD_MIN * CYCLE_UNIT;
+      if (per < PERIOD_MIN_NONCE * CYCLE_UNIT && channel[nr].dmaenstore)
+         per = PERIOD_MIN_NONCE * CYCLE_UNIT;
 
-		if (channel[nr].per == PERIOD_MAX - 1 && per != PERIOD_MAX - 1) {
-			channel[nr].evtime = CYCLE_UNIT;
-			if (AMIGA.config.audio.enabled) {
-				this.schedule();
-				AMIGA.events.schedule();
-			}
-		}
-		channel[nr].per = per;
-		//if (debugchannel(nr)) BUG.info('AUD%dPER() %x', nr, v);
-	}
+      if (channel[nr].per == PERIOD_MAX - 1 && per != PERIOD_MAX - 1) {
+         channel[nr].evtime = CYCLE_UNIT;
+         if (AMIGA.config.audio.enabled) {
+            this.schedule();
+            AMIGA.events.schedule();
+         }
+      }
+      channel[nr].per = per;
+      //if (debugchannel(nr)) BUG.info('AUD%dPER() %x', nr, v);
+   };
 
-	this.AUDxLEN = function(nr, v) {
-		this.activate();
-		this.update();
-		channel[nr].len = v;
-		//if (debugchannel(nr)) BUG.info('AUD%dLEN() %x', nr, v);
-	}
+	this.AUDxLEN = function (nr, v) {
+      this.activate();
+      this.update();
+      channel[nr].len = v;
+      //if (debugchannel(nr)) BUG.info('AUD%dLEN() %x', nr, v);
+   };
 
-	this.AUDxVOL = function(nr, v) {
-		v &= 127;
-		if (v > 64) v = 64;
-		this.activate();
-		this.update();
-		channel[nr].vol = v;
-		//if (debugchannel(nr)) BUG.info('AUD%dVOL() %x', nr, v);
-	}
+	this.AUDxVOL = function (nr, v) {
+      v &= 127;
+      if (v > 64) v = 64;
+      this.activate();
+      this.update();
+      channel[nr].vol = v;
+      //if (debugchannel(nr)) BUG.info('AUD%dVOL() %x', nr, v);
+   };
 
-	this.AUDxLCH = function(nr, v) {
-		this.activate();
-		this.update();
+	this.AUDxLCH = function (nr, v) {
+      this.activate();
+      this.update();
 
-		if (AMIGA.config.cpu.speed == SAEV_Config_CPU_Speed_Maximum && ((channel[nr].ptx_tofetch && channel[nr].state == 1) || channel[nr].ptx_written)) {
-			channel[nr].ptx = channel[nr].lc;
-			channel[nr].ptx_written = true;
-		} else
-			channel[nr].lc = ((channel[nr].lc & 0xffff) | (v << 16)) >>> 0;
-	}
+      if (AMIGA.config.cpu.speed == SAEV_Config_CPU_Speed_Maximum && ((channel[nr].ptx_tofetch && channel[nr].state == 1) || channel[nr].ptx_written)) {
+         channel[nr].ptx = channel[nr].lc;
+         channel[nr].ptx_written = true;
+      } else
+         channel[nr].lc = ((channel[nr].lc & 0xffff) | (v << 16)) >>> 0;
+   };
 
-	this.AUDxLCL = function(nr, v) {
-		this.activate();
-		this.update();
+	this.AUDxLCL = function (nr, v) {
+      this.activate();
+      this.update();
 
-		if (AMIGA.config.cpu.speed == SAEV_Config_CPU_Speed_Maximum && ((channel[nr].ptx_tofetch && channel[nr].state == 1) || channel[nr].ptx_written)) {
-			channel[nr].ptx = channel[nr].lc;
-			channel[nr].ptx_written = true;
-		} else
-			channel[nr].lc = ((channel[nr].lc & ~0xffff) | (v & 0xfffe)) >>> 0;
-	}
+      if (AMIGA.config.cpu.speed == SAEV_Config_CPU_Speed_Maximum && ((channel[nr].ptx_tofetch && channel[nr].state == 1) || channel[nr].ptx_written)) {
+         channel[nr].ptx = channel[nr].lc;
+         channel[nr].ptx_written = true;
+      } else
+         channel[nr].lc = ((channel[nr].lc & ~0xffff) | (v & 0xfffe)) >>> 0;
+   };
 
 	/*---------------------------------*/
 
-	this.getpt = function(nr, reset) {
-		var p = channel[nr].pt;
-		channel[nr].pt += 2;
-		if (reset)
-			channel[nr].pt = channel[nr].lc;
-		channel[nr].ptx_tofetch = false;
-		return p;
-	}      
+	this.getpt = function (nr, reset) {
+      var p = channel[nr].pt;
+      channel[nr].pt += 2;
+      if (reset)
+         channel[nr].pt = channel[nr].lc;
+      channel[nr].ptx_tofetch = false;
+      return p;
+   };
 	  
-	this.dmal = function() {
-		var dmal = 0;
-		for (var nr = 0; nr < 4; nr++) {
-			if (channel[nr].dr)
-				dmal |= (1 << (nr * 2));
-			if (channel[nr].dsr)
-				dmal |= (1 << (nr * 2 + 1));
-			channel[nr].dr = channel[nr].dsr = false;
-		}
-		//if (dmal) BUG.info('Audio.dmal() %d', dmal);
-		return dmal;
-	}
+	this.dmal = function () {
+      var dmal = 0;
+      for (var nr = 0; nr < 4; nr++) {
+         if (channel[nr].dr)
+            dmal |= (1 << (nr * 2));
+         if (channel[nr].dsr)
+            dmal |= (1 << (nr * 2 + 1));
+         channel[nr].dr = channel[nr].dsr = false;
+      }
+      //if (dmal) BUG.info('Audio.dmal() %d', dmal);
+      return dmal;
+   };
 	
 	/*---------------------------------*/
 		
 	const inv32768 = 1.0 / 32768;		
 
-	this.sample_handler_def = function() {
-		var data0 = channel[0].enabled ? (channel[0].current_sample * channel[0].vol) : 0;
-		var data1 = channel[1].enabled ? (channel[1].current_sample * channel[1].vol) : 0;
-		var data2 = channel[2].enabled ? (channel[2].current_sample * channel[2].vol) : 0;
-		var data3 = channel[3].enabled ? (channel[3].current_sample * channel[3].vol) : 0;
+	this.sample_handler_def = function () {
+      var data0 = channel[0].enabled ? (channel[0].current_sample * channel[0].vol) : 0;
+      var data1 = channel[1].enabled ? (channel[1].current_sample * channel[1].vol) : 0;
+      var data2 = channel[2].enabled ? (channel[2].current_sample * channel[2].vol) : 0;
+      var data3 = channel[3].enabled ? (channel[3].current_sample * channel[3].vol) : 0;
 
-		data0 += data3;
- 		data1 += data2;
-		data2 = data0 << 1;
-		data3 = data1 << 1;
-		if (AMIGA.config.audio.filter) {
-			data2 = this.filter.filter(data2, 0);
-			data3 = this.filter.filter(data3, 1);
-		}
+      data0 += data3;
+      data1 += data2;
+      data2 = data0 << 1;
+      data3 = data1 << 1;
+      if (AMIGA.config.audio.filter) {
+         data2 = this.filter.filter(data2, 0);
+         data3 = this.filter.filter(data3, 1);
+      }
 
-		if (sampleBuffer.pos < sampleBuffer.realSize) {			
-			if (AMIGA.config.audio.channels == SAEV_Config_Audio_Channels_Stereo) {			
-				sampleBuffer.data[(sampleBuffer.pos << 1)    ] = inv32768 * data2;
-				sampleBuffer.data[(sampleBuffer.pos << 1) + 1] = inv32768 * data3;
-				sampleBuffer.pos++;
-			} else
-				sampleBuffer.data[sampleBuffer.pos++] = inv32768 * ((data2 + data3) * 0.5);
-		} else
-			BUG.info('Audio.sample_handler() audio buffer over-run!');
-	}
+      if (sampleBuffer.pos < sampleBuffer.realSize) {
+         if (AMIGA.config.audio.channels == SAEV_Config_Audio_Channels_Stereo) {
+            sampleBuffer.data[(sampleBuffer.pos << 1)    ] = inv32768 * data2;
+            sampleBuffer.data[(sampleBuffer.pos << 1) + 1] = inv32768 * data3;
+            sampleBuffer.pos++;
+         } else
+            sampleBuffer.data[sampleBuffer.pos++] = inv32768 * ((data2 + data3) * 0.5);
+      } else
+         BUG.info('Audio.sample_handler() audio buffer over-run!');
+   };
 	
-	this.sample_handler_crux = function() {
-		var data0 = channel[0].enabled ? (channel[0].current_sample * channel[0].vol) : 0;
-		var data1 = channel[1].enabled ? (channel[1].current_sample * channel[1].vol) : 0;
-		var data2 = channel[2].enabled ? (channel[2].current_sample * channel[2].vol) : 0;
-		var data3 = channel[3].enabled ? (channel[3].current_sample * channel[3].vol) : 0;
+	this.sample_handler_crux = function () {
+      var data0 = channel[0].enabled ? (channel[0].current_sample * channel[0].vol) : 0;
+      var data1 = channel[1].enabled ? (channel[1].current_sample * channel[1].vol) : 0;
+      var data2 = channel[2].enabled ? (channel[2].current_sample * channel[2].vol) : 0;
+      var data3 = channel[3].enabled ? (channel[3].current_sample * channel[3].vol) : 0;
 
-		var data0p = channel[0].enabled ? (channel[0].last_sample * channel[0].vol) : 0;
-		var data1p = channel[1].enabled ? (channel[1].last_sample * channel[1].vol) : 0;
-		var data2p = channel[2].enabled ? (channel[2].last_sample * channel[2].vol) : 0;
-		var data3p = channel[3].enabled ? (channel[3].last_sample * channel[3].vol) : 0;
+      var data0p = channel[0].enabled ? (channel[0].last_sample * channel[0].vol) : 0;
+      var data1p = channel[1].enabled ? (channel[1].last_sample * channel[1].vol) : 0;
+      var data2p = channel[2].enabled ? (channel[2].last_sample * channel[2].vol) : 0;
+      var data3p = channel[3].enabled ? (channel[3].last_sample * channel[3].vol) : 0;
 
-		{
-			const INTERVAL = scaled_sample_evtime * 3;
-			var ratio, ratio1;
+      {
+         const INTERVAL = scaled_sample_evtime * 3;
+         var ratio, ratio1;
 
-			ratio1 = channel[0].per - channel[0].evtime;
-			ratio = Math.floor((ratio1 << 12) / INTERVAL);
-			if (channel[0].evtime < scaled_sample_evtime || ratio1 >= INTERVAL)
-				ratio = 4096;
-			data0 = (data0 * ratio + data0p * (4096 - ratio)) >> 12;
+         ratio1 = channel[0].per - channel[0].evtime;
+         ratio = Math.floor((ratio1 << 12) / INTERVAL);
+         if (channel[0].evtime < scaled_sample_evtime || ratio1 >= INTERVAL)
+            ratio = 4096;
+         data0 = (data0 * ratio + data0p * (4096 - ratio)) >> 12;
 
-			ratio1 = channel[1].per - channel[1].evtime;
-			ratio = Math.floor((ratio1 << 12) / INTERVAL);
-			if (channel[1].evtime < scaled_sample_evtime || ratio1 >= INTERVAL)
-				ratio = 4096;
-			data1 = (data1 * ratio + data1p * (4096 - ratio)) >> 12;
+         ratio1 = channel[1].per - channel[1].evtime;
+         ratio = Math.floor((ratio1 << 12) / INTERVAL);
+         if (channel[1].evtime < scaled_sample_evtime || ratio1 >= INTERVAL)
+            ratio = 4096;
+         data1 = (data1 * ratio + data1p * (4096 - ratio)) >> 12;
 
-			ratio1 = channel[2].per - channel[2].evtime;
-			ratio = Math.floor((ratio1 << 12) / INTERVAL);
-			if (channel[2].evtime < scaled_sample_evtime || ratio1 >= INTERVAL)
-				ratio = 4096;
-			data2 = (data2 * ratio + data2p * (4096 - ratio)) >> 12;
+         ratio1 = channel[2].per - channel[2].evtime;
+         ratio = Math.floor((ratio1 << 12) / INTERVAL);
+         if (channel[2].evtime < scaled_sample_evtime || ratio1 >= INTERVAL)
+            ratio = 4096;
+         data2 = (data2 * ratio + data2p * (4096 - ratio)) >> 12;
 
-			ratio1 = channel[3].per - channel[3].evtime;
-			ratio = Math.floor((ratio1 << 12) / INTERVAL);
-			if (channel[3].evtime < scaled_sample_evtime || ratio1 >= INTERVAL)
-				ratio = 4096;
-			data3 = (data3 * ratio + data3p * (4096 - ratio)) >> 12;
-		}
-		data0 += data3;
- 		data1 += data2;
-		data2 = data0 << 1;
-		data3 = data1 << 1;
-		if (AMIGA.config.audio.filter) {
-			data2 = this.filter.filter(data2, 0);
-			data3 = this.filter.filter(data3, 1);
-		}
+         ratio1 = channel[3].per - channel[3].evtime;
+         ratio = Math.floor((ratio1 << 12) / INTERVAL);
+         if (channel[3].evtime < scaled_sample_evtime || ratio1 >= INTERVAL)
+            ratio = 4096;
+         data3 = (data3 * ratio + data3p * (4096 - ratio)) >> 12;
+      }
+      data0 += data3;
+      data1 += data2;
+      data2 = data0 << 1;
+      data3 = data1 << 1;
+      if (AMIGA.config.audio.filter) {
+         data2 = this.filter.filter(data2, 0);
+         data3 = this.filter.filter(data3, 1);
+      }
 
-		if (sampleBuffer.pos < sampleBuffer.realSize) {			
-			if (AMIGA.config.audio.channels == SAEV_Config_Audio_Channels_Stereo) {			
-				sampleBuffer.data[(sampleBuffer.pos << 1)    ] = inv32768 * data2;
-				sampleBuffer.data[(sampleBuffer.pos << 1) + 1] = inv32768 * data3;
-				sampleBuffer.pos++;
-			} else
-				sampleBuffer.data[sampleBuffer.pos++] = inv32768 * ((data2 + data3) * 0.5);
-		} else
-			BUG.info('Audio.sample_handler_crux() audio buffer over-run!');
-	}
+      if (sampleBuffer.pos < sampleBuffer.realSize) {
+         if (AMIGA.config.audio.channels == SAEV_Config_Audio_Channels_Stereo) {
+            sampleBuffer.data[(sampleBuffer.pos << 1)    ] = inv32768 * data2;
+            sampleBuffer.data[(sampleBuffer.pos << 1) + 1] = inv32768 * data3;
+            sampleBuffer.pos++;
+         } else
+            sampleBuffer.data[sampleBuffer.pos++] = inv32768 * ((data2 + data3) * 0.5);
+      } else
+         BUG.info('Audio.sample_handler_crux() audio buffer over-run!');
+   };
 
-	this.sample_handler_rh = function() { 
-		var data0 = channel[0].enabled ? (channel[0].current_sample * channel[0].vol) : 0;
-		var data1 = channel[1].enabled ? (channel[1].current_sample * channel[1].vol) : 0;
-		var data2 = channel[2].enabled ? (channel[2].current_sample * channel[2].vol) : 0;
-		var data3 = channel[3].enabled ? (channel[3].current_sample * channel[3].vol) : 0;
-		var data0p = channel[0].enabled ? (channel[0].last_sample * channel[0].vol) : 0;
-		var data1p = channel[1].enabled ? (channel[1].last_sample * channel[1].vol) : 0;
-		var data2p = channel[2].enabled ? (channel[2].last_sample * channel[2].vol) : 0;
-		var data3p = channel[3].enabled ? (channel[3].last_sample * channel[3].vol) : 0;
+	this.sample_handler_rh = function () {
+      var data0 = channel[0].enabled ? (channel[0].current_sample * channel[0].vol) : 0;
+      var data1 = channel[1].enabled ? (channel[1].current_sample * channel[1].vol) : 0;
+      var data2 = channel[2].enabled ? (channel[2].current_sample * channel[2].vol) : 0;
+      var data3 = channel[3].enabled ? (channel[3].current_sample * channel[3].vol) : 0;
+      var data0p = channel[0].enabled ? (channel[0].last_sample * channel[0].vol) : 0;
+      var data1p = channel[1].enabled ? (channel[1].last_sample * channel[1].vol) : 0;
+      var data2p = channel[2].enabled ? (channel[2].last_sample * channel[2].vol) : 0;
+      var data3p = channel[3].enabled ? (channel[3].last_sample * channel[3].vol) : 0;
 
-		{
-			var delta, ratio;
+      {
+         var delta, ratio;
 
-			delta = channel[0].per;
-			ratio = Math.floor(((channel[0].evtime % delta) << 8) / delta);
-			data0 = (data0 * (256 - ratio) + data0p * ratio) >> 8;
-			delta = channel[1].per;
-			ratio = Math.floor(((channel[1].evtime % delta) << 8) / delta);
-			data1 = (data1 * (256 - ratio) + data1p * ratio) >> 8;
-			delta = channel[2].per;
-			ratio = Math.floor(((channel[2].evtime % delta) << 8) / delta);
-			data1 += (data2 * (256 - ratio) + data2p * ratio) >> 8;
-			delta = channel[3].per;
-			ratio = Math.floor(((channel[3].evtime % delta) << 8) / delta);
-			data0 += (data3 * (256 - ratio) + data3p * ratio) >> 8;
-		}
+         delta = channel[0].per;
+         ratio = Math.floor(((channel[0].evtime % delta) << 8) / delta);
+         data0 = (data0 * (256 - ratio) + data0p * ratio) >> 8;
+         delta = channel[1].per;
+         ratio = Math.floor(((channel[1].evtime % delta) << 8) / delta);
+         data1 = (data1 * (256 - ratio) + data1p * ratio) >> 8;
+         delta = channel[2].per;
+         ratio = Math.floor(((channel[2].evtime % delta) << 8) / delta);
+         data1 += (data2 * (256 - ratio) + data2p * ratio) >> 8;
+         delta = channel[3].per;
+         ratio = Math.floor(((channel[3].evtime % delta) << 8) / delta);
+         data0 += (data3 * (256 - ratio) + data3p * ratio) >> 8;
+      }
 
-		data2 = data0 << 1;
-		data3 = data1 << 1;
-		if (AMIGA.config.audio.filter) {
-			data2 = this.filter.filter(data2, 0);
-			data3 = this.filter.filter(data3, 1);
-		}
+      data2 = data0 << 1;
+      data3 = data1 << 1;
+      if (AMIGA.config.audio.filter) {
+         data2 = this.filter.filter(data2, 0);
+         data3 = this.filter.filter(data3, 1);
+      }
 
-		if (sampleBuffer.pos < sampleBuffer.realSize) {			
-			if (AMIGA.config.audio.channels == SAEV_Config_Audio_Channels_Stereo) {			
-				sampleBuffer.data[(sampleBuffer.pos << 1)    ] = inv32768 * data2;
-				sampleBuffer.data[(sampleBuffer.pos << 1) + 1] = inv32768 * data3;
-				sampleBuffer.pos++;
-			} else
-				sampleBuffer.data[sampleBuffer.pos++] = inv32768 * ((data2 + data3) * 0.5);
-		} else
-			BUG.info('Audio.sample_handler_rh() audio buffer over-run!');
-	}
+      if (sampleBuffer.pos < sampleBuffer.realSize) {
+         if (AMIGA.config.audio.channels == SAEV_Config_Audio_Channels_Stereo) {
+            sampleBuffer.data[(sampleBuffer.pos << 1)    ] = inv32768 * data2;
+            sampleBuffer.data[(sampleBuffer.pos << 1) + 1] = inv32768 * data3;
+            sampleBuffer.pos++;
+         } else
+            sampleBuffer.data[sampleBuffer.pos++] = inv32768 * ((data2 + data3) * 0.5);
+      } else
+         BUG.info('Audio.sample_handler_rh() audio buffer over-run!');
+   };
 	
 	/*---------------------------------*/
 	
@@ -1125,7 +1124,7 @@ function Audi0() {
 		driver.ctx.mozWriteAudio(soundData);
 	}
 	
-	function mozHandler_full() {
+	/*function mozHandler_full() {
 		var written;
 		
 		if (driver.moz.tail) {
@@ -1149,5 +1148,5 @@ function Audi0() {
 			}
 			driver.moz.currentWritePosition += written;
 		}
-	}
+	}*/
 }

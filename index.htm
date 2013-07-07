@@ -47,22 +47,11 @@
 					<h3>Welcome!</h3>
 					This site is the homepage of the project <a target="_blank" href="https://github.com/naTmeg/ScriptedAmigaEmulator">SAE</a>,
 					an <i>experimental</i> <a target="_blank" href="http://en.wikipedia.org/wiki/Amiga">Amiga</a> emulator in pure JavaScript and HTML5.<br />
-					SAE is based on <a target="_blank" href="http://winuae.net')">WinUAE</a> and does use the <a href="javascript:openNewTab('http://aros.org">AROS</a>-kickstart replacement. 
-					For more details, please see the <a target="_blank" href="readme.htm">description</a>.<br /> 					
+					SAE is based on <a target="_blank" href="http://winuae.net">WinUAE</a> and does use the <a target="_blank" href="http://aros.org">AROS</a>-kickstart replacement. 
+					For more details, please see the <a target="_blank" href="readme.htm">description</a>.<br />           						
 					<br />     		
 					Below you find a collection of pre-installed games and demos to play and test. Press the 'Config'-button to use your own roms or file-images, with advanced options.<br />
-					<br />
-					<span style="font-size:x-small;color:orange">
-					Update 22.01.2013: The new game-database is now online. It's quite empty yet and will be filled with freeware and public-domain titles.<br /> 					
-					<br />
-					</span>				 
-					<span class="info">
-					<span class="fwb">Your game or demo online</span><br />		
-					If you want to have your game or demo on this site, please <a href="mailto:rupert_hausberger@gmx.net">contact</a> me.
-					It would be published under a free license, with a link to your homepage and would be free to play for everyone.
-					This is a non-profit site and an open-source project.<br />
-					<br />
-					</span>
+					<br />			 
 					<div class="config_simple_hof">
 						<!--<div class="acm">
 							<span class="fwb">Browser</span>		
@@ -89,17 +78,17 @@
 						</div>-->
 						<table>		
 							<tr>
-								<td class="armsb">Game</td>  
+								<td class="armsb"><label for="cfg_game">Game</label></td>
 								<td>
-									<select id="cfg_game" size="1" onchange="preSelect(1)">
+                                    <select id="cfg_game" size="1" onchange="preSelect(1)">
 										<option value="0">- select -</option>
 									</select>
 								</td>   
 							</tr>
 							<tr>  
-								<td class="armsb">Demo</td>  
+								<td class="armsb"><label for="cfg_demo">Demo</label></td>
 								<td>
-									<select id="cfg_demo" size="1" onchange="preSelect(2)">
+                                    <select id="cfg_demo" size="1" onchange="preSelect(2)">
 										<option value="0">- select -</option>
 									</select>
 								</td>     
@@ -154,7 +143,14 @@
 							<button class="sbutton" id="cfg_simple_start" onclick="simpleStart()">Play</button>		
 							<button class="button" onclick="switchCfg(1)">Config</button>
 						</div>
-					</div>						
+					</div>					
+					<br />
+					<span class="info">
+					<span class="fwb">Your game or demo online</span><br />		
+					If you want to have your game or demo on this site, please contact me.
+					It would be published under a free license, with a link to your homepage and would be free to play for everyone.
+					This is a non-profit site and an open-source project.
+					</span>						
 				</div>						
 				<div id="config_advanced">
 					<div class="acm"><button class="button" onclick="switchCfg(0)">Back</button></div>  	
@@ -533,7 +529,7 @@
 								<input id="cfg_ports_1_enabled" type="checkbox" onchange="portUpdate(1)" />
 								Enabled
 								<span id="cfg_ports_1_grp">
-									<select id="cfg_ports_1" size="1" onchange="portsUpdate(1)">
+									<select id="cfg_ports_1" size="1">
 										<option value="3">Joystick 1</option>
 									</select>
 									Move 
@@ -670,7 +666,7 @@
 			<div style="height:10px"></div> 
 			<div id="myVideo"></div> 			
 		</div>
-		
+				
 	</body>
 </html>
 		

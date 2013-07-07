@@ -40,7 +40,7 @@ function CPU() {
 	const ccNames = ['T', 'F', 'HI', 'LS', 'CC', 'CS', 'NE', 'EQ', 'VC', 'VS', 'PL', 'MI', 'GE', 'LT', 'GT', 'LE'];
 
 	/* Effective Address */
-	function effAddr(m, r) {
+	function EffAddr(m, r) {
 		this.m = m; /* Mode M_ */
 		this.t = 0; /* Type T_ */
 		this.r = r; /* Register An/Dn */
@@ -49,31 +49,31 @@ function CPU() {
 	}
 
 	/* Instruction Condition */
-	function iCon(cc, dp, dr) {
+	function ICon(cc, dp, dr) {
 		this.cc = cc; /* Condition Code */
 		this.dp = dp; /* Displacement */
 		this.dr = dr; /* Data Register for DBcc */
 	}
 
 	/* Instruction Paramenter */
-	function iPar() {
-		this.z; /* size B,W,L */
+	function IPar() {
+		this.z = 0; /* size B,W,L */
 		/* Filled on demand 
-		this.s = new effAddr();
-		this.d = new effAddr();
-		this.c = new iCon();
+		this.s = new EffAddr();
+		this.d = new EffAddr();
+		this.c = new ICon();
 		this.ms = 0;
 		this.mz = 0;
 		this.cyc = 0;*/
 	}
 
 	/* Instruction Definition */
-	function iDef() {
-		this.op; /* OP-code */
-		this.pr; /* Privileged */
-		this.mn; /* Mnemonic */
-		this.f; /* Function */
-		this.p = new iPar();
+	function IDef() {
+		this.op = 0; /* OP-code */
+		//this.pr = false; /* Privileged */
+		this.mn = ''; /* Mnemonic */
+		this.f = null; /* Function */
+		this.p = new IPar();
 	}
 
 	/* Exception 2/3 error */
@@ -118,31 +118,31 @@ function CPU() {
 	
 	/*-----------------------------------------------------------------------*/
 
-	this.setup = function() {
-		if (iTab === null) {
-			BUG.say('cpu.setup() no instruction table, generating...');
-			if (!mkiTab())
-				Fatal(SAEE_CPU_Internal, 'cpu.setup() error generating function table');
-		} else
-			BUG.say('cpu.setup() instruction table is cached');
-	}
+	this.setup = function () {
+      if (iTab === null) {
+         BUG.say('cpu.setup() no instruction table, generating...');
+         if (!mkiTab())
+            Fatal(SAEE_CPU_Internal, 'cpu.setup() error generating function table');
+      } else
+         BUG.say('cpu.setup() instruction table is cached');
+   };
 
 	this.reset = function (addr) {
-		for (var i = 0; i < 8; i++)
-			regs.d[i] = regs.a[i] = 0;
+      for (var i = 0; i < 8; i++)
+         regs.d[i] = regs.a[i] = 0;
 
-		regs.t = false;
-		regs.s = true;
-		regs.intmask = 7;
-		regs.x = regs.n = regs.z = regs.v = regs.c = false;
-		regs.usp = 0;
-		regs.isp = 0;
-		regs.a[7] = AMIGA.mem.load32(addr);
-		regs.pc = AMIGA.mem.load32(addr + 4);
-		regs.stopped = false;
+      regs.t = false;
+      regs.s = true;
+      regs.intmask = 7;
+      regs.x = regs.n = regs.z = regs.v = regs.c = false;
+      regs.usp = 0;
+      regs.isp = 0;
+      regs.a[7] = AMIGA.mem.load32(addr);
+      regs.pc = AMIGA.mem.load32(addr + 4);
+      regs.stopped = false;
 
-		BUG.say(sprintf('cpu.reset() addr 0x%08x, A7 0x%08x, PC 0x%08x', addr, regs.a[7], regs.pc));
-	}
+      BUG.say(sprintf('cpu.reset() addr 0x%08x, A7 0x%08x, PC 0x%08x', addr, regs.a[7], regs.pc));
+   };
 
 	/*-----------------------------------------------------------------------*/
 
@@ -154,6 +154,7 @@ function CPU() {
 			case 4: return 'L';
 			default:
 				Fatal(SAEE_CPU_Internal, 'cpu.szChr() invalid size');
+            return '';
 		}
 	}
 	
@@ -203,6 +204,7 @@ function CPU() {
 			case 4: return r > 0xffffffff ? r - 0x100000000 : r;
 			default:
 				Fatal(SAEE_CPU_Internal, 'cpu.addAuto() invalid size');
+            return 0;
 		}
 	}
 	function sub32(a, b) {
@@ -217,6 +219,7 @@ function CPU() {
 			case 4: return r < 0 ? r + 0x100000000 : r;
 			default:
 				Fatal(SAEE_CPU_Internal, 'cpu.subAuto() invalid size');
+            return 0;
 		}
 	}
 
@@ -241,9 +244,10 @@ function CPU() {
 	//var scale = 1 << ((ext & 0x600) >> 9); if (scale != 1) alert('exII() scale '+scale);
 	function exII(base) {
 		var ext = nextIWord();
-		if (ext & 0x100)
-			Fatal(SAEE_CPU_68020_Required, 'cpu.exII() Full extension index (not a 68000 program)');			
-		else {
+		if (ext & 0x100) {
+			Fatal(SAEE_CPU_68020_Required, 'cpu.exII() Full extension index (not a 68000 program)');
+         return 0;
+      } else {
 			var disp = extByte(ext & 0xff);
 			var r = (ext & 0x7000) >> 12;
 			var reg = (ext & 0x8000) ? regs.a[r] : regs.d[r];
@@ -394,6 +398,7 @@ function CPU() {
 					case 4: return regs.d[ea.a];
 					default:
 						Fatal(SAEE_CPU_Internal, 'cpu.ldEA() T_RD invalid size');
+                  return 0;
 				}
 			}
 			case T_RA: {			
@@ -402,6 +407,7 @@ function CPU() {
 					case 4: return regs.a[ea.a];
 					default:
 						Fatal(SAEE_CPU_Internal, 'cpu.ldEA() T_RA invalid size');
+                  return 0;
 				}
 			}
 			case T_AD: {
@@ -427,12 +433,14 @@ function CPU() {
 					case 4: return AMIGA.mem.load32(ea.a);
 					default:
 						Fatal(SAEE_CPU_Internal, 'cpu.ldEA() T_AD invalid size');
+                  return 0;
 				}
 			}
 			case T_IM:
 				return ea.a;
 			default:
 				Fatal(SAEE_CPU_Internal, 'cpu.ldEA() invalid type (' + ea.t + ')');
+            return 0;
 		}
 	}
 
@@ -501,6 +509,7 @@ function CPU() {
 			case 15: return regs.z || (regs.n != regs.v); //LE									
 			default:
 				Fatal(SAEE_CPU_Internal, 'cpu.ccTrue() invalid condition code (' + cc + ')');
+            return false;
 		}
 	}
 	
@@ -698,7 +707,7 @@ function CPU() {
 
 	function I_PEA(p) {
 		var sea = exEA(p.s, p.z);
-		var dea = exEA(new effAddr(M_ripr, 7), p.z);
+		var dea = exEA(new EffAddr(M_ripr, 7), p.z);
 		stEA(dea, p.z, sea.a);
 		//ccna			
 		return p.cyc;		
@@ -710,7 +719,7 @@ function CPU() {
 		var dea = exEA(p.d, p.z);
 		var dp = ldEA(dea, p.z); if (p.z == 2) dp = extWord(dp);
 
-		stEA(exEA(new effAddr(M_ripr, 7), 4), 4, regs.a[An]);
+		stEA(exEA(new EffAddr(M_ripr, 7), 4), 4, regs.a[An]);
 		regs.a[An] = regs.a[7];
 		regs.a[7] = add32(regs.a[7], dp);
 		//ccna
@@ -726,7 +735,7 @@ function CPU() {
 		var sea = exEA(p.s, p.z);
 		var An = sea.a;
 		regs.a[7] = regs.a[An];
-		regs.a[An] = ldEA(exEA(new effAddr(M_ripo, 7), 4), 4);
+		regs.a[An] = ldEA(exEA(new EffAddr(M_ripo, 7), 4), 4);
 		//ccna
 		//BUG.say(sprintf('I_UNLK.%s A%d', szChr(p.z), An));
 		return p.cyc;
@@ -987,7 +996,7 @@ function CPU() {
 
 	function I_CLR(p) {
 		var dea = exEA(p.d, p.z);
-		var foo = ldEA(dea, p.z); /* In the MC68000 and MC68008 a memory location is read before it is cleared. */ 
+		//var foo = ldEA(dea, p.z); /* In the MC68000 and MC68008 a memory location is read before it is cleared. */
 		stEA(dea, p.z, 0);
 
 		regs.n = false;
@@ -1812,7 +1821,7 @@ function CPU() {
 		var cyc;
 
 		if (!ccTrue(cc)) {
-			var ea = exEA(new effAddr(M_rdd, p.c.dr), p.z);
+			var ea = exEA(new EffAddr(M_rdd, p.c.dr), p.z);
 			var dr = ldEA(ea, p.z);
 			
 			if (dr--) {
@@ -1833,7 +1842,7 @@ function CPU() {
 		//var cc = p.s.r;
 		var cc = p.c.cc;
 		var dea = exEA(p.d, p.z);
-		var foo = ldEA(dea, p.z); /* In the MC68000 and MC68008 a memory location is read before it is cleared. */
+		//var foo = ldEA(dea, p.z); /* In the MC68000 and MC68008 a memory location is read before it is cleared. */
 		var isTrue = ccTrue(cc);
 		stEA(dea, p.z, isTrue ? 0xff : 0);
 		//ccna
@@ -1868,7 +1877,7 @@ function CPU() {
 		//else if (dp == 255) Fatal(SAEE_CPU_68020_Required, 'cpu.I_BSR() Full extension index detected (not a 68000 programm)');
 		else pc = add32(regs.pc, extByte(dp));
 
-		stEA(exEA(new effAddr(M_ripr, 7), 4), 4, regs.pc);
+		stEA(exEA(new EffAddr(M_ripr, 7), 4), 4, regs.pc);
 		setPC(pc);
 		//ccna
 		return p.cycTaken; 
@@ -1884,7 +1893,7 @@ function CPU() {
 
 	function I_JSR(p) {
 		var dea = exEA(p.d, p.z);
-		stEA(exEA(new effAddr(M_ripr, 7), 4), 4, regs.pc);
+		stEA(exEA(new EffAddr(M_ripr, 7), 4), 4, regs.pc);
 		setPC(dea.a);
 		//ccna		
 		//BUG.say(sprintf('I_JSR $%08x', dea.a));			
@@ -1892,8 +1901,8 @@ function CPU() {
 	}
 
 	function I_RTR(p) {
-		var ccr = ldEA(exEA(new effAddr(M_ripo, 7), 2), 2) & 0xff;
-		var pc = ldEA(exEA(new effAddr(M_ripo, 7), 4), 4);
+		var ccr = ldEA(exEA(new EffAddr(M_ripo, 7), 2), 2) & 0xff;
+		var pc = ldEA(exEA(new EffAddr(M_ripo, 7), 4), 4);
 		setCCR(ccr);
 		setPC(pc);
 		//BUG.say(sprintf('I_RTR crr $%04x pc $%08x', crr, pc));		
@@ -1901,7 +1910,7 @@ function CPU() {
 	}
 
 	function I_RTS(p) {
-		var pc = ldEA(exEA(new effAddr(M_ripo, 7), 4), 4);
+		var pc = ldEA(exEA(new EffAddr(M_ripo, 7), 4), 4);
 		//BUG.say(sprintf('I_RTS() regs.pc $%08x newpc $%08x', regs.pc, pc));	
 		setPC(pc);
 		//ccna                                  
@@ -2039,7 +2048,7 @@ function CPU() {
 	function I_MOVE_SR2(p) {
 		var sr = getSR();
 		var dea = exEA(p.d, p.z);
-		var foo = ldEA(dea, p.z); /* Memory destination is read before it is written to. */ 		
+		//var foo = ldEA(dea, p.z); /* Memory destination is read before it is written to. */
 		stEA(dea, p.z, sr);
 		//ccna	
 		//BUG.say(sprintf('I_MOVE_SR2.%s sr $%04x', szChr(p.z), sr));		 			
@@ -2144,8 +2153,8 @@ function CPU() {
 
 	function I_RTE(p) {
 		if (regs.s) {
-			var sr = ldEA(exEA(new effAddr(M_ripo, 7), 2), 2);
-			var pc = ldEA(exEA(new effAddr(M_ripo, 7), 4), 4);
+			var sr = ldEA(exEA(new EffAddr(M_ripo, 7), 2), 2);
+			var pc = ldEA(exEA(new EffAddr(M_ripo, 7), 4), 4);
 			setSR(sr);
 			//BUG.say(sprintf('I_RTE sr $%04x newpc $%08x oldpc $%08x', sr, pc, regs.pc));		
 			setPC(pc);
@@ -2239,11 +2248,12 @@ function CPU() {
 			case M_absl: return z == 4 ? [16,4,0] : [12,3,0];
 			case M_imm:
 			case M_list: return z == 4 ? [ 8,2,0] : [ 4,1,0];
-		}		
+         default: return [0,0,0];
+		}
 	}
 
 	function mkN(op, mn, cyc) {
-		var i = new iDef();
+		var i = new IDef();
 		i.op = op;
 		i.pr = false;
 		i.mn = mn;
@@ -2254,14 +2264,14 @@ function CPU() {
 	}
 
 	function mkS(op, mn, z, s, r, cyc, add) {
-		var i = new iDef();
+		var i = new IDef();
 		i.op = op;
 		i.pr = false;
 		i.mn = mn;
 		i.f = null;
 		i.p = {};
 		i.p.z = z;
-		i.p.s = new effAddr(s, r);
+		i.p.s = new EffAddr(s, r);
 		i.p.s.c = mkCyc(z, s);
 		i.p.cyc = cyc;
 		if (add) i.p.cyc[0] += i.p.s.c[0];
@@ -2271,14 +2281,14 @@ function CPU() {
 	}
 
 	function mkD(op, mn, z, d, r, cyc, add) {
-		var i = new iDef();
+		var i = new IDef();
 		i.op = op;
 		i.pr = false;
 		i.mn = mn;
 		i.f = null;
 		i.p = {};
 		i.p.z = z;
-		i.p.d = new effAddr(d, r);
+		i.p.d = new EffAddr(d, r);
 		i.p.d.c = mkCyc(z, d);
 		i.p.cyc = cyc;
 		if (add) i.p.cyc[0] += i.p.d.c[0];
@@ -2288,7 +2298,7 @@ function CPU() {
 	}
 
 	function mkSD(op, mn, z, sm, sr, dm, dr, cyc, sa, da) {
-		var i = new iDef();
+		var i = new IDef();
 		i.op = op;
 		i.pr = false;
 		i.mn = mn;
@@ -2297,8 +2307,8 @@ function CPU() {
 		i.p.z = z;
 		i.p.ms = z == 1 ? 0x80 : (z == 2 ? 0x8000 : 0x80000000);
 		i.p.mz = z == 1 ? 0xff : (z == 2 ? 0xffff : 0xffffffff);
-		i.p.s = new effAddr(sm, sr);
-		i.p.d = new effAddr(dm, dr);
+		i.p.s = new EffAddr(sm, sr);
+		i.p.d = new EffAddr(dm, dr);
 		i.p.s.c = mkCyc(z, sm);
 		i.p.d.c = mkCyc(z, dm);
 		i.p.cyc = cyc;
@@ -2312,28 +2322,28 @@ function CPU() {
 	}
 
 	function mkC(op, mn, sz, cc, dp, dr, cycTaken, cyc) {
-		var i = new iDef();
+		var i = new IDef();
 		i.op = op;
 		i.pr = false;
 		i.mn = mn;
 		i.f = null;
 		i.p = {};
 		i.p.z = sz;
-		i.p.c = new iCon(cc, dp, dr);
+		i.p.c = new ICon(cc, dp, dr);
 		if (cycTaken !== null) i.p.cycTaken = cycTaken;
 		if (cyc !== null) i.p.cyc = cyc;
 		return i;
 	}
 	
 	function mkDBcc(op, mn, sz, cc, dp, dr, cycTrue, cycFalseTaken, cycFalse) {
-		var i = new iDef();
+		var i = new IDef();
 		i.op = op;
 		i.pr = false;
 		i.mn = mn;
 		i.f = null;
 		i.p = {};
 		i.p.z = sz;
-		i.p.c = new iCon(cc, dp, dr);
+		i.p.c = new ICon(cc, dp, dr);
 		i.p.cycTrue = cycTrue;
 		i.p.cycFalseTaken = cycFalseTaken;
 		i.p.cycFalse = cycFalse;
@@ -2341,15 +2351,15 @@ function CPU() {
 	}
 	
 	function mkCD(op, mn, z, cc, dp, dr, m, r, cycTrue, cycFalse, add) {
-		var i = new iDef();
+		var i = new IDef();
 		i.op = op;
 		i.pr = false;
 		i.mn = mn;
 		i.f = null;
 		i.p = {};
 		i.p.z = z;
-		i.p.c = new iCon(cc, dp, dr);
-		i.p.d = new effAddr(m, r);
+		i.p.c = new ICon(cc, dp, dr);
+		i.p.d = new EffAddr(m, r);
 		i.p.d.c = mkCyc(z, m);
 		i.p.cycTrue = cycTrue;
 		i.p.cycFalse = cycFalse;
@@ -2395,7 +2405,7 @@ function CPU() {
 
 		iTab = new Array(0x10000);
 		for (op = 0; op < 0x10000; op++) {
-			iTab[op] = new iDef();
+			iTab[op] = new IDef();
 			iTab[op].op = -1;
 			iTab[op].pr = false;
 			iTab[op].mn = 'ILLEGAL';
@@ -3590,7 +3600,7 @@ function CPU() {
 					op = (275 << 6) | ea[0];
 
 					if (iTab[op].op === -1) {
-						iTab[op] = mkS(op, 'MOVE_2CCR', 2, ea[1], ea[2], [12,1,0], ea[1] == M_rdd ? false : true);
+						iTab[op] = mkS(op, 'MOVE_2CCR', 2, ea[1], ea[2], [12,1,0], ea[1] != M_rdd);
 						iTab[op].f = I_MOVE_2CCR;
 						cnt++;
 					} else {
@@ -3632,7 +3642,7 @@ function CPU() {
 					op = (283 << 6) | ea[0];
 
 					if (iTab[op].op === -1) {
-						iTab[op] = mkS(op, 'MOVE_2SR', 2, ea[1], ea[2], [12,1,0], ea[1] == M_rdd ? false : true);
+						iTab[op] = mkS(op, 'MOVE_2SR', 2, ea[1], ea[2], [12,1,0], ea[1] != M_rdd);
 						iTab[op].pr = true;
 						iTab[op].f = I_MOVE_2SR;
 						cnt++;
@@ -4668,29 +4678,29 @@ function CPU() {
 	}
 
 	this.diss = function (offset, limit) {
-		var pc = offset === null ? regs.pc : offset;
-		var cnt = 0;
+      var pc = offset === null ? regs.pc : offset;
+      var cnt = 0;
 
-		while (cnt++ < limit) {
-			var o = '';
+      while (cnt++ < limit) {
+         var o = '';
 
-			o += sprintf('$%08x: ', pc);
-			for (var i = 0; i < 5; i++)
-				o += sprintf('$%04x ', AMIGA.mem.load16(pc + i * 2));
+         o += sprintf('$%08x: ', pc);
+         for (var i = 0; i < 5; i++)
+            o += sprintf('$%04x ', AMIGA.mem.load16(pc + i * 2));
 
-			var op = AMIGA.mem.load16(pc);
-			pc += 2;
+         var op = AMIGA.mem.load16(pc);
+         pc += 2;
 
-			var ip = printI(iTab[op], pc);
-			o += ip[0];
-			pc = ip[1];
+         var ip = printI(iTab[op], pc);
+         o += ip[0];
+         pc = ip[1];
 
-			BUG.say(o);
-		}
-	}
-	this.dissFault = function (limit) {
-		this.diss(fault.pc, limit);
-	}
+         BUG.say(o);
+      }
+   };
+	/*this.dissFault = function (limit) {
+      this.diss(fault.pc, limit);
+   };*/
 
 	/*function nextIWordData(data, pc) {
 		return (data[pc] << 8) | data[pc + 1];
@@ -4866,37 +4876,37 @@ function CPU() {
 		return getName(AMIGA.mem.load32(task + 10));
 	}
 	
-	this.getThisTaskName = function() {
-		var tn = '';
-		/* Extract current task-name form SysBase */
-		var sysBase = AMIGA.mem.load32(4);
-		if (sysBase == 0x000676 || sysBase == 0xc00276 || sysBase == 0xc00a88 || sysBase == 0xc00560) {
-			var thisTask = AMIGA.mem.load32(sysBase + 276);
-			if (thisTask)
-				tn = getTaskName(thisTask);
-		}
-		return tn;
-	}
+	this.getThisTaskName = function () {
+      var tn = '';
+      /* Extract current task-name form SysBase */
+      var sysBase = AMIGA.mem.load32(4);
+      if (sysBase == 0x000676 || sysBase == 0xc00276 || sysBase == 0xc00a88 || sysBase == 0xc00560) {
+         var thisTask = AMIGA.mem.load32(sysBase + 276);
+         if (thisTask)
+            tn = getTaskName(thisTask);
+      }
+      return tn;
+   };
 	
-	this.dump = function() {
-		var i, out = '', tn = 1 ? this.getThisTaskName() : '';
+	this.dump = function () {
+      var i, out = '', tn = 1 ? this.getThisTaskName() : '';
 
-		for (i = 0; i < 8; i++) {
-			out += sprintf('D%d $%08x ', i, regs.d[i]); //if ((i & 3) == 3) out += '<br/>';
-		}
-		//out += '<br/>';
-		out += "\n";
-		for (i = 0; i < 8; i++) {
-			out += sprintf('A%d $%08x ', i, regs.a[i]); //if ((i & 3) == 3) out += '<br/>';
-		}
-		//out += '<br/>';
-		out += "\n";
-		out += sprintf('PC $%08x USP $%08x ISP $%08x ', regs.pc, regs.usp, regs.isp);
-		out += sprintf('T=%d S=%d X=%d N=%d Z=%d V=%d C=%d IMASK=%d, LTASK=%s', regs.t ? 1 : 0, regs.s ? 1 : 0, regs.x ? 1 : 0, regs.n ? 1 : 0, regs.z ? 1 : 0, regs.v ? 1 : 0, regs.c ? 1 : 0, regs.intmask, tn);
-		out += "\n";
-		out += "\n";
-		BUG.say(out);
-	}
+      for (i = 0; i < 8; i++) {
+         out += sprintf('D%d $%08x ', i, regs.d[i]); //if ((i & 3) == 3) out += '<br/>';
+      }
+      //out += '<br/>';
+      out += "\n";
+      for (i = 0; i < 8; i++) {
+         out += sprintf('A%d $%08x ', i, regs.a[i]); //if ((i & 3) == 3) out += '<br/>';
+      }
+      //out += '<br/>';
+      out += "\n";
+      out += sprintf('PC $%08x USP $%08x ISP $%08x ', regs.pc, regs.usp, regs.isp);
+      out += sprintf('T=%d S=%d X=%d N=%d Z=%d V=%d C=%d IMASK=%d, LTASK=%s', regs.t ? 1 : 0, regs.s ? 1 : 0, regs.x ? 1 : 0, regs.n ? 1 : 0, regs.z ? 1 : 0, regs.v ? 1 : 0, regs.c ? 1 : 0, regs.intmask, tn);
+      out += "\n";
+      out += "\n";
+      BUG.say(out);
+   };
 
 	/*-----------------------------------------------------------------------*/
 	/*-----------------------------------------------------------------------*/
@@ -5025,7 +5035,7 @@ function CPU() {
 		regs.t = 0;
 	}
 	
-	function exception_cycles(n) {
+	/*function exception_cycles(n) {
 		var c;
 		if (n < 16)
 			switch (n) {
@@ -5051,7 +5061,7 @@ function CPU() {
 			c = [4,0,0];
 		}
 		return c;
-	}
+	}*/
 
 	function exception(n) {
 		//BUG.say(sprintf('cpu.exception() nr %d', n));
@@ -5076,8 +5086,8 @@ function CPU() {
 		if (n == 2) {
 			BUG.say(sprintf('cpu.exception() %d, regs.pc $%08x, fault.pc $%08x, fault.op $%04x, fault.ad $%08x, fault.ia %d', n, regs.pc, fault.pc, fault.op, fault.ad, fault.ia ? 1 : 0));
 
-			stEA(exEA(new effAddr(M_ripr, 7), 4), 4, regs.pc);
-			stEA(exEA(new effAddr(M_ripr, 7), 2), 2, sr);
+			stEA(exEA(new EffAddr(M_ripr, 7), 4), 4, regs.pc);
+			stEA(exEA(new EffAddr(M_ripr, 7), 2), 2, sr);
 		} else if (n == 3) {
 			BUG.say(sprintf('cpu.exception() %d, regs.pc $%08x, fault.pc $%08x, fault.op $%04x, fault.ad $%08x, fault.ia %d', n, regs.pc, fault.pc, fault.op, fault.ad, fault.ia ? 1 : 0));
 
@@ -5085,14 +5095,14 @@ function CPU() {
 			var wa = 0;
 			var cd = (wa ? 0 : 16) | (olds ? 4 : 0) | (ia ? 2 : 1);
 
-			stEA(exEA(new effAddr(M_ripr, 7), 4), 4, fault.pc);
-			stEA(exEA(new effAddr(M_ripr, 7), 2), 2, sr);
-			stEA(exEA(new effAddr(M_ripr, 7), 2), 2, fault.op);
-			stEA(exEA(new effAddr(M_ripr, 7), 4), 4, fault.ad);
-			stEA(exEA(new effAddr(M_ripr, 7), 2), 2, cd);							
+			stEA(exEA(new EffAddr(M_ripr, 7), 4), 4, fault.pc);
+			stEA(exEA(new EffAddr(M_ripr, 7), 2), 2, sr);
+			stEA(exEA(new EffAddr(M_ripr, 7), 2), 2, fault.op);
+			stEA(exEA(new EffAddr(M_ripr, 7), 4), 4, fault.ad);
+			stEA(exEA(new EffAddr(M_ripr, 7), 2), 2, cd);							
 		} else {
-			stEA(exEA(new effAddr(M_ripr, 7), 4), 4, regs.pc);
-			stEA(exEA(new effAddr(M_ripr, 7), 2), 2, sr);
+			stEA(exEA(new EffAddr(M_ripr, 7), 4), 4, regs.pc);
+			stEA(exEA(new EffAddr(M_ripr, 7), 2), 2, sr);
 		}
 		
 		var pc = AMIGA.mem.load32(n * 4);
@@ -5113,14 +5123,14 @@ function CPU() {
 		regs.pc = pc;
 		
 		exception_trace(n);
-		return exception_cycles(n);
+		return [4,0,0];//exception_cycles(n);
 	}
 
-	function exception2(ad) {
+	/*function exception2(ad) {
 		fault.ad = ad;
 		fault.ia = 0;
 		throw new Exception23(2);
-	}
+	}*/
 	
 	function exception3(ad, ia) {
 		fault.ad = ad;
@@ -5139,19 +5149,13 @@ function CPU() {
 		AMIGA.doint();
 	}	
 
-	function trace() {
-		if (regs.t) {
-			clr_special(SPCFLAG_TRACE);
-			set_special(SPCFLAG_DOTRACE);
-		}
-	}
-	
 	function cycle_spc(cycles) {
 		if (AMIGA.spcflags & SPCFLAG_COPPER)
 			AMIGA.copper.cycle();
 
 		while ((AMIGA.spcflags & SPCFLAG_BLTNASTY) && AMIGA.dmaen(DMAF_BLTEN) && cycles > 0) {
 			var c = AMIGA.blitter.blitnasty();
+			//console.log('nasty', cycles, c);
 			if (c > 0) {
 				cycles -= c * CYCLE_UNIT * 2;
 				if (cycles < CYCLE_UNIT)
@@ -5166,6 +5170,7 @@ function CPU() {
 
 		if (AMIGA.spcflags & SPCFLAG_DOTRACE)
 			exception(9);
+			
 		if (AMIGA.spcflags & SPCFLAG_TRAP) {
 			clr_special(SPCFLAG_TRAP);
 			exception(3);
@@ -5183,21 +5188,26 @@ function CPU() {
 				if (intr > 0 && intr > regs.intmask)
 					interrupt(intr);
 			}
-			/*if (AMIGA.spcflags & SPCFLAG_BRK) {
-				clr_special(SPCFLAG_BRK);
+			//if (AMIGA.spcflags & SPCFLAG_BRK) {
+			if (AMIGA.state != ST_CYCLE) {		
+				//clr_special(SPCFLAG_BRK);
 				clr_special(SPCFLAG_STOP);
 				regs.stopped = false;
 				return true;
-			}*/		
+			}		
 		}
 
-		if (AMIGA.spcflags & SPCFLAG_TRACE)
-			trace();
+		if (AMIGA.spcflags & SPCFLAG_TRACE) {
+			if (regs.t) {
+				clr_special(SPCFLAG_TRACE);
+				set_special(SPCFLAG_DOTRACE);
+			}
+		}
 
 		if (AMIGA.spcflags & SPCFLAG_INT) {
 			clr_special(SPCFLAG_INT | SPCFLAG_DOINT);
 			var intr = AMIGA.intlev();
-			if (intr > 0 && (intr > regs.intmask || intr == 7))
+			if (intr > 0 && intr > regs.intmask)
 				interrupt(intr);
 		}
 		if (AMIGA.spcflags & SPCFLAG_DOINT) {
