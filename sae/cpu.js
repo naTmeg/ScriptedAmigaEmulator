@@ -1063,7 +1063,7 @@ function CPU() {
 			regs.pc = fault.pc;
 			return exception(5);
 		} else {
-			var quo = Math.floor(d / s);
+			var quo = ~~(d / s);
 
 			if (quo < 0) quo += 0x10000;
 
