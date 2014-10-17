@@ -1,4 +1,4 @@
-/**************************************************************************
+﻿/**************************************************************************
 * SAE - Scripted Amiga Emulator
 *
 * https://github.com/naTmeg/ScriptedAmigaEmulator
@@ -990,6 +990,8 @@ function getConfig() {
 function init() {
 	cache = new Cache();
 	
+	
+
 	SAE({cmd:'init'});		
 
 	info = SAE({cmd:'getInfo'}); 
@@ -1030,6 +1032,11 @@ function init() {
 	}
 }	
 
+function mainStart()
+{
+    SAE({ cmd: 'start' });
+}
+
 function start() {
 	document.body.style.backgroundColor = '#000';
 	styleDisplayBlock('base', 0);
@@ -1055,8 +1062,8 @@ function start() {
 	if (result.error != SAEE_None) {
 		stop();
 		alert(result.message);		
-	}*/	
-	SAE({cmd:'start'});
+	}*/
+	setTimeout(mainStart, 50);
 }	
 
 function simpleStart2() {

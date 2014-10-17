@@ -1,4 +1,4 @@
-/**************************************************************************
+﻿/**************************************************************************
 * SAE - Scripted Amiga Emulator
 *
 * https://github.com/naTmeg/ScriptedAmigaEmulator
@@ -419,12 +419,16 @@ function Audi0() {
 			test = new AudioContext();
 			if (test && test.createJavaScriptNode)
 				this.available |= SAEI_Audio_Default;
+			if (test && test.createScriptProcessor)
+			    this.available |= SAEI_Audio_Default;
 			test = null;
 		} catch (e) {
 			try {
 				test = new webkitAudioContext(); 
 				if (test && test.createJavaScriptNode)
 					this.available |= SAEI_Audio_Webkit;
+				if (test && test.createScriptProcessor)
+				    this.available |= SAEI_Audio_Webkit;
 				test = null;
 			} catch (e) {}							
 		}		
@@ -517,10 +521,21 @@ function Audi0() {
          var inputs = BrowserDetect.browser == 'Safari' ? 1 : 0;
          //if (inputs == 1) BUG.info('Audio.setup() Safari fix enabled.');
 
-         driver.def.node = driver.ctx.createJavaScriptNode(sampleBuffer.size, inputs, AMIGA.config.audio.channels);
-         driver.def.node.onaudioprocess = defFill;
-         driver.def.node.connect(driver.ctx.destination);
-         BUG.info('Audio.setup() enabled webkit audio, channels %d, rate %d', AMIGA.config.audio.channels, getRate(AMIGA.config.audio.rate));
+         var node = null;
+
+         if (driver.ctx.createJavaScriptNode != null)
+             node = driver.ctx.createJavaScriptNode(sampleBuffer.size, inputs, AMIGA.config.audio.channels);
+         if (driver.ctx.createScriptProcessor != null)
+             node = driver.ctx.createScriptProcessor(sampleBuffer.size, inputs, AMIGA.config.audio.channels);
+
+         driver.def.node = node;
+          
+
+         if (node != null) {
+             driver.def.node.onaudioprocess = defFill;
+             driver.def.node.connect(driver.ctx.destination);
+             BUG.info('Audio.setup() enabled webkit audio, channels %d, rate %d', AMIGA.config.audio.channels, getRate(AMIGA.config.audio.rate));
+         }
       }
       else if (this.available & SAEI_Audio_Mozilla) {
          driver.ctx.mozSetup(AMIGA.config.audio.channels, getRate(AMIGA.config.audio.rate));
