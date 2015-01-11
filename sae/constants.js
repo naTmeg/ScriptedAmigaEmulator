@@ -1,23 +1,20 @@
 /**************************************************************************
 * SAE - Scripted Amiga Emulator
 *
-* https://github.com/naTmeg/ScriptedAmigaEmulator
+* 2012-2015 Rupert Hausberger
 *
-* ©2012 Rupert Hausberger
-* Commercial use is prohibited.
+* https://github.com/naTmeg/ScriptedAmigaEmulator
 *
 **************************************************************************/
 
 const SAEV_Version = 0;
 const SAEV_Revision = 8;
-const SAEV_Revision_Sub = 1;
+const SAEV_Revision_Sub = 2;
 
 /*-----------------------------------------------------------------------*/
 /* info */
 
-const SAEI_Audio_Default = 1;
-const SAEI_Audio_Webkit = 2;
-const SAEI_Audio_Mozilla = 4;
+const SAEI_Audio_WebAudio = 1;
 
 const SAEI_Video_Canvas2D = 1;
 const SAEI_Video_WebGL = 2;

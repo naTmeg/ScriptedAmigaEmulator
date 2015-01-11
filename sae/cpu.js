@@ -1,10 +1,9 @@
 /**************************************************************************
 * SAE - Scripted Amiga Emulator
 *
-* https://github.com/naTmeg/ScriptedAmigaEmulator
+* 2012-2015 Rupert Hausberger
 *
-* ©2012 Rupert Hausberger
-* Commercial use is prohibited.
+* https://github.com/naTmeg/ScriptedAmigaEmulator
 *
 ***************************************************************************
 *
@@ -1063,7 +1062,7 @@ function CPU() {
 			regs.pc = fault.pc;
 			return exception(5);
 		} else {
-			var quo = ~~(d / s);
+			var quo = ~~(d / s); /* Thanks 'dmcoles' */
 
 			if (quo < 0) quo += 0x10000;
 

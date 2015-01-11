@@ -1,10 +1,9 @@
 /**************************************************************************
 * SAE - Scripted Amiga Emulator
 *
-* https://github.com/naTmeg/ScriptedAmigaEmulator
+* 2012-2015 Rupert Hausberger
 *
-* ©2012 Rupert Hausberger
-* Commercial use is prohibited.
+* https://github.com/naTmeg/ScriptedAmigaEmulator
 *
 ***************************************************************************
 * Notes: Ported from WinUAE 2.5.0

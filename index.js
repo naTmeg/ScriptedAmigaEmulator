@@ -1,10 +1,9 @@
 /**************************************************************************
 * SAE - Scripted Amiga Emulator
 *
-* https://github.com/naTmeg/ScriptedAmigaEmulator
+* 2012-2015 Rupert Hausberger
 *
-* ©2012 Rupert Hausberger
-* Commercial use is prohibited.
+* https://github.com/naTmeg/ScriptedAmigaEmulator
 *
 ***************************************************************************
 * Note: This file does not contain any emulator-code. 
@@ -1030,6 +1029,9 @@ function init() {
 	}
 }	
 
+function mainStart() {
+	return SAE({cmd: 'start'});
+}
 function start() {
 	document.body.style.backgroundColor = '#000';
 	styleDisplayBlock('base', 0);
@@ -1055,8 +1057,13 @@ function start() {
 	if (result.error != SAEE_None) {
 		stop();
 		alert(result.message);		
-	}*/	
-	SAE({cmd:'start'});
+	}*/
+
+	if (BrowserDetect.browser == 'Firefox') {	/* Thanks 'dmcoles' */
+		console.log('Enabling audio-start delay for Firefox...');
+		setTimeout(mainStart, 50);	
+	} else
+		mainStart();	
 }	
 
 function simpleStart2() {
