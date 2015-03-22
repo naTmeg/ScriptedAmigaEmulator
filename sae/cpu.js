@@ -118,30 +118,30 @@ function CPU() {
 	/*-----------------------------------------------------------------------*/
 
 	this.setup = function () {
-      if (iTab === null) {
-         BUG.say('cpu.setup() no instruction table, generating...');
-         if (!mkiTab())
-            Fatal(SAEE_CPU_Internal, 'cpu.setup() error generating function table');
-      } else
-         BUG.say('cpu.setup() instruction table is cached');
-   };
+		if (iTab === null) {
+			BUG.say('cpu.setup() no instruction table, generating...');
+			if (!mkiTab())
+				Fatal(SAEE_CPU_Internal, 'cpu.setup() error generating function table');
+		} else
+			BUG.say('cpu.setup() instruction table is cached');
+	};
 
 	this.reset = function (addr) {
-      for (var i = 0; i < 8; i++)
-         regs.d[i] = regs.a[i] = 0;
+		for (var i = 0; i < 8; i++)
+			regs.d[i] = regs.a[i] = 0;
 
-      regs.t = false;
-      regs.s = true;
-      regs.intmask = 7;
-      regs.x = regs.n = regs.z = regs.v = regs.c = false;
-      regs.usp = 0;
-      regs.isp = 0;
-      regs.a[7] = AMIGA.mem.load32(addr);
-      regs.pc = AMIGA.mem.load32(addr + 4);
-      regs.stopped = false;
+		regs.t = false;
+		regs.s = true;
+		regs.intmask = 7;
+		regs.x = regs.n = regs.z = regs.v = regs.c = false;
+		regs.usp = 0;
+		regs.isp = 0;
+		regs.a[7] = AMIGA.mem.load32(addr);
+		regs.pc = AMIGA.mem.load32(addr + 4);
+		regs.stopped = false;
 
-      BUG.say(sprintf('cpu.reset() addr 0x%08x, A7 0x%08x, PC 0x%08x', addr, regs.a[7], regs.pc));
-   };
+		BUG.say(sprintf('cpu.reset() addr 0x%08x, A7 0x%08x, PC 0x%08x', addr, regs.a[7], regs.pc));
+	};
 
 	/*-----------------------------------------------------------------------*/
 
@@ -153,7 +153,7 @@ function CPU() {
 			case 4: return 'L';
 			default:
 				Fatal(SAEE_CPU_Internal, 'cpu.szChr() invalid size');
-            return '';
+				return '';
 		}
 	}
 	
@@ -203,7 +203,7 @@ function CPU() {
 			case 4: return r > 0xffffffff ? r - 0x100000000 : r;
 			default:
 				Fatal(SAEE_CPU_Internal, 'cpu.addAuto() invalid size');
-            return 0;
+				return 0;
 		}
 	}
 	function sub32(a, b) {
@@ -218,7 +218,7 @@ function CPU() {
 			case 4: return r < 0 ? r + 0x100000000 : r;
 			default:
 				Fatal(SAEE_CPU_Internal, 'cpu.subAuto() invalid size');
-            return 0;
+				return 0;
 		}
 	}
 
@@ -245,8 +245,8 @@ function CPU() {
 		var ext = nextIWord();
 		if (ext & 0x100) {
 			Fatal(SAEE_CPU_68020_Required, 'cpu.exII() Full extension index (not a 68000 program)');
-         return 0;
-      } else {
+			return 0;
+		} else {
 			var disp = extByte(ext & 0xff);
 			var r = (ext & 0x7000) >> 12;
 			var reg = (ext & 0x8000) ? regs.a[r] : regs.d[r];
@@ -397,7 +397,7 @@ function CPU() {
 					case 4: return regs.d[ea.a];
 					default:
 						Fatal(SAEE_CPU_Internal, 'cpu.ldEA() T_RD invalid size');
-                  return 0;
+						return 0;
 				}
 			}
 			case T_RA: {			
@@ -406,7 +406,7 @@ function CPU() {
 					case 4: return regs.a[ea.a];
 					default:
 						Fatal(SAEE_CPU_Internal, 'cpu.ldEA() T_RA invalid size');
-                  return 0;
+						return 0;
 				}
 			}
 			case T_AD: {
@@ -432,14 +432,14 @@ function CPU() {
 					case 4: return AMIGA.mem.load32(ea.a);
 					default:
 						Fatal(SAEE_CPU_Internal, 'cpu.ldEA() T_AD invalid size');
-                  return 0;
+						return 0;
 				}
 			}
 			case T_IM:
 				return ea.a;
 			default:
 				Fatal(SAEE_CPU_Internal, 'cpu.ldEA() invalid type (' + ea.t + ')');
-            return 0;
+				return 0;
 		}
 	}
 
@@ -508,7 +508,7 @@ function CPU() {
 			case 15: return regs.z || (regs.n != regs.v); //LE									
 			default:
 				Fatal(SAEE_CPU_Internal, 'cpu.ccTrue() invalid condition code (' + cc + ')');
-            return false;
+				return false;
 		}
 	}
 	
@@ -769,7 +769,7 @@ function CPU() {
 		//BUG.say(sprintf('I_MOVEQ.%s s $%08x', szChr(p.z), s));
 		return p.cyc;
 	}
-         		  
+					  
 	function I_MOVEM_R2M(p) {
 		/* p. 4-128: The MC68000 and MC68010 write the initial register value (not decremented). */
 		var i, rd = [], ra = []; 
@@ -817,7 +817,7 @@ function CPU() {
 		//BUG.say(sprintf('I_MOVEM_R2M.%s s $%08x d $%08x', szChr(p.z), sea.a, dea.a));
 		return [p.cyc[0] + (p.z == 2 ? 4 : 8) * n, 0,0]; //FIXME	
 	}
-         		  
+					  
 	function I_MOVEM_M2R(p) {
 		var sea = exEAM(p.s);
 		var dea = exEAM(p.d);
@@ -1111,7 +1111,7 @@ function CPU() {
 					//var oldrem = rem;
 					rem = -rem + 0x10000;	
 					//BUG.say(sprintf('I_DIVU d $%08x oldrem $%08x rem $%08x', d, oldrem, rem)); 
-            }
+				}
 				regs.v = false;
 				regs.z = quo == 0;
 				regs.n = (quo & 0x8000) != 0;
@@ -1177,7 +1177,7 @@ function CPU() {
 		//BUG.say(sprintf('I_NEG.%s d $%08x r $%08x', szChr(p.z), d, r));
 		return p.cyc;
 	}
-   
+	
 	function I_NEGX(p) {
 		var dea = exEA(p.d, p.z);
 		var d = ldEA(dea, p.z);
@@ -2247,7 +2247,7 @@ function CPU() {
 			case M_absl: return z == 4 ? [16,4,0] : [12,3,0];
 			case M_imm:
 			case M_list: return z == 4 ? [ 8,2,0] : [ 4,1,0];
-         default: return [0,0,0];
+			default: return [0,0,0];
 		}
 	}
 
@@ -4677,29 +4677,29 @@ function CPU() {
 	}
 
 	this.diss = function (offset, limit) {
-      var pc = offset === null ? regs.pc : offset;
-      var cnt = 0;
+		var pc = offset === null ? regs.pc : offset;
+		var cnt = 0;
 
-      while (cnt++ < limit) {
-         var o = '';
+		while (cnt++ < limit) {
+			var o = '';
 
-         o += sprintf('$%08x: ', pc);
-         for (var i = 0; i < 5; i++)
-            o += sprintf('$%04x ', AMIGA.mem.load16(pc + i * 2));
+			o += sprintf('$%08x: ', pc);
+			for (var i = 0; i < 5; i++)
+				o += sprintf('$%04x ', AMIGA.mem.load16(pc + i * 2));
 
-         var op = AMIGA.mem.load16(pc);
-         pc += 2;
+			var op = AMIGA.mem.load16(pc);
+			pc += 2;
 
-         var ip = printI(iTab[op], pc);
-         o += ip[0];
-         pc = ip[1];
+			var ip = printI(iTab[op], pc);
+			o += ip[0];
+			pc = ip[1];
 
-         BUG.say(o);
-      }
-   };
+			BUG.say(o);
+		}
+	};
 	/*this.dissFault = function (limit) {
-      this.diss(fault.pc, limit);
-   };*/
+		this.diss(fault.pc, limit);
+	};*/
 
 	/*function nextIWordData(data, pc) {
 		return (data[pc] << 8) | data[pc + 1];
@@ -4876,36 +4876,36 @@ function CPU() {
 	}
 	
 	this.getThisTaskName = function () {
-      var tn = '';
-      /* Extract current task-name form SysBase */
-      var sysBase = AMIGA.mem.load32(4);
-      if (sysBase == 0x000676 || sysBase == 0xc00276 || sysBase == 0xc00a88 || sysBase == 0xc00560) {
-         var thisTask = AMIGA.mem.load32(sysBase + 276);
-         if (thisTask)
-            tn = getTaskName(thisTask);
-      }
-      return tn;
-   };
+		var tn = '';
+		/* Extract current task-name form SysBase */
+		var sysBase = AMIGA.mem.load32(4);
+		if (sysBase == 0x000676 || sysBase == 0xc00276 || sysBase == 0xc00a88 || sysBase == 0xc00560) {
+			var thisTask = AMIGA.mem.load32(sysBase + 276);
+			if (thisTask)
+				tn = getTaskName(thisTask);
+		}
+		return tn;
+	};
 	
 	this.dump = function () {
-      var i, out = '', tn = 1 ? this.getThisTaskName() : '';
+		var i, out = '', tn = 1 ? this.getThisTaskName() : '';
 
-      for (i = 0; i < 8; i++) {
-         out += sprintf('D%d $%08x ', i, regs.d[i]); //if ((i & 3) == 3) out += '<br/>';
-      }
-      //out += '<br/>';
-      out += "\n";
-      for (i = 0; i < 8; i++) {
-         out += sprintf('A%d $%08x ', i, regs.a[i]); //if ((i & 3) == 3) out += '<br/>';
-      }
-      //out += '<br/>';
-      out += "\n";
-      out += sprintf('PC $%08x USP $%08x ISP $%08x ', regs.pc, regs.usp, regs.isp);
-      out += sprintf('T=%d S=%d X=%d N=%d Z=%d V=%d C=%d IMASK=%d, LTASK=%s', regs.t ? 1 : 0, regs.s ? 1 : 0, regs.x ? 1 : 0, regs.n ? 1 : 0, regs.z ? 1 : 0, regs.v ? 1 : 0, regs.c ? 1 : 0, regs.intmask, tn);
-      out += "\n";
-      out += "\n";
-      BUG.say(out);
-   };
+		for (i = 0; i < 8; i++) {
+			out += sprintf('D%d $%08x ', i, regs.d[i]); //if ((i & 3) == 3) out += '<br/>';
+		}
+		//out += '<br/>';
+		out += "\n";
+		for (i = 0; i < 8; i++) {
+			out += sprintf('A%d $%08x ', i, regs.a[i]); //if ((i & 3) == 3) out += '<br/>';
+		}
+		//out += '<br/>';
+		out += "\n";
+		out += sprintf('PC $%08x USP $%08x ISP $%08x ', regs.pc, regs.usp, regs.isp);
+		out += sprintf('T=%d S=%d X=%d N=%d Z=%d V=%d C=%d IMASK=%d, LTASK=%s', regs.t ? 1 : 0, regs.s ? 1 : 0, regs.x ? 1 : 0, regs.n ? 1 : 0, regs.z ? 1 : 0, regs.v ? 1 : 0, regs.c ? 1 : 0, regs.intmask, tn);
+		out += "\n";
+		out += "\n";
+		BUG.say(out);
+	};
 
 	/*-----------------------------------------------------------------------*/
 	/*-----------------------------------------------------------------------*/
@@ -5253,3 +5253,4 @@ function CPU() {
 		}
 	}	
 }
+

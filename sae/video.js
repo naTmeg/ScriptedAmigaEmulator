@@ -142,103 +142,103 @@ function Vide0() {
 	}
 	
 	this.setup = function () {
-      if (!AMIGA.config.video.enabled) return;
-      if (open) this.cleanup();
+		if (!AMIGA.config.video.enabled) return;
+		if (open) this.cleanup();
 
-      div = document.getElementById(AMIGA.config.video.id);
-      if (!div)
-         Fatal(SAEE_Video_ID_Not_Found, 'Video DIV-element not found. Check your code. (Malformed-DIV-name: ' + AMIGA.config.video.id + ')');
+		div = document.getElementById(AMIGA.config.video.id);
+		if (!div)
+			Fatal(SAEE_Video_ID_Not_Found, 'Video DIV-element not found. Check your code. (Malformed-DIV-name: ' + AMIGA.config.video.id + ')');
 
-      scale = (this.available & SAEI_Video_WebGL) ? AMIGA.config.video.scale : false;
-      width = VIDEO_WIDTH << (scale ? 1 : 0);
-      height = VIDEO_HEIGHT << (scale ? 1 : 0);
-      size = width * height;
-      //BUG.info('Video.init() %d x %d, %s mode', width, height, AMIGA.config.video.ntsc ? 'ntsc' : 'pal');
+		scale = (this.available & SAEI_Video_WebGL) ? AMIGA.config.video.scale : false;
+		width = VIDEO_WIDTH << (scale ? 1 : 0);
+		height = VIDEO_HEIGHT << (scale ? 1 : 0);
+		size = width * height;
+		//BUG.info('Video.init() %d x %d, %s mode', width, height, AMIGA.config.video.ntsc ? 'ntsc' : 'pal');
 
-      if (this.available & SAEI_Video_Canvas2D) {
-         canvas = document.createElement('canvas');
-         canvas.width = width;
-         canvas.height = height;
-         canvas.oncontextmenu = function () {
-            return false;
-         };
-         if (AMIGA.config.ports[0].type == SAEV_Config_Ports_Type_Mouse) {
-            canvas.onmousedown = function (e) {
-               AMIGA.input.mouse.mousedown(e);
-            };
-            canvas.onmouseup = function (e) {
-               AMIGA.input.mouse.mouseup(e);
-            };
-            canvas.onmouseover = function (e) {
-               AMIGA.input.mouse.mouseover(e);
-            };
-            canvas.onmouseout = function (e) {
-               AMIGA.input.mouse.mouseout(e);
-            };
-            canvas.onmousemove = function (e) {
-               AMIGA.input.mouse.mousemove(e);
-            }
-         }
-         if (this.available & SAEI_Video_WebGL) {
-            ctx = canvas.getContext('experimental-webgl', glParams) || canvas.getContext('webgl', glParams);
-            initGL();
-            pixels = new Uint16Array(size);
-            for (var i = 0; i < size; i++) pixels[i] = 0;
+		if (this.available & SAEI_Video_Canvas2D) {
+			canvas = document.createElement('canvas');
+			canvas.width = width;
+			canvas.height = height;
+			canvas.oncontextmenu = function () {
+				return false;
+			};
+			if (AMIGA.config.ports[0].type == SAEV_Config_Ports_Type_Mouse) {
+				canvas.onmousedown = function (e) {
+					AMIGA.input.mouse.mousedown(e);
+				};
+				canvas.onmouseup = function (e) {
+					AMIGA.input.mouse.mouseup(e);
+				};
+				canvas.onmouseover = function (e) {
+					AMIGA.input.mouse.mouseover(e);
+				};
+				canvas.onmouseout = function (e) {
+					AMIGA.input.mouse.mouseout(e);
+				};
+				canvas.onmousemove = function (e) {
+					AMIGA.input.mouse.mousemove(e);
+				}
+			}
+			if (this.available & SAEI_Video_WebGL) {
+				ctx = canvas.getContext('experimental-webgl', glParams) || canvas.getContext('webgl', glParams);
+				initGL();
+				pixels = new Uint16Array(size);
+				for (var i = 0; i < size; i++) pixels[i] = 0;
 
-            //this.drawpixel = drawpixel_gl;
-            this.drawline = drawline_gl;
-            this.render = render_gl;
-            this.show = show_gl;
-         } else {
-            ctx = canvas.getContext('2d');
-            imagedata = ctx.createImageData(width, height);
-            pixels = imagedata.data;
+				//this.drawpixel = drawpixel_gl;
+				this.drawline = drawline_gl;
+				this.render = render_gl;
+				this.show = show_gl;
+			} else {
+				ctx = canvas.getContext('2d');
+				imagedata = ctx.createImageData(width, height);
+				pixels = imagedata.data;
 
-            //this.drawpixel = drawpixel_2d;
-            this.drawline = drawline_2d;
-            this.render = render_2d;
-            this.show = show_2d;
-         }
-      } else {
-         if (!confirm('Cant\'t initialise "WebGL" nor "Canvas 2D". Continue without video-playback?'))
-            Fatal(SAEE_Video_Canvas_Not_Supported, null);
-         else
-            AMIGA.config.video.enabled = false;
-      }
+				//this.drawpixel = drawpixel_2d;
+				this.drawline = drawline_2d;
+				this.render = render_2d;
+				this.show = show_2d;
+			}
+		} else {
+			if (!confirm('Cant\'t initialise "WebGL" nor "Canvas 2D". Continue without video-playback?'))
+				Fatal(SAEE_Video_Canvas_Not_Supported, null);
+			else
+				AMIGA.config.video.enabled = false;
+		}
 
-      video = document.createElement('div');
-      video.style.width = width + 'px';
-      video.style.height = height + 'px';
-      video.style.margin = 'auto';
-      video.style.webkitTouchCallout = 'none';
-      video.style.webkitUserSelect = 'none';
-      video.style.khtmlUserSelect = 'none';
-      video.style.mozUserSelect = 'none';
-      video.style.msUserSelect = 'none';
-      video.style.userSelect = 'none';
-      if (AMIGA.config.video.enabled)
-         video.appendChild(canvas);
+		video = document.createElement('div');
+		video.style.width = width + 'px';
+		video.style.height = height + 'px';
+		video.style.margin = 'auto';
+		video.style.webkitTouchCallout = 'none';
+		video.style.webkitUserSelect = 'none';
+		video.style.khtmlUserSelect = 'none';
+		video.style.mozUserSelect = 'none';
+		video.style.msUserSelect = 'none';
+		video.style.userSelect = 'none';
+		if (AMIGA.config.video.enabled)
+			video.appendChild(canvas);
 
-      div.appendChild(video);
-      open = true;
-   };
+		div.appendChild(video);
+		open = true;
+	};
 
 	this.cleanup = function () {
-      if (open) {
-         div.removeChild(video);
-         canvas = null;
-         imagedata = null;
-         pixels = null;
-         video = null;
-         open = false;
-      }
-   };
+		if (open) {
+			div.removeChild(video);
+			canvas = null;
+			imagedata = null;
+			pixels = null;
+			video = null;
+			open = false;
+		}
+	};
 	
 	/*---------------------------------*/
 
 	/*this.hideCursor = function (hide) {
-      canvas.style.cursor = hide ? 'none' : 'auto';
-   };*/
+		canvas.style.cursor = hide ? 'none' : 'auto';
+	};*/
 	
 	/*this.clear_pixels = function () {
 		for (var i = 0; i < size; i++) 
@@ -296,3 +296,4 @@ function Vide0() {
 		ctx.drawArrays(ctx.TRIANGLES, 0, 6);
 	}	
 }
+

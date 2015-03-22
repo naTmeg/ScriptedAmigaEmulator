@@ -99,11 +99,6 @@ const SAEV_Config_Audio_Mode_Play_Best = 2;
 const SAEV_Config_Audio_Channels_Mono = 1;
 const SAEV_Config_Audio_Channels_Stereo = 2;
 
-const SAEV_Config_Audio_Rate_11025 = 1;
-const SAEV_Config_Audio_Rate_22050 = 2;
-const SAEV_Config_Audio_Rate_44100 = 3;
-const SAEV_Config_Audio_Rate_48000 = 4;
-
 /*-----------------------------------------------------------------------*/
 /* input */
 
@@ -368,3 +363,4 @@ const MAX_WORDS_PER_LINE = 100;
 
 const DO_SPRITES = 1;
 const FAST_COLORS = 0;
+

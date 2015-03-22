@@ -17,10 +17,10 @@ function MAvg(size) {
 	this.average = 0;
 
 	this.clr = function () {
-      this.usage = 0;
-      this.offset = 0;
-      this.average = 0;
-   };
+		this.usage = 0;
+		this.offset = 0;
+		this.average = 0;
+	};
 
 	this.set = function(newval) {
 		if (this.usage < this.size) {
@@ -91,126 +91,126 @@ function MAvg(size) {
 */
  
 sprintfWrapper = {
-   init: function () {
-      if (typeof arguments == "undefined") {
-         return null;
-      }
-      if (arguments.length < 1) {
-         return null;
-      }
-      if (typeof arguments[0] != "string") {
-         return null;
-      }
-      if (typeof RegExp == "undefined") {
-         return null;
-      }
+	init: function () {
+		if (typeof arguments == "undefined") {
+			return null;
+		}
+		if (arguments.length < 1) {
+			return null;
+		}
+		if (typeof arguments[0] != "string") {
+			return null;
+		}
+		if (typeof RegExp == "undefined") {
+			return null;
+		}
 
-      var string = arguments[0];
-      var exp = new RegExp(/(%([%]|(\-)?(\+|\x20)?(0)?(\d+)?(\.(\d)?)?([bcdfosxX])))/g);
-      var matches = [];
-      var strings = [];
-      var convCount = 0;
-      var stringPosStart = 0;
-      var stringPosEnd = 0;
-      var matchPosEnd = 0;
-      var newString = '';
-      var match;
+		var string = arguments[0];
+		var exp = new RegExp(/(%([%]|(\-)?(\+|\x20)?(0)?(\d+)?(\.(\d)?)?([bcdfosxX])))/g);
+		var matches = [];
+		var strings = [];
+		var convCount = 0;
+		var stringPosStart = 0;
+		var stringPosEnd = 0;
+		var matchPosEnd = 0;
+		var newString = '';
+		var match;
 
-      while (match = exp.exec(string)) {
-         if (match[9]) {
-            convCount += 1;
-         }
+		while (match = exp.exec(string)) {
+			if (match[9]) {
+				convCount += 1;
+			}
 
-         stringPosStart = matchPosEnd;
-         stringPosEnd = exp.lastIndex - match[0].length;
-         strings[strings.length] = string.substring(stringPosStart, stringPosEnd);
+			stringPosStart = matchPosEnd;
+			stringPosEnd = exp.lastIndex - match[0].length;
+			strings[strings.length] = string.substring(stringPosStart, stringPosEnd);
 
-         matchPosEnd = exp.lastIndex;
-         matches[matches.length] = {
-            match: match[0],
-            left: match[3] ? true : false,
-            sign: match[4] || '',
-            pad: match[5] || ' ',
-            min: match[6] || 0,
-            precision: match[8],
-            code: match[9] || '%',
-            negative: !!(parseInt(arguments[convCount]) < 0),
-            argument: String(arguments[convCount])
-         };
-      }
-      strings[strings.length] = string.substring(matchPosEnd);
+			matchPosEnd = exp.lastIndex;
+			matches[matches.length] = {
+				match: match[0],
+				left: match[3] ? true : false,
+				sign: match[4] || '',
+				pad: match[5] || ' ',
+				min: match[6] || 0,
+				precision: match[8],
+				code: match[9] || '%',
+				negative: !!(parseInt(arguments[convCount]) < 0),
+				argument: String(arguments[convCount])
+			};
+		}
+		strings[strings.length] = string.substring(matchPosEnd);
 
-      if (matches.length == 0) {
-         return string;
-      }
-      if ((arguments.length - 1) < convCount) {
-         return null;
-      }
+		if (matches.length == 0) {
+			return string;
+		}
+		if ((arguments.length - 1) < convCount) {
+			return null;
+		}
 
-      for (var i = 0; i < matches.length; i++) {
-         var substitution;
+		for (var i = 0; i < matches.length; i++) {
+			var substitution;
 
-         if (matches[i].code == '%') {
-            substitution = '%'
-         } else if (matches[i].code == 'b') {
-            matches[i].argument = String(Math.abs(parseInt(matches[i].argument)).toString(2));
-            substitution = sprintfWrapper.convert(matches[i], true);
-         } else if (matches[i].code == 'c') {
-            matches[i].argument = String(String.fromCharCode(parseInt(Math.abs(parseInt(matches[i].argument)))));
-            substitution = sprintfWrapper.convert(matches[i], true);
-         } else if (matches[i].code == 'd') {
-            matches[i].argument = String(Math.abs(parseInt(matches[i].argument)));
-            substitution = sprintfWrapper.convert(matches[i]);
-         } else if (matches[i].code == 'f') {
-            matches[i].argument = String(Math.abs(parseFloat(matches[i].argument)).toFixed(matches[i].precision ? matches[i].precision : 6));
-            substitution = sprintfWrapper.convert(matches[i]);
-         } else if (matches[i].code == 'o') {
-            matches[i].argument = String(Math.abs(parseInt(matches[i].argument)).toString(8));
-            substitution = sprintfWrapper.convert(matches[i]);
-         } else if (matches[i].code == 's') {
-            matches[i].argument = matches[i].argument.substring(0, matches[i].precision ? matches[i].precision : matches[i].argument.length);
-            substitution = sprintfWrapper.convert(matches[i], true);
-         } else if (matches[i].code == 'x') {
-            matches[i].argument = String(Math.abs(parseInt(matches[i].argument)).toString(16));
-            substitution = sprintfWrapper.convert(matches[i]);
-         } else if (matches[i].code == 'X') {
-            matches[i].argument = String(Math.abs(parseInt(matches[i].argument)).toString(16));
-            substitution = sprintfWrapper.convert(matches[i]).toUpperCase();
-         } else {
-            substitution = matches[i].match;
-         }
-         newString += strings[i];
-         newString += substitution;
+			if (matches[i].code == '%') {
+				substitution = '%'
+			} else if (matches[i].code == 'b') {
+				matches[i].argument = String(Math.abs(parseInt(matches[i].argument)).toString(2));
+				substitution = sprintfWrapper.convert(matches[i], true);
+			} else if (matches[i].code == 'c') {
+				matches[i].argument = String(String.fromCharCode(parseInt(Math.abs(parseInt(matches[i].argument)))));
+				substitution = sprintfWrapper.convert(matches[i], true);
+			} else if (matches[i].code == 'd') {
+				matches[i].argument = String(Math.abs(parseInt(matches[i].argument)));
+				substitution = sprintfWrapper.convert(matches[i]);
+			} else if (matches[i].code == 'f') {
+				matches[i].argument = String(Math.abs(parseFloat(matches[i].argument)).toFixed(matches[i].precision ? matches[i].precision : 6));
+				substitution = sprintfWrapper.convert(matches[i]);
+			} else if (matches[i].code == 'o') {
+				matches[i].argument = String(Math.abs(parseInt(matches[i].argument)).toString(8));
+				substitution = sprintfWrapper.convert(matches[i]);
+			} else if (matches[i].code == 's') {
+				matches[i].argument = matches[i].argument.substring(0, matches[i].precision ? matches[i].precision : matches[i].argument.length);
+				substitution = sprintfWrapper.convert(matches[i], true);
+			} else if (matches[i].code == 'x') {
+				matches[i].argument = String(Math.abs(parseInt(matches[i].argument)).toString(16));
+				substitution = sprintfWrapper.convert(matches[i]);
+			} else if (matches[i].code == 'X') {
+				matches[i].argument = String(Math.abs(parseInt(matches[i].argument)).toString(16));
+				substitution = sprintfWrapper.convert(matches[i]).toUpperCase();
+			} else {
+				substitution = matches[i].match;
+			}
+			newString += strings[i];
+			newString += substitution;
 
-      }
-      newString += strings[i];
+		}
+		newString += strings[i];
 
-      return newString;
+		return newString;
 
-   },
+	},
 
-   convert: function (match, nosign) {
-      if (nosign) {
-         match.sign = '';
-      } else {
-         match.sign = match.negative ? '-' : match.sign;
-      }
-      var l = match.min - match.argument.length + 1 - match.sign.length;
-      var pad = new Array(l < 0 ? 0 : l).join(match.pad);
-      if (!match.left) {
-         if (match.pad == "0" || nosign) {
-            return match.sign + pad + match.argument;
-         } else {
-            return pad + match.sign + match.argument;
-         }
-      } else {
-         if (match.pad == "0" || nosign) {
-            return match.sign + match.argument + pad.replace(/0/g, ' ');
-         } else {
-            return match.sign + match.argument + pad;
-         }
-      }
-   }
+	convert: function (match, nosign) {
+		if (nosign) {
+			match.sign = '';
+		} else {
+			match.sign = match.negative ? '-' : match.sign;
+		}
+		var l = match.min - match.argument.length + 1 - match.sign.length;
+		var pad = new Array(l < 0 ? 0 : l).join(match.pad);
+		if (!match.left) {
+			if (match.pad == "0" || nosign) {
+				return match.sign + pad + match.argument;
+			} else {
+				return pad + match.sign + match.argument;
+			}
+		} else {
+			if (match.pad == "0" || nosign) {
+				return match.sign + match.argument + pad.replace(/0/g, ' ');
+			} else {
+				return match.sign + match.argument + pad;
+			}
+		}
+	}
 };
 
 sprintf = sprintfWrapper.init;
@@ -235,7 +235,7 @@ var BrowserDetect = {
 				if (dataString.indexOf(data[i].subString) != -1) return data[i].identity;
 			} else if (dataProp) return data[i].identity;
 		}
-      return '';
+		return '';
 	},
 	searchVersion: function (dataString) {
 		var index = dataString.indexOf(this.versionSearchString);
@@ -396,21 +396,21 @@ function Debug() {
 	this.on = 1;
 
 	this.say = function (str) {
-      if (this.on) {
-         /*var e = document.createElement('span');
-          e.style.color = this.col == 1 ? '#888' : (this.col == 2 ? '#448' : '#484');
-          e.innerHTML = buf;
-          this.debug.appendChild(e);
-          this.debug.appendChild(document.createElement('br'));
-          this.debug.scrollTop = this.debug.scrollHeight;*/
+		if (this.on) {
+			/*var e = document.createElement('span');
+			 e.style.color = this.col == 1 ? '#888' : (this.col == 2 ? '#448' : '#484');
+			 e.innerHTML = buf;
+			 this.debug.appendChild(e);
+			 this.debug.appendChild(document.createElement('br'));
+			 this.debug.scrollTop = this.debug.scrollHeight;*/
 
-         console.log(str);
-         /*console.info(str);
-          console.warn(str);
-          console.error(str);
-          console.assert(str);*/
-      }
-   };
+			console.log(str);
+			/*console.info(str);
+			 console.warn(str);
+			 console.error(str);
+			 console.assert(str);*/
+		}
+	};
 	
 	this.info = function () {
 		if (this.on) {
@@ -427,51 +427,52 @@ function Debug() {
 	this.lo = lo;
 
 	this.or = function (v) {
-      this.hi = (this.hi | v.hi) >>> 0;
-      this.lo = (this.lo | v.lo) >>> 0;
-   };
+		this.hi = (this.hi | v.hi) >>> 0;
+		this.lo = (this.lo | v.lo) >>> 0;
+	};
 
 	this.lshift = function (n) {
-      if (n) {
-         if (n < 32) {
-            var m = Math.pow(2, n) - 1;
-            var t = this.lo & m;
-            this.hi = ((this.hi << n) | t) >>> 0;
-            this.lo = (this.lo << n) >>> 0;
+		if (n) {
+			if (n < 32) {
+				var m = Math.pow(2, n) - 1;
+				var t = this.lo & m;
+				this.hi = ((this.hi << n) | t) >>> 0;
+				this.lo = (this.lo << n) >>> 0;
 
-            //BUG.info('lshift %d %x', n, m, t);
-         } else {
-            var t = this.lo;
-            this.hi = (t << (n - 32)) >>> 0;
-            this.lo = 0;
+				//BUG.info('lshift %d %x', n, m, t);
+			} else {
+				var t = this.lo;
+				this.hi = (t << (n - 32)) >>> 0;
+				this.lo = 0;
 
-            //BUG.info('lshift %d %x', n, t);
-         }
-      }
-   };
+				//BUG.info('lshift %d %x', n, t);
+			}
+		}
+	};
 
 	this.rshift = function (n) {
-      if (n) {
-         if (n < 32) {
-            var m = Math.pow(2, n) - 1;
-            var t = this.hi & m;
-            this.hi = (this.hi >>> n) >>> 0;
-            this.lo = ((t << (32 - n)) | (this.lo >>> n)) >>> 0;
+		if (n) {
+			if (n < 32) {
+				var m = Math.pow(2, n) - 1;
+				var t = this.hi & m;
+				this.hi = (this.hi >>> n) >>> 0;
+				this.lo = ((t << (32 - n)) | (this.lo >>> n)) >>> 0;
 
-            //BUG.info('rshift %d %x %x', n, m, t);
-         } else {
-            var t = this.hi;
-            this.hi = 0;
-            this.lo = (t >>> (n - 32)) >>> 0;
+				//BUG.info('rshift %d %x %x', n, m, t);
+			} else {
+				var t = this.hi;
+				this.hi = 0;
+				this.lo = (t >>> (n - 32)) >>> 0;
 
-            //BUG.info('rshift %d %x %x', n, t);
-         }
-      }
-   };
+				//BUG.info('rshift %d %x %x', n, t);
+			}
+		}
+	};
 
 	this.print = function() {
 		BUG.info('$%08x%08x', this.hi, this.lo);
 	} 	
 }*/
+
 
 

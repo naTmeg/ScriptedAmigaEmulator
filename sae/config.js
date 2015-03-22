@@ -34,10 +34,10 @@ function Config() {
 		},
 		slow: {
 			size: 0
-      },
+		},
 		fast: {
 			size: 0
-      }
+		}
 	};
 	this.rom = {
 		size: 0,
@@ -86,7 +86,6 @@ function Config() {
 		enabled: false,
 		mode:0,
 		channels: 0,
-		rate: 0,
 		filter: false
 	};
 	this.ports = [{
@@ -169,7 +168,7 @@ function Config() {
 		c.video.enabled = true;
 		c.video.scale = false;
 		c.video.ntsc = false;
-		c.video.framerate = 2;
+		c.video.framerate = 1; //2
 		c.video.hresolution = 1 ? RES_HIRES : RES_LORES;
 		c.video.vresolution = 1 ? VRES_DOUBLE : VRES_NONDOUBLE;
 		c.video.scandoubler = 0 ? true : false;	
@@ -182,7 +181,6 @@ function Config() {
 		//c.audio.mode = SAEV_Config_Audio_Mode_Play_Best;
 		c.audio.mode = SAEV_Config_Audio_Mode_Play;
 		c.audio.channels = SAEV_Config_Audio_Channels_Stereo;
-		c.audio.rate = SAEV_Config_Audio_Rate_44100;
 		c.audio.filter = false;
 
 		c.ports[0].type = SAEV_Config_Ports_Type_Mouse;
@@ -203,16 +201,17 @@ function Config() {
 		c.cia.tod_hack = true;   
 
 		c.hooks.error = function (err, msg) {
-      };
+		};
 		c.hooks.power_led = function (on) {
-      };
+		};
 		c.hooks.floppy_motor = function (unit, on) {
-      };
+		};
 		c.hooks.floppy_step = function (unit, cyl) {
-      };
+		};
 		c.hooks.fps = function (fps) {
-      };
+		};
 		c.hooks.cpu = function(usage) {}	
 	}
 	configSetDefaults(this);
 }
+

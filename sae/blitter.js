@@ -129,10 +129,10 @@ function Blitter() {
 	/*---------------------------------*/
 
 	this.reset = function () {
-      bltstate = BLT_done;
-      blit_interrupt = true;
-      blit_stuck = 0;
-   };
+		bltstate = BLT_done;
+		blit_interrupt = true;
+		blit_stuck = 0;
+	};
 
 	/*function blitter_dump() {
 		BUG.info('PT A=%08X B=%08X C=%08X D=%08X', bltapt, bltbpt, bltcpt, bltdpt);
@@ -2010,7 +2010,7 @@ function Blitter() {
 			case 0xfd: return (~c) | (b) | (a);
 			case 0xfe: return (c) | (b) | (a);
 			case 0xff: return 0xffff;
-         default: return 0;
+			default: return 0;
 		}
 	}
 	
@@ -2400,22 +2400,22 @@ function Blitter() {
 	/*---------------------------------*/
 
 	this.handler = function (data) {
-      if (!AMIGA.dmaen(DMAF_BLTEN)) {
-         AMIGA.events.newevent(EV2_BLITTER, 10, 0);
-         if (++blit_stuck < 20000 || !AMIGA.config.blitter.immediate)
-            return;
+		if (!AMIGA.dmaen(DMAF_BLTEN)) {
+			AMIGA.events.newevent(EV2_BLITTER, 10, 0);
+			if (++blit_stuck < 20000 || !AMIGA.config.blitter.immediate)
+				return;
 
-         BUG.info('blitter_handler() force-unstuck!');
-      }
-      blit_stuck = 0;
-      if (blit_slowdown > 0 && !AMIGA.config.blitter.immediate) {
-         //console.log('Blitter.handler () slowdown', blit_slowdown);
-         AMIGA.events.newevent(EV2_BLITTER, blit_slowdown, 0);
-         blit_slowdown = -1;
-         return;
-      }
-      blitter_do();
-   };
+			BUG.info('blitter_handler() force-unstuck!');
+		}
+		blit_stuck = 0;
+		if (blit_slowdown > 0 && !AMIGA.config.blitter.immediate) {
+			//console.log('Blitter.handler () slowdown', blit_slowdown);
+			AMIGA.events.newevent(EV2_BLITTER, blit_slowdown, 0);
+			blit_slowdown = -1;
+			return;
+		}
+		blitter_do();
+	};
 
 	var changetable = new Uint8Array(32 * 32); for (var i = 0; i < changetable.length; i++) changetable[i] = 0;	
 	//var freezes = 10;
@@ -2609,228 +2609,229 @@ function Blitter() {
 	
 	var warned2 = 10;
 	this.maybe_blit = function (hpos, hack) {
-      if (bltstate == BLT_done)
-         return;
+		if (bltstate == BLT_done)
+			return;
 
-      if (AMIGA.dmaen(DMAF_BLTEN)) {
-         var doit = false;
-         if (AMIGA.config.blitter.waiting == 3) { // always
-            doit = true;
-         } else if (AMIGA.config.blitter.waiting == 2) { // no idle
-            if (blit_dmacount == blit_diag[0] && (AMIGA.spcflags & SPCFLAG_BLTNASTY))
-               doit = true;
-         } else if (AMIGA.config.blitter.waiting == 1) { // automatic
-            if (blit_dmacount == blit_diag[0] && (AMIGA.spcflags & SPCFLAG_BLTNASTY))
-               doit = true;
-            else if (AMIGA.config.cpu.speed < 0)
-               doit = true;
-         }
-         if (doit) {
-            if (waitingblits())
-               return;
-         }
-      }
+		if (AMIGA.dmaen(DMAF_BLTEN)) {
+			var doit = false;
+			if (AMIGA.config.blitter.waiting == 3) { // always
+				doit = true;
+			} else if (AMIGA.config.blitter.waiting == 2) { // no idle
+				if (blit_dmacount == blit_diag[0] && (AMIGA.spcflags & SPCFLAG_BLTNASTY))
+					doit = true;
+			} else if (AMIGA.config.blitter.waiting == 1) { // automatic
+				if (blit_dmacount == blit_diag[0] && (AMIGA.spcflags & SPCFLAG_BLTNASTY))
+					doit = true;
+				else if (AMIGA.config.cpu.speed < 0)
+					doit = true;
+			}
+			if (doit) {
+				if (waitingblits())
+					return;
+			}
+		}
 
-      if (warned2 && AMIGA.dmaen(DMAF_BLTEN) && blt_info.got_cycle) {
-         warned2--;
-         BUG.info('maybe_blit() program does not wait for blitter tc=%d', blit_cyclecounter);
-      }
+		if (warned2 && AMIGA.dmaen(DMAF_BLTEN) && blt_info.got_cycle) {
+			warned2--;
+			BUG.info('maybe_blit() program does not wait for blitter tc=%d', blit_cyclecounter);
+		}
 
-      if (hack == 1 && AMIGA.events.currcycle < blit_firstline_cycles)
-         return;
+		if (hack == 1 && AMIGA.events.currcycle < blit_firstline_cycles)
+			return;
 
-      AMIGA.blitter.handler(0);
-   };
+		AMIGA.blitter.handler(0);
+	};
 
 	this.blitnasty = function () {
-      if (bltstate == BLT_done || !AMIGA.dmaen(DMAF_BLTEN))
-         return 0;
-      if (blit_last_cycle >= blit_diag[0] && blit_dmacount == blit_diag[0])
-         return 0;
+		if (bltstate == BLT_done || !AMIGA.dmaen(DMAF_BLTEN))
+			return 0;
+		if (blit_last_cycle >= blit_diag[0] && blit_dmacount == blit_diag[0])
+			return 0;
 
-      var cycles = Math.floor((AMIGA.events.currcycle - blit_first_cycle) * CYCLE_UNIT_INV);
-      var ccnt = 0;
-      while (blit_last_cycle < cycles) {
-         if (!channel_state(blit_last_cycle++))
-            ccnt++;
-      }
-      return ccnt;
-   };
+		var cycles = Math.floor((AMIGA.events.currcycle - blit_first_cycle) * CYCLE_UNIT_INV);
+		var ccnt = 0;
+		while (blit_last_cycle < cycles) {
+			if (!channel_state(blit_last_cycle++))
+				ccnt++;
+		}
+		return ccnt;
+	};
 
 	/*---------------------------------*/
 
 	var oddfstrt = 0, oddfstop = 0, ototal = 0, ofree = 0, slow = 0;
 	this.slowdown = function () {
-      var data = AMIGA.playfield.getData();
-      var ddfstrt = data[0];
-      var ddfstop = data[1];
-      var totalcycles = data[2];
-      var freecycles = data[3];
+		var data = AMIGA.playfield.getData();
+		var ddfstrt = data[0];
+		var ddfstop = data[1];
+		var totalcycles = data[2];
+		var freecycles = data[3];
 
-      if (!totalcycles || ddfstrt < 0 || ddfstop < 0)
-         return;
-      if (ddfstrt != oddfstrt || ddfstop != oddfstop || totalcycles != ototal || ofree != freecycles) {
-         var linecycles = Math.floor(((ddfstop - ddfstrt + totalcycles - 1) / totalcycles) * totalcycles);
-         var freelinecycles = Math.floor(((ddfstop - ddfstrt + totalcycles - 1) / totalcycles) * freecycles);
-         var dmacycles = Math.floor((linecycles * blit_dmacount) / blit_diag[0]);
+		if (!totalcycles || ddfstrt < 0 || ddfstop < 0)
+			return;
+		if (ddfstrt != oddfstrt || ddfstop != oddfstop || totalcycles != ototal || ofree != freecycles) {
+			var linecycles = Math.floor(((ddfstop - ddfstrt + totalcycles - 1) / totalcycles) * totalcycles);
+			var freelinecycles = Math.floor(((ddfstop - ddfstrt + totalcycles - 1) / totalcycles) * freecycles);
+			var dmacycles = Math.floor((linecycles * blit_dmacount) / blit_diag[0]);
 
-         oddfstrt = ddfstrt;
-         oddfstop = ddfstop;
-         ototal = totalcycles;
-         ofree = freecycles;
-         slow = 0;
-         if (dmacycles > freelinecycles)
-            slow = dmacycles - freelinecycles;
-      }
-      if (blit_slowdown < 0 || blitline)
-         return;
+			oddfstrt = ddfstrt;
+			oddfstop = ddfstop;
+			ototal = totalcycles;
+			ofree = freecycles;
+			slow = 0;
+			if (dmacycles > freelinecycles)
+				slow = dmacycles - freelinecycles;
+		}
+		if (blit_slowdown < 0 || blitline)
+			return;
 
-      blit_slowdown += slow;
-   };
+		blit_slowdown += slow;
+	};
 		
 	/*---------------------------------*/
 
 	this.BLTADAT = function (hpos, v) {
-      this.maybe_blit(hpos, 0);
-      blt_info.bltadat = v;
-   };
+		this.maybe_blit(hpos, 0);
+		blt_info.bltadat = v;
+	};
 	this.BLTBDAT = function (hpos, v) {
-      this.maybe_blit(hpos, 0);
-      if (bltcon1 & 2)
-         blt_info.bltbhold = (v << (bltcon1 >> 12)) & 0xffff;
-      else
-         blt_info.bltbhold = (v >> (bltcon1 >> 12)) & 0xffff;
+		this.maybe_blit(hpos, 0);
+		if (bltcon1 & 2)
+			blt_info.bltbhold = (v << (bltcon1 >> 12)) & 0xffff;
+		else
+			blt_info.bltbhold = (v >> (bltcon1 >> 12)) & 0xffff;
 
-      blt_info.bltbdat = v;
-   };
+		blt_info.bltbdat = v;
+	};
 	this.BLTCDAT = function (hpos, v) {
-      this.maybe_blit(hpos, 0);
-      blt_info.bltcdat = v;
-      reset_blit(0);
-   };
+		this.maybe_blit(hpos, 0);
+		blt_info.bltcdat = v;
+		reset_blit(0);
+	};
 
 	this.BLTAMOD = function (hpos, v) {
-      this.maybe_blit(hpos, 1);
-      blt_info.bltamod = castWord(v & 0xfffe);
-      reset_blit(0);
-   };
+		this.maybe_blit(hpos, 1);
+		blt_info.bltamod = castWord(v & 0xfffe);
+		reset_blit(0);
+	};
 	this.BLTBMOD = function (hpos, v) {
-      this.maybe_blit(hpos, 1);
-      blt_info.bltbmod = castWord(v & 0xfffe);
-      reset_blit(0);
-   };
+		this.maybe_blit(hpos, 1);
+		blt_info.bltbmod = castWord(v & 0xfffe);
+		reset_blit(0);
+	};
 	this.BLTCMOD = function (hpos, v) {
-      this.maybe_blit(hpos, 1);
-      blt_info.bltcmod = castWord(v & 0xfffe);
-      reset_blit(0);
-   };
+		this.maybe_blit(hpos, 1);
+		blt_info.bltcmod = castWord(v & 0xfffe);
+		reset_blit(0);
+	};
 	this.BLTDMOD = function (hpos, v) {
-      this.maybe_blit(hpos, 1);
-      blt_info.bltdmod = castWord(v & 0xfffe);
-      reset_blit(0);
-   };
+		this.maybe_blit(hpos, 1);
+		blt_info.bltdmod = castWord(v & 0xfffe);
+		reset_blit(0);
+	};
 
 	this.BLTCON0 = function (hpos, v) {
-      this.maybe_blit(hpos, 2);
-      bltcon0 = v;
-      reset_blit(1);
-   };
+		this.maybe_blit(hpos, 2);
+		bltcon0 = v;
+		reset_blit(1);
+	};
 	this.BLTCON0L = function (hpos, v) {
-      if (!(AMIGA.config.chipset.mask & CSMASK_ECS_AGNUS)) return;
-      this.maybe_blit(hpos, 2);
-      bltcon0 = (bltcon0 & 0xFF00) | (v & 0xFF);
-      reset_blit(1);
-   };
+		if (!(AMIGA.config.chipset.mask & CSMASK_ECS_AGNUS)) return;
+		this.maybe_blit(hpos, 2);
+		bltcon0 = (bltcon0 & 0xFF00) | (v & 0xFF);
+		reset_blit(1);
+	};
 	this.BLTCON1 = function (hpos, v) {
-      this.maybe_blit(hpos, 2);
-      bltcon1 = v;
-      reset_blit(2);
-   };
+		this.maybe_blit(hpos, 2);
+		bltcon1 = v;
+		reset_blit(2);
+	};
 
 	this.BLTAFWM = function (hpos, v) {
-      this.maybe_blit(hpos, 2);
-      blt_info.bltafwm = v;
-      reset_blit(0);
-   };
+		this.maybe_blit(hpos, 2);
+		blt_info.bltafwm = v;
+		reset_blit(0);
+	};
 	this.BLTALWM = function (hpos, v) {
-      this.maybe_blit(hpos, 2);
-      blt_info.bltalwm = v;
-      reset_blit(0);
-   };
+		this.maybe_blit(hpos, 2);
+		blt_info.bltalwm = v;
+		reset_blit(0);
+	};
 
 	this.BLTAPTH = function (hpos, v) {
-      this.maybe_blit(hpos, 0);
-      bltapt = ((bltapt & 0xffff) | (v << 16)) >>> 0;
-   };
+		this.maybe_blit(hpos, 0);
+		bltapt = ((bltapt & 0xffff) | (v << 16)) >>> 0;
+	};
 	this.BLTAPTL = function (hpos, v) {
-      this.maybe_blit(hpos, 0);
-      bltapt = ((bltapt & ~0xffff) | (v & 0xfffe)) >>> 0;
-   };
+		this.maybe_blit(hpos, 0);
+		bltapt = ((bltapt & ~0xffff) | (v & 0xfffe)) >>> 0;
+	};
 	this.BLTBPTH = function (hpos, v) {
-      this.maybe_blit(hpos, 0);
-      bltbpt = ((bltbpt & 0xffff) | (v << 16)) >>> 0;
-   };
+		this.maybe_blit(hpos, 0);
+		bltbpt = ((bltbpt & 0xffff) | (v << 16)) >>> 0;
+	};
 	this.BLTBPTL = function (hpos, v) {
-      this.maybe_blit(hpos, 0);
-      bltbpt = ((bltbpt & ~0xffff) | (v & 0xfffe)) >>> 0;
-   };
+		this.maybe_blit(hpos, 0);
+		bltbpt = ((bltbpt & ~0xffff) | (v & 0xfffe)) >>> 0;
+	};
 	this.BLTCPTH = function (hpos, v) {
-      this.maybe_blit(hpos, 0);
-      bltcpt = ((bltcpt & 0xffff) | (v << 16)) >>> 0;
-   };
+		this.maybe_blit(hpos, 0);
+		bltcpt = ((bltcpt & 0xffff) | (v << 16)) >>> 0;
+	};
 	this.BLTCPTL = function (hpos, v) {
-      this.maybe_blit(hpos, 0);
-      bltcpt = ((bltcpt & ~0xffff) | (v & 0xfffe)) >>> 0;
-   };
+		this.maybe_blit(hpos, 0);
+		bltcpt = ((bltcpt & ~0xffff) | (v & 0xfffe)) >>> 0;
+	};
 	this.BLTDPTH = function (hpos, v) {
-      this.maybe_blit(hpos, 0);
-      bltdpt = ((bltdpt & 0xffff) | (v << 16)) >>> 0;
-   };
+		this.maybe_blit(hpos, 0);
+		bltdpt = ((bltdpt & 0xffff) | (v << 16)) >>> 0;
+	};
 	this.BLTDPTL = function (hpos, v) {
-      this.maybe_blit(hpos, 0);
-      bltdpt = ((bltdpt & ~0xffff) | (v & 0xfffe)) >>> 0;
-   };
+		this.maybe_blit(hpos, 0);
+		bltdpt = ((bltdpt & ~0xffff) | (v & 0xfffe)) >>> 0;
+	};
 
 	this.BLTSIZE = function (hpos, v) {
-      this.maybe_blit(hpos, 0);
+		this.maybe_blit(hpos, 0);
 
-      blt_info.vblitsize = v >> 6;
-      blt_info.hblitsize = v & 0x3F;
-      if (!blt_info.vblitsize)
-         blt_info.vblitsize = 1024;
-      if (!blt_info.hblitsize)
-         blt_info.hblitsize = 64;
+		blt_info.vblitsize = v >> 6;
+		blt_info.hblitsize = v & 0x3F;
+		if (!blt_info.vblitsize)
+			blt_info.vblitsize = 1024;
+		if (!blt_info.hblitsize)
+			blt_info.hblitsize = 64;
 
-      do_blitter(hpos, AMIGA.copper.access);
-   };
+		do_blitter(hpos, AMIGA.copper.access);
+	};
 
 	this.BLTSIZV = function (hpos, v) {
-      if (!(AMIGA.config.chipset.mask & CSMASK_ECS_AGNUS)) return;
-      this.maybe_blit(hpos, 0);
-      blt_info.vblitsize = v & 0x7FFF;
-   };
+		if (!(AMIGA.config.chipset.mask & CSMASK_ECS_AGNUS)) return;
+		this.maybe_blit(hpos, 0);
+		blt_info.vblitsize = v & 0x7FFF;
+	};
 
 	this.BLTSIZH = function (hpos, v) {
-      if (!(AMIGA.config.chipset.mask & CSMASK_ECS_AGNUS)) return;
-      this.maybe_blit(hpos, 0);
-      blt_info.hblitsize = v & 0x7FF;
-      if (!blt_info.vblitsize)
-         blt_info.vblitsize = 0x8000;
-      if (!blt_info.hblitsize)
-         blt_info.hblitsize = 0x0800;
+		if (!(AMIGA.config.chipset.mask & CSMASK_ECS_AGNUS)) return;
+		this.maybe_blit(hpos, 0);
+		blt_info.hblitsize = v & 0x7FF;
+		if (!blt_info.vblitsize)
+			blt_info.vblitsize = 0x8000;
+		if (!blt_info.hblitsize)
+			blt_info.hblitsize = 0x0800;
 
-      do_blitter(hpos, AMIGA.copper.access);
-   };
+		do_blitter(hpos, AMIGA.copper.access);
+	};
 	
 	/*---------------------------------*/
 
 	this.getState = function () {
-      return bltstate;
-   };
+		return bltstate;
+	};
 	this.setState = function (s) {
-      bltstate = s;
-   };
+		bltstate = s;
+	};
 	this.getIntZero = function() { 
 		return [blit_interrupt, blt_info.blitzero];
 	}
 }
+

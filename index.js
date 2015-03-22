@@ -76,7 +76,7 @@ const db = [
 		], 
 		['9 Fingers', 'Spaceballs', '1993',
 			['9 Fingers (Disk 1).adf',
-			'9 Fingers (Disk 2).adf',false,false], [false, true],
+			'9 Fingers (Disk 2).adf',false,false], [false, false],
 			[true, 16, 17, false], [], [], false
 		], 
 		['Alpha and Omega', 'Pure Metal Coders', '1991',
@@ -96,10 +96,10 @@ const db = [
 			['Elysium.adf',false,false,false], [false, true],
 			[true, 16, 17, false], [], [], false
 		], 
-		['Ecliptica', 'TRSI', '1991',
+		/*crash ['Ecliptica', 'TRSI', '1991',
 			['Ecliptica.adf',false,false,false], [false, true],
 			[true, 16, 17, false], [], [], false
-		], 
+		],*/ 
 		['Enigma', 'Phenomena', '1991',
 			['Enigma.adf',false,false,false], [false, true],
 			[true, 16, 17, false], [], [], false
@@ -175,11 +175,12 @@ var dbNum = 0;
 const aros_rom_file = 'aros-amiga-m68k-rom.bin';
 const aros_rom_url = 'http://'+window.location.hostname+'/db/'+aros_rom_file;
 const aros_rom_size = 0x80000;
-const aros_rom_crc = 0x48dfadd; //0xea48b4d1
+const aros_rom_crc = 0xbe091f38; //0x48dfadd; //0xea48b4d1
+
 const aros_ext_file = 'aros-amiga-m68k-ext.bin';
 const aros_ext_url = 'http://'+window.location.hostname+'/db/'+aros_ext_file;
 const aros_ext_size = 0x80000;
-const aros_ext_crc = 0xaaf211d6; //0x60871435
+const aros_ext_crc = 0x3f3fdce0; //0xaaf211d6; //0x60871435
 
 var mode = 0;
 var paused = false;
@@ -205,41 +206,41 @@ function Cache() {
 	var disks = [];
 
 	this.loadRom = function (num) {
-      if (roms[num]) {
-         console.log('loadRom.loadRom() %d is cached', num);
-         return roms[num];
-      }
-      console.log('loadRom.loadRom() downloading %d', num);
+		if (roms[num]) {
+			console.log('loadRom.loadRom() %d is cached', num);
+			return roms[num];
+		}
+		console.log('loadRom.loadRom() downloading %d', num);
 
-      var url, size, crc;
-      switch (num) {
-         case 0:
-            url = aros_rom_url;
-            size = aros_rom_size;
-            crc = aros_rom_crc;
-            break;
-         case 1:
-            url = aros_ext_url;
-            size = aros_ext_size;
-            crc = aros_ext_crc;
-            break;
-      }
-      var data = loadRemoteSync(url);
-      if (typeof(data) == 'number') {
-         alert('Can\'t download ' + url + ' (http status: ' + data + ')');
-      } else {
-         if (data.length == size) {
-            //console.log(dechex(crc32(data)));
-            if (crc32(data) == crc) {
-               roms[num] = data;
-               return data;
-            } else
-               alert('Wrong checksum for ' + url + ' (is $' + dechex(crc32(data)) + ', should $' + dechex(crc) + ')\n\nFlush the browser-cache with "Ctrl+Shift+Del" and press F5 to reload...');
-         } else
-            alert('Wrong file-length for ' + url + ' (' + size + ')');
-      }
-      return null;
-   };
+		var url, size, crc;
+		switch (num) {
+			case 0:
+				url = aros_rom_url;
+				size = aros_rom_size;
+				crc = aros_rom_crc;
+				break;
+			case 1:
+				url = aros_ext_url;
+				size = aros_ext_size;
+				crc = aros_ext_crc;
+				break;
+		}
+		var data = loadRemoteSync(url);
+		if (typeof(data) == 'number') {
+			alert('Can\'t download ' + url + ' (http status: ' + data + ')');
+		} else {
+			if (data.length == size) {
+				//console.log(dechex(crc32(data)));
+				if (crc32(data) == crc) {
+					roms[num] = data;
+					return data;
+				} else
+					alert('Wrong checksum for ' + url + ' (is $' + dechex(crc32(data)) + ', should $' + dechex(crc) + ')\n\nFlush the browser-cache with "Ctrl+Shift+Del" and press F5 to reload...');
+			} else
+				alert('Wrong file-length for ' + url + ' (' + size + ')');
+		}
+		return null;
+	};
 	
 	this.loadDisk = function(url) {
 		for (var i = 0; i < disks.length; i++) {
@@ -364,22 +365,22 @@ function disabled(id, d) {
 	
 /*function toggleFullScreen() {
   if ((document.fullScreenElement && document.fullScreenElement !== null) ||    // alternative standard method
-      (!document.mozFullScreenElement && !document.webkitFullScreenElement)) {  // current working methods
-    if (document.documentElement.requestFullScreen) {
-      document.documentElement.requestFullScreen();
-    } else if (document.documentElement.mozRequestFullScreen) {
-      document.documentElement.mozRequestFullScreen();
-    } else if (document.documentElement.webkitRequestFullScreen) {
-      document.documentElement.webkitRequestFullScreen(Element.ALLOW_KEYBOARD_INPUT);
-    }
+		(!document.mozFullScreenElement && !document.webkitFullScreenElement)) {  // current working methods
+	 if (document.documentElement.requestFullScreen) {
+		document.documentElement.requestFullScreen();
+	 } else if (document.documentElement.mozRequestFullScreen) {
+		document.documentElement.mozRequestFullScreen();
+	 } else if (document.documentElement.webkitRequestFullScreen) {
+		document.documentElement.webkitRequestFullScreen(Element.ALLOW_KEYBOARD_INPUT);
+	 }
   } else {
-    if (document.cancelFullScreen) {
-      document.cancelFullScreen();
-    } else if (document.mozCancelFullScreen) {
-      document.mozCancelFullScreen();
-    } else if (document.webkitCancelFullScreen) {
-      document.webkitCancelFullScreen();
-    }
+	 if (document.cancelFullScreen) {
+		document.cancelFullScreen();
+	 } else if (document.mozCancelFullScreen) {
+		document.mozCancelFullScreen();
+	 } else if (document.webkitCancelFullScreen) {
+		document.webkitCancelFullScreen();
+	 }
   }
 }*/
 
@@ -400,19 +401,19 @@ function loadLocal(e, callback) {
 	req.open('GET', url, true);	
 	req.overrideMimeType('text\/plain; charset=x-user-defined');
 	req.onreadystatechange = function (e) {
-      if (req.readyState == 4) {
-         if (req.status == 200) {
-            if (req.responseText.length == size) {
-               if (crc === false || crc32(req.responseText) == crc)
-                  callback(0, req.responseText);
-               else
-                  callback(1, crc32(req.responseText));
-            } else
-               callback(2, req.responseText.length);
-         } else
-            callback(3, req.status);
-      }
-   };
+		if (req.readyState == 4) {
+			if (req.status == 200) {
+				if (req.responseText.length == size) {
+					if (crc === false || crc32(req.responseText) == crc)
+						callback(0, req.responseText);
+					else
+						callback(1, crc32(req.responseText));
+				} else
+					callback(2, req.responseText.length);
+			} else
+				callback(3, req.status);
+		}
+	};
 	req.send(null);			
 }*/
 function loadRemoteSync(url) {
@@ -599,7 +600,6 @@ function getSimpleConfig() {
 	if (config.audio.enabled) {
 		config.audio.mode = SAEV_Config_Audio_Mode_Play_Best;
 		config.audio.channels = SAEV_Config_Audio_Channels_Stereo;
-		config.audio.rate = SAEV_Config_Audio_Rate_44100;
 	}
 	/*if (info.audio == 0) {
 		config.audio.enabled = false;
@@ -713,7 +713,7 @@ function fireButtonName(fire) {
 		case 145: return 'Scroll lock';
 		case 49: return '1';
 		case 50: return '2';
-      default: return 'ERROR';
+		default: return 'ERROR';
 	}
 }
 
@@ -823,12 +823,6 @@ function setConfig() {
 		case SAEV_Config_Audio_Channels_Mono: document.getElementById('cfg_audio_channels')[0].selected = true; break;
 		case SAEV_Config_Audio_Channels_Stereo: document.getElementById('cfg_audio_channels')[1].selected = true; break;
 	}
-	switch (config.audio.rate) {
-		case SAEV_Config_Audio_Rate_11025: document.getElementById('cfg_audio_rate')[0].selected = true; break;
-		case SAEV_Config_Audio_Rate_22050: document.getElementById('cfg_audio_rate')[1].selected = true; break;
-		case SAEV_Config_Audio_Rate_44100: document.getElementById('cfg_audio_rate')[2].selected = true; break;
-		case SAEV_Config_Audio_Rate_48000: document.getElementById('cfg_audio_rate')[3].selected = true; break;
-	}
 	document.getElementById('cfg_audio_filter').checked = config.audio.filter != 0;		
 	styleDisplayTable('cfg_audio_grp', config.audio.enabled);
 
@@ -880,7 +874,7 @@ function getMask(type) {
 		case SAEV_Config_Chipset_Type_OCS: return SAEV_Config_Chipset_Mask_OCS;
 		case SAEV_Config_Chipset_Type_ECS_AGNUS: return SAEV_Config_Chipset_Mask_ECS_AGNUS;
 		case SAEV_Config_Chipset_Type_ECS_DENISE: return SAEV_Config_Chipset_Mask_ECS_DENISE;
-      default: return SAEV_Config_Chipset_Mask_OCS;
+		default: return SAEV_Config_Chipset_Mask_OCS;
 	}
 }
 
@@ -925,8 +919,6 @@ function getConfig() {
 		config.audio.mode = parseInt(getSelectValue(e));
 		e = document.getElementById('cfg_audio_channels');
 		config.audio.channels = parseInt(getSelectValue(e));
-		e = document.getElementById('cfg_audio_rate');
-		config.audio.rate = parseInt(getSelectValue(e));		
 		config.audio.filter = document.getElementById('cfg_audio_filter').checked ? true : false;
 	}
 
@@ -1101,8 +1093,8 @@ function stop() {
 		var e = document.getElementById('status_pr');
 		e.value = 'pause';	
 		e.onclick = function () {
-         pause(1);
-      };
+			pause(1);
+		};
 		paused = false;
 	}
 	if (dskchg)
@@ -1129,8 +1121,8 @@ function pause(p) {
 	var e = document.getElementById('status_pr');
 	e.innerHTML = p ? 'Resume' : 'Pause';	
 	e.onclick = function () {
-      pause(1 - p);
-   };
+		pause(1 - p);
+	};
 		
 	paused = p;
 
@@ -1249,7 +1241,7 @@ function romAROS() {
 	styleDisplayInline('cfg_ext_remove', 1);
 	styleDisplayTableRow('cfg_ext_addr_grp', 1); 	
 	disabled('cfg_rom_aros', 0);
-   return true;
+	return true;
 }
 
 function romSelect() {
@@ -1481,7 +1473,7 @@ function dskchgInsert() {
 	if (!dskchg) return;
 	var n = getSelectValue(document.getElementById('cfg_dskchg_unit'));
 	var e = document.getElementById('cfg_dskchg_file').files[0];
-   var ok = true; //false;
+	var ok = true; //false;
 
 	if (!e) return;
 	/*if (e.size == 0xDC000)  {
@@ -1539,3 +1531,4 @@ function dskchgSelect() {
 		});			
 	}
 }
+

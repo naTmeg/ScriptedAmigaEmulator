@@ -78,7 +78,7 @@
 			<ul>
 				<li><span class="fwb">Written and ported by</span>
 					<ul>
-						<li>Rupert Hausberger &lt;<a href="mailto:rupert_hausberger@gmx.net">rupert_hausberger@gmx.net</a>&gt; (<a target="_blank" href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&amp;hosted_button_id=ZJA3YVT6EP55A">donate</a>)</li>
+						<li>Rupert Hausberger &lt;<a href="mailto:rupert_hausberger@gmx.net">rupert_hausberger@gmx.net</a>&gt;</li>
 					</ul>
 				</li>
 			</ul>
@@ -99,7 +99,7 @@
 			<ul>
 				<li><span class="fwb">Thanks</span>
 					<ul>
-						<li><a target="_blank" href="http://www.amigaemulator.org">Bernd Schmidt</a></li>
+						<!--<li><a target="_blank" href="http://www.amigaemulator.org">Bernd Schmidt</a></li>-->
 						<li><a target="_blank" href="http://winuae.net">WinUAE team</a></li> 
 						<li><a target="_blank" href="http://aros.org">AROS team</a></li>
 					</ul>
@@ -117,6 +117,31 @@
 			<ul>
 				<li><span class="fwb">History</span>
 					<ul>
+						<li><span class="fwb">0.8.3 (22.03.2015)</span>
+							<ul>	
+								<li>Audio
+									<ul>
+										<li>Fixed a heavy bug i added myself around v0.6-0.7 on the seek for other bugs. Big thanks to 'Ralf Sommer'.</li>
+										<li>Dropped usage of the ring-buffer and wrote a new and faster queue-buffer.</li>
+										<li>The audio-data is now first sampled at 15.65KHz and then resampled to<br />
+										the rate of the soundcard. This does reduce internal CPU-usage.</li>
+										<li>Removed 'Audio/Samplerate' in the GUI, because it's no longer used.<br />
+									</ul>
+								</li>			
+								<li>Events
+									<ul>
+										<li>Fixed a bug in combination with frameskip.</li>
+										<li>Frameskip is now disabled by default.</li>
+									</ul>
+								</li>			
+								<li>Common
+									<ul>					
+										<li>Updated AROS-ROMs to actual version SVN50213.</li>
+									</ul>
+								</li>			
+							</ul>
+						</li>                             
+						<li style="list-style-type:none"><br/></li>									
 						<li><span class="fwb">0.8.2 (10.01.2015)</span>
 							<ul>	
 								<li>Audio

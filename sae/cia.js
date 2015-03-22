@@ -101,22 +101,22 @@ function CIA() {
 	}
 
 	this.SetICRA = function (icr, sdr) {
-      ciaaicr |= icr;
-      ciaasdr = sdr;
-      RethinkICRA();
-   };
+		ciaaicr |= icr;
+		ciaasdr = sdr;
+		RethinkICRA();
+	};
 
 	this.SetICRB = function (icr, sdr) {
-      ciabicr |= icr;
-      if (sdr !== null)
-         ciabsdr = sdr;
-      RethinkICRB();
-   };
+		ciabicr |= icr;
+		if (sdr !== null)
+			ciabsdr = sdr;
+		RethinkICRB();
+	};
 
 	this.rethink = function () {
-      RethinkICRA();
-      RethinkICRB();
-   };
+		RethinkICRA();
+		RethinkICRB();
+	};
 
 	/* Figure out how many CIA timer cycles have passed for each timer since the last call of CIA_calctimers.  */
 	function compute_passed_time() {
@@ -343,9 +343,9 @@ function CIA() {
 	}
 
 	this.handler = function () {
-      CIA_update();
-      CIA_calctimers();
-   };
+		CIA_update();
+		CIA_calctimers();
+	};
 
 	/*this.diskindex = function() {
 		ciabicr |= 0x10;
@@ -476,40 +476,40 @@ function CIA() {
 	//this.hsync_prehandler = function() {}
 
 	this.hsync_posthandler = function (dotod) {
-      if (ciabtodon && dotod) {
-         ciabtod++;
-         ciabtod &= 0xFFFFFF;
-         ciab_checkalarm(1);
-      }
-      if (AMIGA.config.cia.tod_hack && ciaatodon)
-         do_tod_hack(dotod);
+		if (ciabtodon && dotod) {
+			ciabtod++;
+			ciabtod &= 0xFFFFFF;
+			ciab_checkalarm(1);
+		}
+		if (AMIGA.config.cia.tod_hack && ciaatodon)
+			do_tod_hack(dotod);
 
-      /*if (resetwarning_phase) {
-       resetwarning_check ();
-       while (keys_available ())
-       get_next_key ();
-       } else if ((keys_available () || kbstate < 3) && !kblostsynccnt && (hsync_counter & 15) == 0) {
-       switch (kbstate) {
-       case 0:
-       kbcode = 0;
-       kbstate++;
-       break;
-       case 1:
-       setcode(AK_INIT_POWERUP);
-       kbstate++;
-       break;
-       case 2:
-       setcode(AK_TERM_POWERUP);
-       kbstate++;
-       break;
-       case 3:
-       kbcode = ~get_next_key();
-       break;
-       }
-       keyreq();
-       }*/
-      AMIGA.input.keyboard.hsync();
-   };
+		/*if (resetwarning_phase) {
+		 resetwarning_check ();
+		 while (keys_available ())
+		 get_next_key ();
+		 } else if ((keys_available () || kbstate < 3) && !kblostsynccnt && (hsync_counter & 15) == 0) {
+		 switch (kbstate) {
+		 case 0:
+		 kbcode = 0;
+		 kbstate++;
+		 break;
+		 case 1:
+		 setcode(AK_INIT_POWERUP);
+		 kbstate++;
+		 break;
+		 case 2:
+		 setcode(AK_TERM_POWERUP);
+		 kbstate++;
+		 break;
+		 case 3:
+		 kbcode = ~get_next_key();
+		 break;
+		 }
+		 keyreq();
+		 }*/
+		AMIGA.input.keyboard.hsync();
+	};
 
 	function calc_led(old_led) {
 		var c = AMIGA.events.currcycle;
@@ -560,42 +560,42 @@ function CIA() {
 	}
 
 	this.vsync_prehandler = function () {
-      /*if (rtc_delayed_write < 0) {
-       rtc_delayed_write = 50;
-       } else if (rtc_delayed_write > 0) {
-       rtc_delayed_write--;
-       if (rtc_delayed_write == 0)
-       write_battclock ();
-       }*/
-      led_vsync();
-      this.handler();
-      /*if (kblostsynccnt > 0) {
-       kblostsynccnt -= maxvpos;
-       if (kblostsynccnt <= 0) {
-       kblostsynccnt = 0;
-       keyreq ();
-       write_log (_T('lostsync\n'));
-       }
-       }*/
-      AMIGA.input.keyboard.vsync();
-   };
+		/*if (rtc_delayed_write < 0) {
+		 rtc_delayed_write = 50;
+		 } else if (rtc_delayed_write > 0) {
+		 rtc_delayed_write--;
+		 if (rtc_delayed_write == 0)
+		 write_battclock ();
+		 }*/
+		led_vsync();
+		this.handler();
+		/*if (kblostsynccnt > 0) {
+		 kblostsynccnt -= maxvpos;
+		 if (kblostsynccnt <= 0) {
+		 kblostsynccnt = 0;
+		 keyreq ();
+		 write_log (_T('lostsync\n'));
+		 }
+		 }*/
+		AMIGA.input.keyboard.vsync();
+	};
 
 	this.vsync_posthandler = function (dotod) {
-      //if (heartbeat_cnt > 0) heartbeat_cnt--;
-      if (TOD_HACK) {
-         if (AMIGA.config.cia.tod_hack && tod_hack_enabled == 1)
-            return;
-      }
-      if (ciaatodon && dotod) {
-         ciaatod++;
-         ciaatod &= 0xFFFFFF;
-         ciaa_checkalarm(1);
-      }
-      /*if (vpos == 0) {
-       write_log ('%d', vsync_counter);
-       this.dump();
-       }*/
-   };
+		//if (heartbeat_cnt > 0) heartbeat_cnt--;
+		if (TOD_HACK) {
+			if (AMIGA.config.cia.tod_hack && tod_hack_enabled == 1)
+				return;
+		}
+		if (ciaatodon && dotod) {
+			ciaatod++;
+			ciaatod &= 0xFFFFFF;
+			ciaa_checkalarm(1);
+		}
+		/*if (vpos == 0) {
+		 write_log ('%d', vsync_counter);
+		 this.dump();
+		 }*/
+	};
 
 	function bfe001_change() {
 		var v = ciaapra;
@@ -1117,58 +1117,58 @@ function CIA() {
 	}
 
 	this.setup = function () {
-   };
+	};
 
 	this.reset = function () {
-      if (TOD_HACK) {
-         tod_hack_tv = 0;
-         tod_hack_tod = 0;
-         tod_hack_enabled = 0;
-         if (AMIGA.config.cia.tod_hack)
-            tod_hack_enabled = TOD_HACK_TIME;
-      }
-      //kblostsynccnt = 0;
-      //serbits = 0;
-      //oldcd32mute = 1;
-      oldled = true;
-      //resetwarning_phase = resetwarning_timer = 0;
-      //heartbeat_cnt = 0;
+		if (TOD_HACK) {
+			tod_hack_tv = 0;
+			tod_hack_tod = 0;
+			tod_hack_enabled = 0;
+			if (AMIGA.config.cia.tod_hack)
+				tod_hack_enabled = TOD_HACK_TIME;
+		}
+		//kblostsynccnt = 0;
+		//serbits = 0;
+		//oldcd32mute = 1;
+		oldled = true;
+		//resetwarning_phase = resetwarning_timer = 0;
+		//heartbeat_cnt = 0;
 
-      //oldovl = true;
-      //kbstate = 0;
-      ciaatlatch = ciabtlatch = 0;
-      ciaapra = 0;
-      ciaadra = 0;
-      ciaatod = ciabtod = 0;
-      ciaatodon = ciabtodon = 0;
-      ciaaicr = ciabicr = ciaaimask = ciabimask = 0;
-      ciaacra = ciaacrb = ciabcra = ciabcrb = 0x4;
-      /* outmode = toggle; */
-      ciaala = ciaalb = ciabla = ciablb = ciaata = ciaatb = ciabta = ciabtb = 0xFFFF;
-      ciaaalarm = ciabalarm = 0;
-      ciabpra = 0x8C;
-      ciabdra = 0;
-      div10 = 0;
-      ciaasdr_cnt = 0;
-      ciaasdr = 0;
-      ciabsdr_cnt = 0;
-      ciabsdr = 0;
-      ciaata_passed = ciaatb_passed = ciabta_passed = ciabtb_passed = 0;
+		//oldovl = true;
+		//kbstate = 0;
+		ciaatlatch = ciabtlatch = 0;
+		ciaapra = 0;
+		ciaadra = 0;
+		ciaatod = ciabtod = 0;
+		ciaatodon = ciabtodon = 0;
+		ciaaicr = ciabicr = ciaaimask = ciabimask = 0;
+		ciaacra = ciaacrb = ciabcra = ciabcrb = 0x4;
+		/* outmode = toggle; */
+		ciaala = ciaalb = ciabla = ciablb = ciaata = ciaatb = ciabta = ciabtb = 0xFFFF;
+		ciaaalarm = ciabalarm = 0;
+		ciabpra = 0x8C;
+		ciabdra = 0;
+		div10 = 0;
+		ciaasdr_cnt = 0;
+		ciaasdr = 0;
+		ciabsdr_cnt = 0;
+		ciabsdr = 0;
+		ciaata_passed = ciaatb_passed = ciabta_passed = ciabtb_passed = 0;
 
-      CIA_calctimers();
-      AMIGA.disk.select_set(ciabprb);
+		CIA_calctimers();
+		AMIGA.disk.select_set(ciabprb);
 
-      //map_overlay (0);
+		//map_overlay (0);
 
-      //if (currprefs.use_serial) serial_dtr_off (); NI /* Drop DTR at reset */
-   };
+		//if (currprefs.use_serial) serial_dtr_off (); NI /* Drop DTR at reset */
+	};
 
 	this.dump = function () {
-      BUG.info('A: CRA %02x CRB %02x ICR %02x IM %02x TA %04x (%04x) TB %04x (%04x)', ciaacra, ciaacrb, ciaaicr, ciaaimask, ciaata, ciaala, ciaatb, ciaalb);
-      BUG.info('TOD %06x (%06x) ALARM %06x %s%s CYC=%.1f', ciaatod, ciaatol, ciaaalarm, ciaatlatch ? 'L' : ' ', ciaatodon ? ' ' : 'S', AMIGA.events.currcycle * CYCLE_UNIT_INV);
-      BUG.info('B: CRA %02x CRB %02x ICR %02x IM %02x TA %04x (%04x) TB %04x (%04x)', ciabcra, ciabcrb, ciabicr, ciabimask, ciabta, ciabla, ciabtb, ciablb);
-      BUG.info('TOD %06x (%06x) ALARM %06x %s%s CLK=%.1f', ciabtod, ciabtol, ciabalarm, ciabtlatch ? 'L' : ' ', ciabtodon ? ' ' : 'S', div10 * CYCLE_UNIT_INV);
-   };
+		BUG.info('A: CRA %02x CRB %02x ICR %02x IM %02x TA %04x (%04x) TB %04x (%04x)', ciaacra, ciaacrb, ciaaicr, ciaaimask, ciaata, ciaala, ciaatb, ciaalb);
+		BUG.info('TOD %06x (%06x) ALARM %06x %s%s CYC=%.1f', ciaatod, ciaatol, ciaaalarm, ciaatlatch ? 'L' : ' ', ciaatodon ? ' ' : 'S', AMIGA.events.currcycle * CYCLE_UNIT_INV);
+		BUG.info('B: CRA %02x CRB %02x ICR %02x IM %02x TA %04x (%04x) TB %04x (%04x)', ciabcra, ciabcrb, ciabicr, ciabimask, ciabta, ciabla, ciabtb, ciablb);
+		BUG.info('TOD %06x (%06x) ALARM %06x %s%s CLK=%.1f', ciabtod, ciabtol, ciabalarm, ciabtlatch ? 'L' : ' ', ciabtodon ? ' ' : 'S', div10 * CYCLE_UNIT_INV);
+	};
 
 	// Gayle or Fat Gary does not enable CIA /CS lines if both CIAs are selected
 	// Old Gary based Amigas enable both CIAs in this situation
@@ -1210,119 +1210,120 @@ function CIA() {
 	}
 
 	this.load8 = function (addr) {
-      var r = (addr & 0xf00) >> 8;
-      var v = 0xff;
+		var r = (addr & 0xf00) >> 8;
+		var v = 0xff;
 
-      if (!isgaylenocia(addr))
-         return v;
+		if (!isgaylenocia(addr))
+			return v;
 
-      cia_wait_pre();
-      switch ((addr >> 12) & 3) {
-         case 0:
-            if (!issinglecia())
-               v = (addr & 1) ? ReadCIAA(r) : ReadCIAB(r);
-            break;
-         case 1:
-            v = (addr & 1) ? 0xff : ReadCIAB(r);
-            break;
-         case 2:
-            v = (addr & 1) ? ReadCIAA(r) : 0xff;
-            break;
-         case 3:
-         {
-            //if (AMIGA.config.cpu.model == 68000 && AMIGA.config.cpu.compatible) v = (addr & 1) ? regs.irc : regs.irc >> 8;
-            if (warned > 0) {
-               BUG.info('cia_bget: unknown CIA address %x', addr);
-               warned--;
-            }
-            break;
-         }
-      }
-      cia_wait_post(v);
-      return v;
-   };
+		cia_wait_pre();
+		switch ((addr >> 12) & 3) {
+			case 0:
+				if (!issinglecia())
+					v = (addr & 1) ? ReadCIAA(r) : ReadCIAB(r);
+				break;
+			case 1:
+				v = (addr & 1) ? 0xff : ReadCIAB(r);
+				break;
+			case 2:
+				v = (addr & 1) ? ReadCIAA(r) : 0xff;
+				break;
+			case 3:
+			{
+				//if (AMIGA.config.cpu.model == 68000 && AMIGA.config.cpu.compatible) v = (addr & 1) ? regs.irc : regs.irc >> 8;
+				if (warned > 0) {
+					BUG.info('cia_bget: unknown CIA address %x', addr);
+					warned--;
+				}
+				break;
+			}
+		}
+		cia_wait_post(v);
+		return v;
+	};
 
 	this.load16 = function (addr) {
-      var r = (addr & 0xf00) >> 8;
-      var v = 0xffff;
+		var r = (addr & 0xf00) >> 8;
+		var v = 0xffff;
 
-      if (!isgaylenocia(addr))
-         return v;
+		if (!isgaylenocia(addr))
+			return v;
 
-      cia_wait_pre();
-      switch ((addr >> 12) & 3) {
-         case 0:
-            if (!issinglecia())
-               v = (ReadCIAB(r) << 8) | ReadCIAA(r);
-            break;
-         case 1:
-            v = (ReadCIAB(r) << 8) | 0xff;
-            break;
-         case 2:
-            v = (0xff << 8) | ReadCIAA(r);
-            break;
-         case 3:
-         {
-            //if (AMIGA.config.cpu.model == 68000 && AMIGA.config.cpu.compatible) v = regs.irc;
-            if (warned > 0) {
-               BUG.info('cia_wget: unknown CIA address %x', addr);
-               warned--;
-            }
-            break;
-         }
-      }
-      cia_wait_post(v);
-      return v;
-   };
+		cia_wait_pre();
+		switch ((addr >> 12) & 3) {
+			case 0:
+				if (!issinglecia())
+					v = (ReadCIAB(r) << 8) | ReadCIAA(r);
+				break;
+			case 1:
+				v = (ReadCIAB(r) << 8) | 0xff;
+				break;
+			case 2:
+				v = (0xff << 8) | ReadCIAA(r);
+				break;
+			case 3:
+			{
+				//if (AMIGA.config.cpu.model == 68000 && AMIGA.config.cpu.compatible) v = regs.irc;
+				if (warned > 0) {
+					BUG.info('cia_wget: unknown CIA address %x', addr);
+					warned--;
+				}
+				break;
+			}
+		}
+		cia_wait_post(v);
+		return v;
+	};
 
 	this.load32 = function (addr) {
-      var v = this.load16(addr) << 16;
-      v |= this.load16(addr + 2);
-      return v >>> 0;
-   };
+		var v = this.load16(addr) << 16;
+		v |= this.load16(addr + 2);
+		return v >>> 0;
+	};
 
 	this.store8 = function (addr, value) {
-      var r = (addr & 0xf00) >> 8;
+		var r = (addr & 0xf00) >> 8;
 
-      if (!isgaylenocia(addr))
-         return;
+		if (!isgaylenocia(addr))
+			return;
 
-      cia_wait_pre();
-      if (!issinglecia() || (addr & 0x3000) != 0) {
-         if ((addr & 0x2000) == 0)
-            WriteCIAB(r, value);
-         if ((addr & 0x1000) == 0)
-            WriteCIAA(r, value);
-         if (((addr & 0x3000) == 0x3000) && warned > 0) {
-            BUG.info('cia_bput: unknown CIA address %x %x', addr, value);
-            warned--;
-         }
-      }
-      cia_wait_post(value);
-   };
+		cia_wait_pre();
+		if (!issinglecia() || (addr & 0x3000) != 0) {
+			if ((addr & 0x2000) == 0)
+				WriteCIAB(r, value);
+			if ((addr & 0x1000) == 0)
+				WriteCIAA(r, value);
+			if (((addr & 0x3000) == 0x3000) && warned > 0) {
+				BUG.info('cia_bput: unknown CIA address %x %x', addr, value);
+				warned--;
+			}
+		}
+		cia_wait_post(value);
+	};
 
 	this.store16 = function (addr, value) {
-      var r = (addr & 0xf00) >> 8;
+		var r = (addr & 0xf00) >> 8;
 
-      if (!isgaylenocia(addr))
-         return;
+		if (!isgaylenocia(addr))
+			return;
 
-      cia_wait_pre();
-      if (!issinglecia() || (addr & 0x3000) != 0) {
-         if ((addr & 0x2000) == 0)
-            WriteCIAB(r, value >> 8);
-         if ((addr & 0x1000) == 0)
-            WriteCIAA(r, value & 0xff);
-         if (((addr & 0x3000) == 0x3000) && warned > 0) {
-            BUG.info('cia_wput: unknown CIA address %x %x', addr, value);
-            warned--;
-         }
-      }
-      cia_wait_post(value);
-   };
+		cia_wait_pre();
+		if (!issinglecia() || (addr & 0x3000) != 0) {
+			if ((addr & 0x2000) == 0)
+				WriteCIAB(r, value >> 8);
+			if ((addr & 0x1000) == 0)
+				WriteCIAA(r, value & 0xff);
+			if (((addr & 0x3000) == 0x3000) && warned > 0) {
+				BUG.info('cia_wput: unknown CIA address %x %x', addr, value);
+				warned--;
+			}
+		}
+		cia_wait_post(value);
+	};
 
 	this.store32 = function (addr, value) {
 		this.store16(addr, value >> 16);
 		this.store16(addr + 2, value & 0xffff);
 	}
 }
+
