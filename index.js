@@ -1,1445 +1,2577 @@
-/**************************************************************************
-* SAE - Scripted Amiga Emulator
-*
-* 2012-2015 Rupert Hausberger
-*
-* https://github.com/naTmeg/ScriptedAmigaEmulator
-*
-***************************************************************************
-* Note: This file does not contain any emulator-code. 
-* It is just for the SAE-calls and some GUI-stuff...
-* 
-**************************************************************************/
+/*-------------------------------------------------------------------------
+| SAE - Scripted Amiga Emulator
+| https://github.com/naTmeg/ScriptedAmigaEmulator
+|
+| Copyright (C) 2012-2016 Rupert Hausberger
+|
+| This program is free software; you can redistribute it and/or
+| modify it under the terms of the GNU General Public License
+| as published by the Free Software Foundation; either version 2
+| of the License, or (at your option) any later version.
+|
+| This program is distributed in the hope that it will be useful,
+| but WITHOUT ANY WARRANTY; without even the implied warranty of
+| MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+| GNU General Public License for more details.
+|
+| Note: This file does not contain any emulator-code.
+-------------------------------------------------------------------------*/
 
-const URL_TEAM_HOI = '<a href="javascript:openNewTab(\'http://www.sevensheaven.nl\')">Team Hoi</a>';
-const URL_RETROGURU = '<a href="javascript:openNewTab(\'http://www.retroguru.com\')">retroguru</a>';
-const URL_LOEWENSTEIN = '<a href="javascript:openNewTab(\'http://www.richard-loewenstein.de\')">Richard Löwenstein</a>';
+const URL_DATABASE = "http://"+window.location.hostname+"/db";
+const URL_DATABASE_GAMES = URL_DATABASE+"/games";
+const URL_DATABASE_DEMOS = URL_DATABASE+"/demos";
+const URL_DATABASE_DEMOS_AGA = URL_DATABASE+"/demos_aga";
+const URL_DATABASE_TOOLS = URL_DATABASE+"/tools";
+
+/*---------------------------------*/
+
+/* dbEntry types */
+const DBT_GAME = 1;
+const DBT_DEMO = 2;
+const DBT_DAGA = 3;
+const DBT_TOOL = 4;
+
+/* dbEntry flags */
+const DBF_MDC = 1; /* require manual disk-change by user */
+const DBF_NOT = 2; /* disable turbo-mode for floppies */
+const DBF_COL = 4; /* enable collision-detection */
+const DBF_BIM = 8; /* enable immediate blitter */
+const DBF_ECS = 16; /* ECS required */
+const DBF_AGA = 32; /* AGA required */
+const DBF_030 = 64; /* 68030 enabled */
+
+function dbEntry(t,nd, n,d,p,l,y, f,no) {
+	this.id = Math.random() * 0xffffffff >>> 0;
+
+	this.type = t;
+	this.numdisks = nd;
+
+	this.name = n;
+	this.developer = d;
+	this.publisher = p;
+	this.license = l;
+	this.year = y;
+
+	this.flags = f;
+	this.notes = no;
+}
+
+const DB_IDS = [[
+	"cfg_game",
+	"cfg_demo",
+	"cfg_demo_aga",
+	"cfg_tool"
+], [
+	"cfg_floppy_select_game",
+	"cfg_floppy_select_demo",
+	"cfg_floppy_select_demo_aga",
+	"cfg_floppy_select_tool"
+]];
+const DB_URLS = [
+	URL_DATABASE_GAMES,
+	URL_DATABASE_DEMOS,
+	URL_DATABASE_DEMOS_AGA,
+	URL_DATABASE_TOOLS
+];
+
+/*---------------------------------*/
+
+function mkA(url, name) { return '<a target="_blank" href="'+url+'">'+name+'</a>'; }
+
+const URL_ENABLE_SOFTWARE = mkA("http://blockyskies.com", "Enable Software");
+const URL_TEAM_HOI = mkA("http://www.sevensheaven.nl", "Team Hoi");
+const URL_RETROGURU = mkA("http://www.retroguru.com", "retroguru");
+const URL_LOEWENSTEIN = mkA("http://www.richard-loewenstein.de", "Richard Löwenstein");
+const URL_HECKMECK = mkA("http://heckmeck.de", "Alexander Grupe");
+
+const URL_AROS = mkA("http://aros.org", "aros.org");
+const URL_AROS_LIC = mkA("http://aros.org/license.html", "APL");
+const URL_SYSINFO = mkA("http://sysinfo.d0.se", "Nic Wilson");
 
 const db = [
-	/* name company year [disks] [change, turbo] [en,f1,f2,map] load [keys] immediate */			
-	[
-		['Air Ace II', ['SEUCK', '-', 'Public Domain'], '1989',
-			['Air Ace II.adf', false, false, false], [false, true],
-			[true, 16, 17, false], ['...takes very long.'], [], false 
-		],
-		['Asteroids', ['Vertical Developments', '-', 'Public Domain'], '1979',
-			['Asteroids.adf', false, false, false], [false, true],
-			[true, 16, 17, false], [], [], false 
-		],
-		['Crazy Sue', ['Jumpshoe, Hironymous', '-', 'Public Domain'], '1991',
-			['Crazy Sue.adf', false, false, false], [false, true],
-			[true, 16, 17, false], ['...can take some time.'], [], false 
-		],
-		['Deluxe Galaga 2.4', ['Edgar Vigdal', '-', 'Freeware'], '1994',
-			['Deluxe Galaga.adf', false, false, false], [false, true],
-			[true, 16, 17, false], [], [], false 
-		],
-		['Hoi', [URL_TEAM_HOI, 'Hollyware', 'Freeware'], '1992',
-			['Hoi (Disk 1).adf',
-			'Hoi (Disk 2).adf', false, false], [true, true],
-			[true, 16, 17, false], ['Press the LMB to skip the intro and insert the 2nd disk manually.<br /><br />'+
-			'<span title="After the disk-change, place the \'LVL\'-pointer in the far lower right of the green quarter screen. The bottom \'L\' must be positioned in the corner precisely. Click the LMB, then shift the \'LVL\' pointer to the absolute top left of the screen (as far as it can be moved in that direction). Click the LMB again. Any of the first four levels may now be selected for game play. Press the F4 key during game play for twelve lives. Note: Level 5 can only be accessed by completing level 4.">Cheat (move mouse-over)</span>'], [], false 			
-		],
-		['Norse Gods', [URL_LOEWENSTEIN, '-', 'Freeware'], '1991',
-			['Norse Gods.adf', false, false, false], [false, true],
-			[true, 16, 17, false], [], [], false 
-		],
-		['Pollymorf', ['Andrew Campbell', '-', 'Public Domain'], '1993',
-			['Pollymorf.adf', false, false, false], [false, true],
-			[true, 16, 17, false], ['...takes some time, just wait.'], [], false 
-		],
-		/*['Rectum', ['Mathias Olsson', '-', 'Freeware'], '1992',
-			['Rectum.adf', false, false, false], [false, true],
-			[true, 16, 17, false], ['Press the LMB to skip the intro...'], [], false 
-		],*/
-		['Sqrxz', [URL_RETROGURU, '-', 'Freeware'], '2012',
-			['sqrxz.adf', false, false, false], [false, true],
-			[true, 16, 17, false], ['The color-stripes are normal, just wait...'], [], false 
-		],
-		['Sqrxz 2', [URL_RETROGURU, '-', 'Freeware'], '2012',
-			['sqrxz2.adf', false, false, false], [false, true],
-			[true, 16, 17, false], ['After the start, click the RMB for the trainer menu.<br />The color-stripes are normal, just wait...'], [], false 
-		],
-		['Super Obliteration', ['David Papworth', '-', 'Freeware'], '1993',
-			['Super Obliteration.adf', false, false, false], [false, true],
-			[true, 16, 17, false], [], [], false 
-		],
-		['Tanx', ['Robertz Gaz', '-', 'Public Domain'], '1991',
-			['Tanx.adf', false, false, false], [false, true],
-			[true, 16, 17, false], [], [], false 
-		]
-	],
-	[
-		['242', 'Virtual Dreams', '1992',
-			['242.adf',false,false,false], [false, true],
-			[true, 16, 17, false], [], [], false
-		], 
-		['9 Fingers', 'Spaceballs', '1993',
-			['9 Fingers (Disk 1).adf',
-			'9 Fingers (Disk 2).adf',false,false], [false, false],
-			[true, 16, 17, false], [], [], false
-		], 
-		['Alpha and Omega', 'Pure Metal Coders', '1991',
-			['Alpha and Omega.adf',
-			false,false,false], [false, false],
-			[true, 16, 17, false], [], [], false
-		], 
-		['Copper Master', 'Angels', '1990',
-			['Copper Master.adf',false,false,false], [false, true],
-			[true, 16, 17, false], [], [], false
-		], 
-		['Deja Vu', 'Anarchy', '1992',
-			['Deja Vu.adf',false,false,false], [false, true],
-			[true, 16, 17, false], [], [], false
-		], 
-		['Elysium', 'Sanity', '1991',
-			['Elysium.adf',false,false,false], [false, true],
-			[true, 16, 17, false], [], [], false
-		], 
-		/*crash ['Ecliptica', 'TRSI', '1991',
-			['Ecliptica.adf',false,false,false], [false, true],
-			[true, 16, 17, false], [], [], false
-		],*/ 
-		['Enigma', 'Phenomena', '1991',
-			['Enigma.adf',false,false,false], [false, true],
-			[true, 16, 17, false], [], [], false
-		], 
-		['Global Trash', 'Silents', '1992',
-			['Global Trash.adf',false,false,false], [false, true],
-			[true, 16, 17, false], [], [], false
-		], 
-		['Hardwired', 'Crionics, Silents', '1992',
-			['Hardwired (Disk 1).adf',
-			'Hardwired (Disk 2).adf',
-			false,false], [true, true],
-			[true, 16, 17, false],
-			['Insert the 2nd disk manually and<br />click the RMB when done.'], [], true
-		], 
-		['HipHop Hater', 'Mathias Olsson', '1991',
-			['HipHop Hater.adf',false,false,false], [false, true],
-			[true, 16, 17, false], [], [], false
-		], 
-		['Ice', 'Silents', '1991',
-			['Ice.adf',false,false,false], [false, true],
-			[true, 16, 17, false], ['Press LMB at the intro-screen'], [], false
-		], 
-		['Lost World', 'Balance DK', '1992',
-			['Lost World.adf',false,false,false], [false, true],
-			[true, 16, 17, false], ['Press LMB at the intro-screen'], [], false
-		], 
-		['Mental Hangover', 'Scoopex', '1992',
-			['Mental Hangover.adf',false,false,false], [false, true],
-			[true, 16, 17, false], [], [], false
-		], 
-		['Multica', 'Andromeda', '1992',
-			['Multica.adf',false,false,false], [false, true],
-			[true, 16, 17, false], ['Press LMB at the intro-screen'], [], false
-		], 
-		['Project-X (demo rolling)', 'Team 17', '1992',
-			['Project-X (demo-rolling).adf',false,false,false], [false, true],
-			[true, 16, 17, false], [], [['Skip level','Fire']], false
-		], 
-		['Rampage', 'TEK', '1994',
-			['Rampage.adf',false,false,false], [false, false],
-			[true, 16, 17, false], ['Press LMB at the intro-screen'], [], false
-		], 
-		['State of the Art', 'Spaceballs', '1992',
-			['State of the Art.adf',false,false,false], [false, true],
-			[true, 16, 17, false], [], [], false
-		], 
-		['Static Chaos', 'Silents', '1992',
-			['Static Chaos.adf',false,false,false], [false, true],
-			[true, 16, 17, false], [], [], false
-		], 
-		['Technological Death', 'Mad Elks', '1993',
-			['Technological Death.adf',false,false,false], [false, true],
-			[true, 16, 17, false], [], [], true
-		], 
-		['Total Destruction', 'Crionics', '1990',
-			['Total Destruction.adf',false,false,false], [false, true],
-			[true, 16, 17, false], [], [], false
-		], 
-		['Wayfarer', 'Spaceballs', '1992',
-			['Wayfarer.adf',false,false,false], [false, true],
-			[true, 16, 17, false], [], [], false
-		], 
-		['World of Commodore', 'Sanity', '1992',
-			['World of Commodore.adf',false,false,false], [false, true],
-			[true, 16, 17, false], [], [], false
-		] 
-	]
+	new dbEntry(DBT_GAME,1, "Air Ace II",         "SEUCK","","PD",                 "1989", 0, "Loading takes very long."),
+	new dbEntry(DBT_GAME,1, "Asteroids",          "Vertical Developments","","PD", "1979", 0, ""),
+	new dbEntry(DBT_GAME,1, "BlockySkies",        URL_ENABLE_SOFTWARE,"","FW",     "2016", 0, ""),
+	new dbEntry(DBT_GAME,1, "Crazy Sue",          "Jumpshoe,Hironymous","","PD",   "1991", 0, "Loading can take some time."),
+	new dbEntry(DBT_GAME,1, "Deluxe Galaga 2.4",  "Edgar Vigdal","","FW",          "1994", DBF_COL, ""),
+	new dbEntry(DBT_GAME,2, "Hoi",                URL_TEAM_HOI,"Hollyware","FW",   "1992", DBF_MDC, "Press the LMB to skip the intro and insert the 2nd disk manually.<br /><br /><span title=\"After the disk-change, place the \"LVL\"-pointer in the far lower right of the green quarter screen. The bottom \"L\" must be positioned in the corner precisely. Click the LMB, then shift the \"LVL\" pointer to the absolute top left of the screen (as far as it can be moved in that direction). Click the LMB again. Any of the first four levels may now be selected for game play. Press the F4 key during game play for twelve lives. Note: Level 5 can only be accessed by completing level 4.\">Cheat (move mouse-over)</span>"),
+	new dbEntry(DBT_GAME,1, "Norse Gods",         URL_LOEWENSTEIN,"","FW",         "1991", 0, ""),
+	new dbEntry(DBT_GAME,1, "Pollymorf",          "Andrew Campbell","","PD",       "1993", 0, "Loading takes some time, just wait."),
+	new dbEntry(DBT_GAME,1, "Sqrxz",              URL_RETROGURU,"","FW",           "2012", 0, "The color-stripes are normal, just wait..."),
+	new dbEntry(DBT_GAME,1, "Sqrxz 2",            URL_RETROGURU,"","FW",           "2012", 0, "After the start, click the RMB for the trainer menu. The color-stripes are normal, just wait..."),
+	new dbEntry(DBT_GAME,1, "Super Obliteration", "David Papworth","","FW",        "1993", 0, ""),
+	new dbEntry(DBT_GAME,1, "Tanx",               "Robertz Gaz","","PD",           "1991", 0, ""),
+	new dbEntry(DBT_GAME,1, "Zerosphere",         URL_HECKMECK,"","FW",            "2015", 0, ""),
+
+	new dbEntry(DBT_DEMO,1, "242",                "Virtual Dreams","","",          "1992", 0, ""),
+	new dbEntry(DBT_DEMO,2, "9 Fingers",          "Spaceballs","","",              "1993", DBF_NOT, ""),
+	new dbEntry(DBT_DEMO,1, "Alpha and Omega",    "Pure Metal Coders","","",       "1991", DBF_NOT, ""),
+	new dbEntry(DBT_DEMO,1, "Copper Master",      "Angels","","",                  "1990", 0, ""),
+	new dbEntry(DBT_DEMO,1, "Deja Vu",            "Anarchy","","",                 "1992", 0, ""),
+	new dbEntry(DBT_DEMO,1, "Ecliptica",          "TRSI","","",                    "1991", DBF_ECS, "The blue flashing in the beginning is normal. Just wait..."),
+	new dbEntry(DBT_DEMO,1, "Elysium",            "Sanity","","",                  "1991", 0, ""),
+	new dbEntry(DBT_DEMO,1, "Enigma",             "Phenomena","","",               "1991", 0, ""),
+	new dbEntry(DBT_DEMO,1, "Global Trash",       "Silents","","",                 "1992", 0, ""),
+	new dbEntry(DBT_DEMO,2, "Hardwired",          "Crionics, Silents","","",       "1992", DBF_MDC|DBF_BIM, "Insert the 2nd disk manually and click the RMB when done."),
+	new dbEntry(DBT_DEMO,1, "HipHop Hater",       "Mathias Olsson","","",          "1991", 0, ""),
+	new dbEntry(DBT_DEMO,1, "Ice",                "Silents","","",                 "1991", 0, "Press the LMB at the intro-screen."),
+	new dbEntry(DBT_DEMO,1, "Lost World",         "Balance DK","","",              "1992", 0, "Press the LMB at the intro-screen."),
+	new dbEntry(DBT_DEMO,1, "Mental Hangover",    "Scoopex","","",                 "1992", 0, ""),
+	new dbEntry(DBT_DEMO,1, "Multica",            "Andromeda","","",               "1992", 0, "Press the LMB at the intro-screen."),
+	new dbEntry(DBT_DEMO,1, "Project-X (demo rolling)", "Team 17","","",           "1992", 0, "Press 'Fire' to skip to the 2nd level anytime."),
+	new dbEntry(DBT_DEMO,1, "Rampage",            "TEK","","",                     "1994", DBF_NOT, "Press the LMB at the intro-screen."),
+	new dbEntry(DBT_DEMO,1, "State of the Art",   "Spaceballs","","",              "1992", 0, ""),
+	new dbEntry(DBT_DEMO,1, "Static Chaos",       "Silents","","",                 "1992", 0, ""),
+	new dbEntry(DBT_DEMO,1, "Technological Death","Mad Elks","","",                "1993", DBF_BIM, ""),
+	new dbEntry(DBT_DEMO,1, "Total Destruction",  "Crionics","","",                "1990", 0, ""),
+	new dbEntry(DBT_DEMO,1, "Wayfarer",           "Spaceballs","","",              "1992", 0, ""),
+	new dbEntry(DBT_DEMO,1, "World of Commodore", "Sanity","","",                  "1992", 0, ""),
+
+	new dbEntry(DBT_DAGA,1, "Atome",              "Skarla","","",                        "1996", DBF_AGA|DBF_030, ""),
+	new dbEntry(DBT_DAGA,2, "Burning Chrome",     "Haujobb","","",                       "1996", DBF_AGA|DBF_030, "Open the disk AC1: by double-click and then double-click 'BurningChrome' <b>once</b>."),
+	new dbEntry(DBT_DAGA,1, "C42",                "Case, Groo, Juliet","","",            "1995", DBF_AGA|DBF_030, ""),
+	new dbEntry(DBT_DAGA,2, "Control",            "Oxygene","","",                       "1995", DBF_AGA|DBF_030|DBF_MDC, "When asked, insert the 2nd disk manually."),
+	new dbEntry(DBT_DAGA,1, "Crazy Sexy Cool",    "Essence","","",                       "1995", DBF_AGA|DBF_030, ""),
+	new dbEntry(DBT_DAGA,2, "Deep",               "CNCD &amp; Parallax","","",           "1995", DBF_AGA, ""),
+	new dbEntry(DBT_DAGA,1, "Friday at Eight",    "Polka Brothers","","",                "1994", DBF_AGA, ""),
+	new dbEntry(DBT_DAGA,1, "Full Moon",          "Virtual Dreams, Fairlight","","",     "1993", DBF_AGA, ""),
+	new dbEntry(DBT_DAGA,1, "Gevalia",            "Polka Brothers","","",                "1994", DBF_AGA, ""),
+	new dbEntry(DBT_DAGA,1, "Nexus 7",            "Andromeda","","",                     "1994", DBF_AGA|DBF_030, ""),
+	new dbEntry(DBT_DAGA,1, "Not Again",          "Sanity, Complex, Avena, Lego","","",  "1992", DBF_AGA, "Press the RMB to get to the next section anytime."),
+	new dbEntry(DBT_DAGA,2, "Origin",             "Complex","","",                       "1993", DBF_AGA|DBF_NOT, ""),
+	new dbEntry(DBT_DAGA,1, "Real",               "Complex","","",                       "1994", DBF_AGA|DBF_NOT, "In the last 3d-scene, hold the LMB to rotate and the RMB to walk around. (the scene which does have graphics errors)"),
+	new dbEntry(DBT_DAGA,1, "Roots",              "Sanity","","",                        "1994", DBF_AGA, ""),
+	new dbEntry(DBT_DAGA,2, "Switchback",         "Rebels","","",                        "1994", DBF_AGA|DBF_030, ""), /* 68030 */
+	new dbEntry(DBT_DAGA,4, "Twisted",            "Polka Brothers","","",                "1994", DBF_AGA, ""),
+	new dbEntry(DBT_DAGA,2, "Vision",             "Oxygene","","",                       "1995", DBF_AGA, ""),
+	new dbEntry(DBT_DAGA,4, "Wild",               "Anadune, Nah Color","","",            "1996", DBF_MDC|DBF_AGA, "When asked, change the disks manually."),
+
+	new dbEntry(DBT_TOOL,1, "AROS Bootdisk",      URL_AROS,"",URL_AROS_LIC,        "2016", 0, "Press 'Cancel' when asked for a Live-CD."),
+	new dbEntry(DBT_TOOL,1, "AIBB 6.5",           "Peter LaMonte Koop","","FW",    "1993", 0, "Type 'aibb' at the console. Be very patient at the 'Evaluating System...' screen."),
+	new dbEntry(DBT_TOOL,1, "SysInfo 4.0",        URL_SYSINFO,"","FW",             "2012", 0, "Type 'sysinfo' (y=z) at the console."),
+	new dbEntry(DBT_TOOL,1, "X-Copy 2.0",         "Cachet","","FW",                "1989", 0, "")
 ];
+
+var dbUrl = "";
 var dbGrp = 0;
 var dbNum = 0;
-		
-const aros_rom_file = 'aros-amiga-m68k-rom.bin';
-const aros_rom_url = 'http://'+window.location.hostname+'/db/'+aros_rom_file;
-const aros_rom_size = 0x80000;
-const aros_rom_crc = 0xbe091f38; //0x48dfadd; //0xea48b4d1
 
-const aros_ext_file = 'aros-amiga-m68k-ext.bin';
-const aros_ext_url = 'http://'+window.location.hostname+'/db/'+aros_ext_file;
-const aros_ext_size = 0x80000;
-const aros_ext_crc = 0x3f3fdce0; //0xaaf211d6; //0x60871435
+/*---------------------------------*/
 
-var mode = 0;
-var paused = false;
-var dskchg = false;
-var dskchgList = [];
+const AROS_ROM_FILE = "aros-amiga-m68k-rom.bin";
+const AROS_ROM_CRC = 0xE8A40832; /* also edit roms.js on change */
+const AROS_EXT_FILE = "aros-amiga-m68k-ext.bin";
+const AROS_EXT_CRC = 0x5C39D820;
 
-var cache = null;
-var info = null;
-var config = null;
+/*---------------------------------*/
 
-/*-----------------------------------------------------------------------*/
+const MAX_FILENAME = 40;
 
-function urldecode(url) {
-	return decodeURIComponent(url.replace(/\+/g, ' '));
-}
+const MODE_Database = 0;
+const MODE_Advanced = 1;
+var mode = MODE_Database; /* current mode */
 
-function dechex(dec) { 
-	return dec.toString(16);
-}
-	
-function Cache() {
-	var roms = [null,null];
-	var disks = [];
+/* page-ids in the advanced-mode */
+const PID_None = 0;
+const PID_Model = 1;
+const PID_CPU = 2;
+const PID_Chipset = 3;
+const PID_RAM = 4;
+const PID_ROM = 5;
+const PID_ROM_Info = 6;
+const PID_Floppy = 7;
+const PID_Floppy_Info = 8;
+const PID_Mount = 9;
+const PID_Mount_Setup = 10;
+const PID_Video = 11;
+const PID_Audio = 12;
+const PID_Ports = 13;
+var page = PID_None; /* current page in the advanced-config */
 
-	this.loadRom = function (num) {
-		if (roms[num]) {
-			console.log('loadRom.loadRom() %d is cached', num);
-			return roms[num];
-		}
-		console.log('loadRom.loadRom() downloading %d', num);
+var useAROS = false; /* use AROS in the advanced-config */
+var romNum = -1; /* current rom-id if rom-info is shown  */
+var defRomInfo = null; /* kickstart rom-info */
+var defRomEncrypted = null; /* kickstart-rom is encrypted */
+var extRomInfo = null; /* extended rom-info */
+var extRomEncrypted = null; /* extended-rom is encrypted */
+var romKeyInfo = null; /* romkey-info */
+var amaxInfo = null; /* amax rom-info */
+var floppyNum = -1; /* current floppy-unit if floppy-info is shown  */
+var mountConfigNum = -1; /* current mount-unit if mount-info is shown  */
+var paused = false; /* is the emualtion currently paused? */
 
-		var url, size, crc;
-		switch (num) {
-			case 0:
-				url = aros_rom_url;
-				size = aros_rom_size;
-				crc = aros_rom_crc;
-				break;
-			case 1:
-				url = aros_ext_url;
-				size = aros_ext_size;
-				crc = aros_ext_crc;
-				break;
-		}
-		var data = loadRemoteSync(url);
-		if (typeof(data) == 'number') {
-			alert('Can\'t download ' + url + ' (http status: ' + data + ')');
-		} else {
-			if (data.length == size) {
-				//console.log(dechex(crc32(data)));
-				if (crc32(data) == crc) {
-					roms[num] = data;
-					return data;
-				} else
-					alert('Wrong checksum for ' + url + ' (is $' + dechex(crc32(data)) + ', should $' + dechex(crc) + ')\n\nFlush the browser-cache with "Ctrl+Shift+Del" and press F5 to reload...');
-			} else
-				alert('Wrong file-length for ' + url + ' (' + size + ')');
-		}
-		return null;
-	};
-	
-	this.loadDisk = function(url) {
-		for (var i = 0; i < disks.length; i++) {
-			if (disks[i][0] == url) {
-				console.log('Cache.loadDisk() %s is cached', url);
-				return disks[i][1];
-			}
-		}
-		console.log('Cache.loadDisk() downloading %s', url);
+var dskchg = false; /* disk-change requester in database-mode */
+var dskchgList = []; /* list of floppies to change, created dynamicaly */
 
-		var size = 0xdc000, crc = false;
-		var data = loadRemoteSync(url);
-		if (typeof(data) == 'number') {
-			alert('Can\'t download '+url+' (http status: '+data+')');				
-		} else {
-			if (data.length == size) {
-				if (crc === false || crc32(data) == crc) { 
-					disks.push([url, data]);
-					return data;
-				} else
-					alert('Wrong checksum for '+url+' (is $'+dechex(crc32(data))+', should $'+dechex(crc)+')'); 
-			} else
-				alert('Wrong file-length for '+url+' ('+size+')');					
-		} 					
-		return null;
-	}			
-}
+var cache = null; /* asynchronous file-cache */
+
+/*---------------------------------*/
+
+var sae = null; /* SAE instance */
+var cfg = null; /* reference to the config-object */
+var inf = null; /* reference to the info-object */
 
 /*-----------------------------------------------------------------------*/
 /* utils */
-		
-/*function dump(obj) {
-	var out = '';
-	if (obj) {
-		for (var i in obj) {
-			out += i + ': ' + obj[i] + '\n';
-		}         
-	}
-	alert(out);
+
+function decodeURL(url) {
+	return decodeURIComponent(url.replace(/\+/g, " "));
+}
+/*function addItemToURL() {
+	if (mode == MODE_Database) {
+		var dbe = dbNum > 0 ? db[dbNum - 1] : null;
+		if (dbe !== null) {
+			var name = dbe.name;
+			while (true) {
+				var tmp = name.replace(" ", "_");
+				if (tmp == name) break;
+				name = tmp;
+			}
+			window.location.hash = name;
+		} else
+			window.location.hash = "";
+	} else
+		window.location.hash = "";
 }*/
 
-function crc32(str, crc) {
+/*---------------------------------*/
+/* CRC-32 checksumming */
 
-	const tab =
-	'00000000 77073096 EE0E612C 990951BA 076DC419 706AF48F E963A535 9E6495A3 '+
-	'0EDB8832 79DCB8A4 E0D5E91E 97D2D988 09B64C2B 7EB17CBD E7B82D07 90BF1D91 '+
-	'1DB71064 6AB020F2 F3B97148 84BE41DE 1ADAD47D 6DDDE4EB F4D4B551 83D385C7 '+
-	'136C9856 646BA8C0 FD62F97A 8A65C9EC 14015C4F 63066CD9 FA0F3D63 8D080DF5 '+ 
-	'3B6E20C8 4C69105E D56041E4 A2677172 3C03E4D1 4B04D447 D20D85FD A50AB56B '+ 
-	'35B5A8FA 42B2986C DBBBC9D6 ACBCF940 32D86CE3 45DF5C75 DCD60DCF ABD13D59 '+ 
-	'26D930AC 51DE003A C8D75180 BFD06116 21B4F4B5 56B3C423 CFBA9599 B8BDA50F '+ 
-	'2802B89E 5F058808 C60CD9B2 B10BE924 2F6F7C87 58684C11 C1611DAB B6662D3D '+ 
-	'76DC4190 01DB7106 98D220BC EFD5102A 71B18589 06B6B51F 9FBFE4A5 E8B8D433 '+ 
-	'7807C9A2 0F00F934 9609A88E E10E9818 7F6A0DBB 086D3D2D 91646C97 E6635C01 '+
-	'6B6B51F4 1C6C6162 856530D8 F262004E 6C0695ED 1B01A57B 8208F4C1 F50FC457 '+ 
-	'65B0D9C6 12B7E950 8BBEB8EA FCB9887C 62DD1DDF 15DA2D49 8CD37CF3 FBD44C65 '+ 
-	'4DB26158 3AB551CE A3BC0074 D4BB30E2 4ADFA541 3DD895D7 A4D1C46D D3D6F4FB '+ 
-	'4369E96A 346ED9FC AD678846 DA60B8D0 44042D73 33031DE5 AA0A4C5F DD0D7CC9 '+ 
-	'5005713C 270241AA BE0B1010 C90C2086 5768B525 206F85B3 B966D409 CE61E49F '+ 
-	'5EDEF90E 29D9C998 B0D09822 C7D7A8B4 59B33D17 2EB40D81 B7BD5C3B C0BA6CAD '+ 
-	'EDB88320 9ABFB3B6 03B6E20C 74B1D29A EAD54739 9DD277AF 04DB2615 73DC1683 '+ 
-	'E3630B12 94643B84 0D6D6A3E 7A6A5AA8 E40ECF0B 9309FF9D 0A00AE27 7D079EB1 '+ 
-	'F00F9344 8708A3D2 1E01F268 6906C2FE F762575D 806567CB 196C3671 6E6B06E7 '+ 
-	'FED41B76 89D32BE0 10DA7A5A 67DD4ACC F9B9DF6F 8EBEEFF9 17B7BE43 60B08ED5 '+ 
-	'D6D6A3E8 A1D1937E 38D8C2C4 4FDFF252 D1BB67F1 A6BC5767 3FB506DD 48B2364B '+ 
-	'D80D2BDA AF0A1B4C 36034AF6 41047A60 DF60EFC3 A867DF55 316E8EEF 4669BE79 '+
-	'CB61B38C BC66831A 256FD2A0 5268E236 CC0C7795 BB0B4703 220216B9 5505262F '+ 
-	'C5BA3BBE B2BD0B28 2BB45A92 5CB36A04 C2D7FFA7 B5D0CF31 2CD99E8B 5BDEAE1D '+ 
-	'9B64C2B0 EC63F226 756AA39C 026D930A 9C0906A9 EB0E363F 72076785 05005713 '+ 
-	'95BF4A82 E2B87A14 7BB12BAE 0CB61B38 92D28E9B E5D5BE0D 7CDCEFB7 0BDBDF21 '+ 
-	'86D3D2D4 F1D4E242 68DDB3F8 1FDA836E 81BE16CD F6B9265B 6FB077E1 18B74777 '+ 
-	'88085AE6 FF0F6A70 66063BCA 11010B5C 8F659EFF F862AE69 616BFFD3 166CCF45 '+ 
-	'A00AE278 D70DD2EE 4E048354 3903B3C2 A7672661 D06016F7 4969474D 3E6E77DB '+ 
-	'AED16A4A D9D65ADC 40DF0B66 37D83BF0 A9BCAE53 DEBB9EC5 47B2CF7F 30B5FFE9 '+ 
-	'BDBDF21C CABAC28A 53B39330 24B4A3A6 BAD03605 CDD70693 54DE5729 23D967BF '+ 
-	'B3667A2E C4614AB8 5D681B02 2A6F2B94 B40BBE37 C30C8EA1 5A05DF1B 2D02EF8D';
+const crc32Table = (function() {
+	var table = new Uint32Array(256);
+	var n, c, k;
 
-	if (crc == window.undefined) crc = 0;
+	for (n = 0; n < 256; n++) {
+		c = n;
+		for (k = 0; k < 8; k++)
+			c = ((c >>> 1) ^ (c & 1 ? 0xedb88320 : 0)) >>> 0;
+		table[n] = c;
+	}
+	return table;
+})();
 
-	crc = crc ^ (-1);
-	for (var i = 0, len = str.length; i < len; i++)
-		crc = (crc >>> 8) ^ parseInt(tab.substr(((crc ^ str.charCodeAt(i)) & 0xff) * 9, 8), 16);
-	crc = crc ^ (-1);
-	
-	return crc < 0 ? crc + 0x100000000 : crc;
+function crc32(data) {
+	var length = data.length;
+	var offset = 0;
+	var crc = 0xffffffff;
+
+	while (length-- > 0)
+		crc = crc32Table[(crc ^ data.charCodeAt(offset++)) & 0xff] ^ (crc >>> 8);
+
+	return (crc ^ 0xffffffff) >>> 0;
 }
 
-function getSelectValue(e) {
+if (crc32("The quick brown fox jumps over the lazy dog") != 0x414fa339)
+	alert("CRC32-hash testing failed. SAE will not work. This is an internal bug!?");
+
+/*---------------------------------*/
+
+function isDecKey(event, signed) {
+	if (signed === true)
+		return (event.charCode >= 48 && event.charCode <= 57) || event.charCode == 45;
+	else
+		return event.charCode >= 48 && event.charCode <= 57;
+}
+
+function isHexKey(event) {
+	return (
+		(event.charCode >= 48 && event.charCode <= 57) || //0-9
+		(event.charCode >= 65 && event.charCode <= 70) || //A-F
+		(event.charCode >= 97 && event.charCode <= 102) //a-f
+	);
+}
+
+function setDisabled(id, d) {
+	document.getElementById(id).disabled = d;
+}
+function setInnerHTML(id, t) {
+	document.getElementById(id).innerHTML = t;
+}
+
+/*---------------------------------*/
+/* checkbox-input */
+
+function getCheckbox(id) {
+	return document.getElementById(id).checked;
+}
+function setCheckbox(id, checked) {
+	document.getElementById(id).checked = checked;
+}
+
+/*---------------------------------*/
+/* select-input */
+
+function getSelect(id, asString) {
+	if (typeof asString == "undefined") asString = false;
+	var e = document.getElementById(id);
 	for (var i = 0; i < e.length; i++) {
-		if (e[i].selected) return e[i].value;
+		if (e[i].selected)
+			return asString ? e[i].value : Number(e[i].value);
 	}
+	//alert(sprintf("getSelect() ERROR id '%s'", id));
 	return false;
 }
-function unselect(e) {
-	for (var i = 0; i < e.length; i++) {
+
+function setSelect(id, v) {
+	var e = document.getElementById(id);
+	/*for (var i = 0; i < e.length; i++) {
 		if (e[i].selected) {
 			e[i].selected = false;
 			break;
 		}
+	}*/
+	var vs = String(v);
+	for (var i = 0; i < e.length; i++) {
+		if (e[i].value === vs) {
+			e[i].selected = true;
+			//break;
+			return;
+		}
 	}
+	//alert(sprintf("setSelect() ERROR id '%s', value '%s'", id, vs));
 }
-		
+
+/*---------------------------------*/
+/* radio-input */
+
+function getRadio(name, asString) {
+	if (typeof asString == "undefined") asString = false;
+	var e = document.getElementsByName(name);
+	for (var i = 0; i < e.length; i++) {
+		if (e[i].checked)
+			return asString ? e[i].value : Number(e[i].value);
+	}
+	//alert(sprintf("getRadio() ERROR name '%s'", name));
+	return false;
+}
+
+function setRadio(name, v) {
+	var e = document.getElementsByName(name);
+	for (var i = 0; i < e.length; i++) {
+		if (e[i].checked)
+			e[i].checked = false;
+	}
+	var vs = String(v);
+	for (var i = 0; i < e.length; i++) {
+		if (e[i].value === vs) {
+			e[i].checked = true;
+			return;
+		}
+	}
+	//alert(sprintf("setRadio() ERROR name '%s', value '%s'", name, vs));
+}
+
+/*---------------------------------*/
+/* text-input */
+
+function getText(id, asString) {
+	if (typeof asString == "undefined") asString = false;
+	var e = document.getElementById(id);
+	return asString ? e.value : Number(e.value);
+}
+
+function setText(id, v) {
+	document.getElementById(id).value = typeof v === "string" ? v : String(v);
+}
+
+function setText2(id, v) {
+	document.getElementById(id).innerHTML = typeof v === "string" ? v : String(v);
+}
+
+/*---------------------------------*/
+/* style-display */
+
 function styleDisplayBlock(id, show) {
 	var e = document.getElementById(id);
-	e.style.display = show ? 'block' : 'none';		
-}	
+	e.style.display = show ? "block" : "none";
+}
 function styleDisplayInline(id, show) {
 	var e = document.getElementById(id);
-	e.style.display = show ? 'inline' : 'none';		
-}	
+	e.style.display = show ? "inline" : "none";
+}
 function styleDisplayTable(id, show) {
 	var e = document.getElementById(id);
-	e.style.display = show ? 'table' : 'none';		
-}	
+	e.style.display = show ? "table" : "none";
+}
 function styleDisplayTableRow(id, show) {
 	var e = document.getElementById(id);
-	e.style.display = show ? 'table-row' : 'none';		
-}	
-function disabled(id, d) {
-	document.getElementById(id).disabled = d ? 'disabled' : '';				
-}	
-	
-/*function toggleFullScreen() {
-  if ((document.fullScreenElement && document.fullScreenElement !== null) ||    // alternative standard method
-		(!document.mozFullScreenElement && !document.webkitFullScreenElement)) {  // current working methods
-	 if (document.documentElement.requestFullScreen) {
-		document.documentElement.requestFullScreen();
-	 } else if (document.documentElement.mozRequestFullScreen) {
-		document.documentElement.mozRequestFullScreen();
-	 } else if (document.documentElement.webkitRequestFullScreen) {
-		document.documentElement.webkitRequestFullScreen(Element.ALLOW_KEYBOARD_INPUT);
-	 }
-  } else {
-	 if (document.cancelFullScreen) {
-		document.cancelFullScreen();
-	 } else if (document.mozCancelFullScreen) {
-		document.mozCancelFullScreen();
-	 } else if (document.webkitCancelFullScreen) {
-		document.webkitCancelFullScreen();
-	 }
-  }
-}*/
-
-/*function loadLocalId(id, callback) {
-	var e = document.getElementById(id).files[0];
-	var reader = new FileReader();
-	reader.onload = callback;
-	reader.readAsBinaryString(e);
-}*/
-function loadLocal(e, callback) {
-	var reader = new FileReader();
-	reader.onload = callback;
-	reader.readAsBinaryString(e);
+	e.style.display = show ? "table-row" : "none";
 }
-
-/*function loadRemote(url, size, crc, callback) {
-	var req = new XMLHttpRequest();
-	req.open('GET', url, true);	
-	req.overrideMimeType('text\/plain; charset=x-user-defined');
-	req.onreadystatechange = function (e) {
-		if (req.readyState == 4) {
-			if (req.status == 200) {
-				if (req.responseText.length == size) {
-					if (crc === false || crc32(req.responseText) == crc)
-						callback(0, req.responseText);
-					else
-						callback(1, crc32(req.responseText));
-				} else
-					callback(2, req.responseText.length);
-			} else
-				callback(3, req.status);
-		}
-	};
-	req.send(null);			
-}*/
-function loadRemoteSync(url) {
-	var req = new XMLHttpRequest();
-	req.open('GET', url, false);	
-	req.overrideMimeType('text\/plain; charset=x-user-defined');
-	req.send(null);		
-	return req.status == 200 ? req.responseText : parseInt(req.status);	
-}
-
-/*-----------------------------------------------------------------------*/
-/* simple config */
-
-function setSimpleConfig() {
-	//document.getElementById('info_name').innerHTML = info.browser_name+' '+info.browser_version+' ('+info.os+')';
-	/*var e = document.getElementById('info_video');
-	if (info.video) {
-		var t = '';
-		if (info.video & SAEI_Video_WebGL) t += 'WebGL, '; 		
-		if (info.video & SAEI_Video_Canvas2D) t += 'Canvas, '; 
-		e.innerHTML = t.substr(0, t.length - 2);
-		e.style.color = (info.video & SAEI_Video_WebGL) ? 'green' : 'orange';
-	} else {
-		e.innerHTML = 'None';
-		e.style.color = 'orange';		
-	}
-	e = document.getElementById('info_audio');
-	if (info.audio) {
-		var t = '';
-		if (info.audio & SAEI_Audio_Webkit) t += 'Webkit, '; 		
-		if (info.audio & SAEI_Audio_Mozilla) t += 'Mozilla, '; 
-		e.innerHTML = t.substr(0, t.length - 2);
-		e.style.color = 'green';
-	} else {
-		e.innerHTML = 'None';
-		e.style.color = 'orange';		
-	}
-	e = document.getElementById('info_version').innerHTML = info.version;*/	
-	
-		
-	var s = document.getElementById('cfg_game');
-	if (s.length == 1) {
-		for (var i = 0; i < db[0].length; i++) {	
-			var e = document.createElement('option');
-			e.value = String(1 + i);
-			e.text = db[0][i][0];
-			s.add(e, null);
-		}
-	}		
-	s = document.getElementById('cfg_demo');
-	if (s.length == 1) {
-		for (var i = 0; i < db[1].length; i++) {	
-			var e = document.createElement('option');
-			e.value = String(1 + i);
-			e.text = db[1][i][0];
-			s.add(e, null);
-		}		
-	}	
-	styleDisplayBlock('config_simple', 1);
-	document.getElementById('cfg_audio_enabled_1').checked = config.audio.enabled;
-	document.getElementById('cfg_video_enabled_1').checked = config.video.enabled;
-	document.getElementById('cfg_video_skip_1').checked = config.video.framerate != 1;	
-	document.getElementById('cfg_video_scale_1').checked = false;
-	unselect(document.getElementById('cfg_demo'));		
-	unselect(document.getElementById('cfg_game'));		
-	styleDisplayTable('cfg_info', 0);
-	
-	styleDisplayInline('dskchg_grp', 0);
-}
-
-function getSimpleFloppy() {
-	//console.log('loadDisks() %d %d', dbGrp, dbNum);
-	
-	if (dbNum == 0) { /* nothing selected */
-		config.floppy.drive[0].type = SAEV_Config_Floppy_Type_35_DD;
-		config.floppy.drive[0].name = null;						
-		config.floppy.drive[0].data = null;
-		config.floppy.drive[1].type = SAEV_Config_Floppy_Type_None;
-		config.floppy.drive[1].name = null;						
-		config.floppy.drive[1].data = null;
-		config.floppy.drive[2].type = SAEV_Config_Floppy_Type_None;
-		config.floppy.drive[2].name = null;						
-		config.floppy.drive[2].data = null;
-		config.floppy.drive[3].type = SAEV_Config_Floppy_Type_None;
-		config.floppy.drive[3].name = null;						
-		config.floppy.drive[3].data = null;
-		config.floppy.speed = SAEV_Config_Floppy_Speed_Original;
-		return true;
-	}
-
-	if (db[dbGrp - 1][dbNum - 1] == window.undefined) {
-		//alert('bug!');
-		return false;
-	}
-	var item = db[dbGrp - 1][dbNum - 1];
-	var baseUrl = 'http://'+window.location.hostname+'/db/';
-	if (dbGrp == 1) baseUrl += 'games/';
-	else if (dbGrp == 2) baseUrl += 'demos/';
-
-
-	dskchgList = [];
-	if (item[4][0]) {
-		var i, filename, url;
-
-		for (i = 0; i < 4; i++) {
-			filename = item[3][i];
-			if (filename !== false) {
-				filename = filename.substr(0, filename.search('.adf'));
-				dskchgList.push(filename);
-			}
-		}
-		filename = item[3][0];
-		url = baseUrl + filename;
-		if ((config.floppy.drive[0].data = cache.loadDisk(url)) !== null) {
-			config.floppy.drive[0].type = SAEV_Config_Floppy_Type_35_DD;
-			config.floppy.drive[0].name = filename;
-		} else
-			return false;
-
-		for (i = 1; i < 4; i++) {
-			filename = item[3][i];
-			if (filename !== false) {
-				url = baseUrl + filename;
-				if (cache.loadDisk(url) === null) 
-					return false;
-			}			
-			config.floppy.drive[i].type = SAEV_Config_Floppy_Type_None;
-			config.floppy.drive[i].name = null;						
-			config.floppy.drive[i].data = null;
-		}
-	} else {
-		for (var i = 0; i < 4; i++) {
-			var filename = item[3][i];
-			if (filename !== false) {
-				var url = baseUrl + filename;
-				if ((config.floppy.drive[i].data = cache.loadDisk(url)) !== null) {
-					config.floppy.drive[i].type = SAEV_Config_Floppy_Type_35_DD;
-					config.floppy.drive[i].name = filename;
-				} else
-					return false;
-			} else {
-				config.floppy.drive[i].type = SAEV_Config_Floppy_Type_None;
-				config.floppy.drive[i].name = null;						
-				config.floppy.drive[i].data = null;
-			}
-		}		
-	}
-	config.floppy.speed = item[4][1] ? SAEV_Config_Floppy_Speed_Turbo : SAEV_Config_Floppy_Speed_Original;
-	
-	return true;						
-}		
-function getSimpleConfig() {
-	var item = dbNum > 0 ? db[dbGrp - 1][dbNum - 1] : null;
-
-	config.cpu.speed = SAEV_Config_CPU_Speed_Original;
-	config.cpu.compatible = true;
-
-	config.chipset.mask = SAEV_Config_Chipset_Mask_OCS;
-	config.chipset.agnus_dip = false; /* A1000 */
-	config.chipset.collision_level = (item !== null && item[0] == 'Deluxe Galaga 2.4') ? SAEV_Config_Chipset_ColLevel_Sprite_Playfield : SAEV_Config_Chipset_ColLevel_None;
-
-	config.blitter.immediate = (item !== null && item[8]) ? true : false;
-	config.blitter.waiting = config.blitter.immediate ? 0 : 1;
-	
-	config.ram.chip.size = SAEV_Config_RAM_Chip_Size_512K;
-	config.ram.slow.size = SAEV_Config_RAM_Slow_Size_512K;
-	config.ram.fast.size = SAEV_Config_RAM_Fast_Size_1M;
-
-	config.rom.name = aros_rom_file;
-	config.rom.size = SAEV_Config_ROM_Size_512K;
-	if ((config.rom.data = cache.loadRom(0)) === null)
-		return false;	
-	
-	config.ext.name = aros_ext_file;
-	config.ext.size = SAEV_Config_EXT_Size_512K;
-	config.ext.addr = SAEV_Config_EXT_Addr_E0;
-	if ((config.ext.data = cache.loadRom(1)) === null)
-		return false;	
-	
-	if (!getSimpleFloppy())
-		return false;
-			
-	config.audio.enabled = document.getElementById('cfg_audio_enabled_1').checked ? true : false;
-	if (config.audio.enabled) {
-		config.audio.mode = SAEV_Config_Audio_Mode_Play_Best;
-		config.audio.channels = SAEV_Config_Audio_Channels_Stereo;
-	}
-	/*if (info.audio == 0) {
-		config.audio.enabled = false;
-		document.getElementById('cfg_audio_enabled_1').checked = config.audio.enabled;
-	}*/
-		
-	config.video.id = 'myVideo';
-	config.video.enabled = document.getElementById('cfg_video_enabled_1').checked ? true : false;
-	config.video.scale = document.getElementById('cfg_video_scale_1').checked ? true : false;
-	config.video.framerate = document.getElementById('cfg_video_skip_1').checked ? 2 : 1;
-	config.video.ntsc = false;
-
-	config.keyboard.enabled = true;
-	config.keyboard.mapShift = (item !== null && item[5][3]) ? true : false;
-
-	config.ports[0].type = SAEV_Config_Ports_Type_Mouse;
-	/*config.ports[0].type = SAEV_Config_Ports_Type_Joy0;
-	config.ports[0].move = ;
-	config.ports[0].fire[0] = ;
-	config.ports[0].fire[1] = ;*/
-	if (item !== null && item[5][0]) {
-		config.ports[1].type = SAEV_Config_Ports_Type_Joy1;
-		config.ports[1].move = SAEV_Config_Ports_Move_Arrows;
-		config.ports[1].fire[0] = item[5][1];
-		config.ports[1].fire[1] = item[5][2];
-	} else {
-		config.ports[1].type = SAEV_Config_Ports_Type_None;
-		config.ports[1].move = SAEV_Config_Ports_Move_None;
-		config.ports[1].fire[0] = SAEV_Config_Ports_Fire_None;
-		config.ports[1].fire[1] = SAEV_Config_Ports_Fire_None;		
-	}
-	config.serial.enabled = false;
-
-	config.hooks.error = hooks_error;
-	config.hooks.power_led = hooks_power_led;
-	config.hooks.floppy_motor = hooks_floppy_motor;
-	config.hooks.floppy_step = hooks_floppy_step;
-	config.hooks.fps = hooks_fps;
-	config.hooks.cpu = hooks_cpu;
-	
-	return true;	
-}	
-
-/*-----------------------------------------------------------------------*/
-/* advanced config */
-
-function setRomName(name) {
-	document.getElementById('cfg_rom_name').className = name === null ? 'red' : '';
-	document.getElementById('cfg_rom_name').innerHTML = name === null ? 'unset (required)' : name;
-}
-function setExtName(name) {
-	document.getElementById('cfg_ext_name').className = name === null ? 'gray' : '';
-	document.getElementById('cfg_ext_name').innerHTML = name === null ? 'unset (optional)' : name;
-}
-function setFloppyName(n, name) {
-	document.getElementById('cfg_df'+n+'_name').className = name === null ? 'gray' : '';
-	document.getElementById('cfg_df'+n+'_name').innerHTML = name === null ? 'unset (optional)' : name;
-}
-
-function setFireButton(id, fire) {
+function styleDisplayTableCell(id, show) {
 	var e = document.getElementById(id);
-	switch (fire) {
-		case 0: e[0].selected = true; break;
-		case 16: e[1].selected = true; break;
-		case 17: e[2].selected = true; break;
-		case 13: e[3].selected = true; break;
-		case 32: e[4].selected = true; break;
-		case 8: e[5].selected = true; break;
-		case 96: e[6].selected = true; break;
-		case 106: e[7].selected = true; break;
-		case 107: e[8].selected = true; break;
-		case 109: e[9].selected = true; break;
-		case 110: e[10].selected = true; break;
-		case 111: e[11].selected = true; break;
-		case 46: e[12].selected = true; break;
-		case 45: e[13].selected = true; break;
-		case 34: e[14].selected = true; break;
-		case 33: e[15].selected = true; break;
-		case 35: e[16].selected = true; break;
-		case 36: e[17].selected = true; break;
-		case 19: e[18].selected = true; break;
-		case 144: e[19].selected = true; break;
-		case 145: e[20].selected = true; break;
-		case 49: e[21].selected = true; break;
-		case 50: e[22].selected = true; break;
+	e.style.display = show ? "table-cell" : "none";
+}
+
+/*---------------------------------*/
+
+function freezeButtons(f, l) {
+	if (f) {
+		if (mode == MODE_Database) {
+			setDisabled("cfg_database_start", 1);
+			setInnerHTML("cfg_database_start", "Loading...");
+			setDisabled("cfg_database_config", 1);
+		} else {
+			setDisabled("cfg_start", 1);
+			if (l) setInnerHTML("cfg_start", "Loading...");
+			//setDisabled("cfg_back", 1);
+		}
+	} else {
+		if (mode == MODE_Database) {
+			setDisabled("cfg_database_start", 0);
+			setInnerHTML("cfg_database_start", "Start");
+			setDisabled("cfg_database_config", 0);
+		} else {
+			setDisabled("cfg_start", 0);
+			if (l) setInnerHTML("cfg_start", "Start");
+			//setDisabled("cfg_back", 0);
+		}
 	}
 }
+
+function switchPauseResume(p) {
+	var e = document.getElementById("controls_pr");
+	if (p) {
+		e.innerHTML = "Resume";
+		e.onclick = function() { pause(false); };
+	} else {
+		e.innerHTML = "Pause";
+		e.onclick = function() { pause(true); };
+	}
+}
+
+function switchBaseEmul(emul) {
+	if (emul) {
+		document.body.style.backgroundColor = "#000000";
+		styleDisplayBlock("base", 0);
+		styleDisplayBlock("emul", 1);
+	} else {
+		styleDisplayBlock("emul", 0);
+		styleDisplayBlock("base", 1);
+		document.body.style.backgroundColor = "#f8f8f8";
+	}
+}
+
+/*---------------------------------*/
 
 function fireButtonName(fire) {
 	switch (fire) {
-		case 0: return 'None';
-		case 16: return 'Shift'; 
-		case 17: return 'Ctrl'; 
-		case 13: return 'Enter'; 
-		case 32: return 'Space'; 
-		case 8: return 'Backspace'; 
-		case 96: return 'Numpad 0'; 
-		case 106: return 'Numpad *'; 
-		case 107: return 'Numpad '; 
-		case 109: return 'Numpad -'; 
-		case 110: return 'Numpad .'; 
-		case 111: return 'Numpad /'; 
-		case 46: return 'Delete'; 
-		case 45: return 'Insert'; 
-		case 34: return 'Page down'; 
-		case 33: return 'Page up'; 
-		case 35: return 'End'; 
-		case 36: return 'Home'; 
-		case 19: return 'Pause'; 
-		case 144: return 'Num lock'; 
-		case 145: return 'Scroll lock';
-		case 49: return '1';
-		case 50: return '2';
-		default: return 'ERROR';
+		case 0: return "None";
+		case 16: return "Shift";
+		case 17: return "Ctrl";
+		case 13: return "Enter";
+		case 32: return "Space";
+		case 8: return "Backspace";
+		case 96: return "Numpad 0";
+		case 106: return "Numpad *";
+		case 107: return "Numpad ";
+		case 109: return "Numpad -";
+		case 110: return "Numpad .";
+		case 111: return "Numpad /";
+		case 46: return "Delete";
+		case 45: return "Insert";
+		case 34: return "Page down";
+		case 33: return "Page up";
+		case 35: return "End";
+		case 36: return "Home";
+		case 19: return "Pause";
+		case 144: return "Num lock";
+		case 145: return "Scroll lock";
+		case 49: return "1";
+		case 50: return "2";
+		default: return "ERROR";
 	}
 }
 
-function setFloppy(n) {	
-	if (config.floppy.drive[n].type != SAEV_Config_Floppy_Type_None) {
-		document.getElementById('cfg_df'+n+'_enabled').checked = true;
-		switch (config.floppy.drive[n].type) {
-			case SAEV_Config_Floppy_Type_35_DD:	document.getElementById('cfg_df'+n+'_type')[0].selected = true; break;
-			case SAEV_Config_Floppy_Type_35_HD:	document.getElementById('cfg_df'+n+'_type')[1].selected = true; break;
-			case SAEV_Config_Floppy_Type_525_SD: document.getElementById('cfg_df'+n+'_type')[2].selected = true; break;
+/*---------------------------------*/
+
+function saee2text(err) {
+	switch (err) {
+		case SAEE_NotRunning:					return "The emulator is not running.";
+		case SAEE_NoTimer:						return "No timing-functions avail. Please upgrade your browser.";
+		case SAEE_NoMemory:						return "Out of memory.";
+		case SAEE_Internal:						return "Internal emulator error.";
+		case SAEE_Config_Invalid:				return "Invalid configuration.";
+		case SAEE_CPU_Internal:					return "Internal CPU-error.";
+		case SAEE_CPU_Requires68020:			return "The selected kickstart-rom does require a 68020 and 32bit address-space";
+		case SAEE_CPU_Requires680EC20:		return "The selected kickstart-rom does require a 68020.";
+		case SAEE_CPU_Requires68030:			return "The selected kickstart-rom does require a 68030.";
+		case SAEE_CPU_Requires68040:			return "The selected kickstart-rom does require a 68040/68060.";
+		case SAEE_Memory_NoKickstartRom:		return "The kickstart-rom is missing.";
+		case SAEE_Memory_NoExtendedRom:		return "An extended-rom is required but missing.\n\nGo to the ROM-page and select a rom from disk...";
+		case SAEE_Memory_RomSize:				return "The kickstart- or extended-rom does have an invalid size.";
+		case SAEE_Memory_RomKey:				return "A ROM-keyfile is required. (Cloanto)";
+		case SAEE_Memory_RomDecode:			return "Invalid ROM-keyfile. (Cloanto)";
+		case SAEE_Memory_RomChecksum:			return "Checksum-error at the kickstart- or extended-rom.";
+		case SAEE_Memory_RomUnknown:			return "Unknown ROM.";
+		case SAEE_Video_ElementNotFound:		return "Video DIV-element not found. Check 'cfg.video.id'";
+		case SAEE_Video_RequiresCanvas:		return "This browser does not support 'Canvas'. Please upgrade to an actual version.";
+		case SAEE_Video_RequiresWegGl:		return "This browser does not support 'WebGL'. Please upgrade to an actual version.";
+		case SAEE_Video_ComphileShader:		return "Can not compile the required shader-program.";
+		case SAEE_Video_LinkShader:			return "Can not link the required shader-program.";
+		case SAEE_Audio_RequiresWebAudio:	return "This browser does not support 'WebAudio'. Please upgrade to an actual version.";
+		default: return "("+err+")";
+	}
+}
+
+/*-----------------------------------------------------------------------*/
+/* database */
+
+function dbInit() {
+	function addOption(select, text, value) {
+		var option = document.createElement("option");
+		if (text.length)
+			option.text = text;
+		option.value = String(value);
+		if (value == 0) {
+			option.style.fontWeight = "bold";
+			option.disabled = "disabled";
 		}
-		if (config.floppy.drive[n].name) {
-			setFloppyName(n, config.floppy.drive[n].name);
-			styleDisplayInline('cfg_df'+n+'_eject', 1); 	
-		} else {
-			setFloppyName(n, null);
-			styleDisplayInline('cfg_df'+n+'_eject', 0); 	
+		select.add(option, null);
+	}
+	for (var dbt = 1; dbt <= 4; dbt++) {
+		var s = document.getElementById(DB_IDS[0][dbt - 1]);
+		for (var i = 0; i < db.length; i++) {
+			if (db[i].type == dbt)
+				addOption(s, db[i].name, 1 + i);
 		}
-		styleDisplayInline('cfg_df'+n+'_grp', 1); 	
-	} else {
-		document.getElementById('cfg_df'+n+'_enabled').checked = false;		
-		styleDisplayInline('cfg_df'+n+'_grp', 0); 	
-	}	
-	switch (config.floppy.speed) {
-		case SAEV_Config_Floppy_Speed_Turbo: document.getElementById('cfg_floppy_speed')[0].selected = true; break;
-		case SAEV_Config_Floppy_Speed_Original: document.getElementById('cfg_floppy_speed')[1].selected = true; break;
-		case 200: document.getElementById('cfg_floppy_speed')[2].selected = true; break;
-		case 500: document.getElementById('cfg_floppy_speed')[3].selected = true; break;
-		case 1000: document.getElementById('cfg_floppy_speed')[4].selected = true; break;
 	}
-}
-
-function setConfig() {	
-	var e = document.getElementById('cfg_cpu_speed');
-	switch (config.cpu.speed) {
-		case SAEV_Config_CPU_Speed_Original: e[0].selected = true; break;
-		case SAEV_Config_CPU_Speed_Maximum: e[1].selected = true; break;
-	}	
-	
-	e = document.getElementById('cfg_chipset_type');
-	switch (config.chipset.mask) {
-		case SAEV_Config_Chipset_Mask_OCS: e[0].selected = true; break;
-		case SAEV_Config_Chipset_Mask_ECS_AGNUS: e[1].selected = true; break;
-		case SAEV_Config_Chipset_Mask_ECS_DENISE: e[2].selected = true; break
-	}
-	document.getElementById('cfg_chipset_cl_enabled').checked = config.chipset.collision_level != SAEV_Config_Chipset_ColLevel_None;		
-	switch (config.chipset.collision_level) {
-		case SAEV_Config_Chipset_ColLevel_Sprite_Sprite: document.getElementById('cfg_chipset_cl')[0].selected = true; break;
-		case SAEV_Config_Chipset_ColLevel_Sprite_Playfield: document.getElementById('cfg_chipset_cl')[1].selected = true; break;
-		case SAEV_Config_Chipset_ColLevel_Full: document.getElementById('cfg_chipset_cl')[2].selected = true; break;
-	}
-	document.getElementById('cfg_chipset_agnus_dip').checked = config.chipset.agnus_dip != 0;	
-	document.getElementById('cfg_blitter_immediate').checked = config.blitter.immediate != 0;	
-	styleDisplayInline('cfg_chipset_cl_grp', config.chipset.collision_level != SAEV_Config_Chipset_ColLevel_None);
-
-	var e = document.getElementById('cfg_mem_chip');
-	switch (config.ram.chip.size) {
-		case SAEV_Config_RAM_Chip_Size_256K: e[0].selected = true; break;
-		case SAEV_Config_RAM_Chip_Size_512K: e[1].selected = true; break;
-		case SAEV_Config_RAM_Chip_Size_1M: e[2].selected = true; break;
-		case SAEV_Config_RAM_Chip_Size_2M: e[3].selected = true; break;
-	}
-	e = document.getElementById('cfg_mem_slow');
-	switch (config.ram.slow.size) {
-		case SAEV_Config_RAM_Slow_Size_None: e[0].selected = true; break;
-		case SAEV_Config_RAM_Slow_Size_256K: e[1].selected = true; break;
-		case SAEV_Config_RAM_Slow_Size_512K: e[2].selected = true; break;
-		case SAEV_Config_RAM_Slow_Size_1M: e[3].selected = true; break;
-		case SAEV_Config_RAM_Slow_Size_1536K: e[4].selected = true; break;
-	}
-	e = document.getElementById('cfg_mem_fast');
-	switch (config.ram.fast.size) {
-		case SAEV_Config_RAM_Fast_Size_None: e[0].selected = true; break;
-		case SAEV_Config_RAM_Fast_Size_512K: e[1].selected = true; break;
-		case SAEV_Config_RAM_Fast_Size_1M: e[2].selected = true; break;
-		case SAEV_Config_RAM_Fast_Size_2M: e[3].selected = true; break;
-		case SAEV_Config_RAM_Fast_Size_4M: e[4].selected = true; break;
-		case SAEV_Config_RAM_Fast_Size_8M: e[5].selected = true; break;
-	}
-	
-	setRomName(config.rom.size ? config.rom.name : null);
-	
-	if (config.ext.size) {
-		setExtName(config.ext.name);
-		styleDisplayInline('cfg_ext_remove', 1);
-		switch (config.ext.addr) {
-			case SAEV_Config_EXT_Addr_E0: document.getElementById('cfg_ext_addr')[0].selected = true; break;
-			case SAEV_Config_EXT_Addr_F0: document.getElementById('cfg_ext_addr')[1].selected = true; break;
+	for (var dbt = 1; dbt <= 4; dbt++) {
+		var s = document.getElementById(DB_IDS[1][dbt - 1]);
+		for (var i = 0; i < db.length; i++) {
+			if (db[i].type == dbt) {
+				if (!(db[i].flags & DBF_MDC)) /* skip items that require manual disk-change */
+					addOption(s, db[i].name, 1 + i);
+			}
 		}
-		styleDisplayTableRow('cfg_ext_addr_grp', 1); 			
-	} else {
-		setExtName(null);
-		styleDisplayInline('cfg_ext_remove', 0);
-		styleDisplayTableRow('cfg_ext_addr_grp', 0);		
-	}
-	
-	for (var i = 0; i < 4; i++)
-		setFloppy(i); 
-	
-	document.getElementById('cfg_audio_enabled').checked = config.audio.enabled;	
-	switch (config.audio.mode) {
-		case SAEV_Config_Audio_Mode_Emul: document.getElementById('cfg_audio_mode')[0].selected = true; break;
-		case SAEV_Config_Audio_Mode_Play: document.getElementById('cfg_audio_mode')[1].selected = true; break;
-		case SAEV_Config_Audio_Mode_Play_Best: document.getElementById('cfg_audio_mode')[2].selected = true; break;
-	}
-	switch (config.audio.channels) {
-		case SAEV_Config_Audio_Channels_Mono: document.getElementById('cfg_audio_channels')[0].selected = true; break;
-		case SAEV_Config_Audio_Channels_Stereo: document.getElementById('cfg_audio_channels')[1].selected = true; break;
-	}
-	document.getElementById('cfg_audio_filter').checked = config.audio.filter != 0;		
-	styleDisplayTable('cfg_audio_grp', config.audio.enabled);
-
-	document.getElementById('cfg_video_enabled').checked = config.video.enabled != 0;	
-	document.getElementById('cfg_video_scale').checked = config.video.scale;	
-	document.getElementById('cfg_video_ntsc').checked = config.video.ntsc != 0;	
-	document.getElementById('cfg_video_skip').checked = config.video.framerate != 1;	
-	styleDisplayBlock('cfg_video_grp', config.video.enabled != 0); 	
-		
-	document.getElementById('cfg_keyborad_enabled').checked = config.keyboard.enabled != 0;	
-	document.getElementById('cfg_keyborad_mapshift').checked = config.keyboard.mapShift != 0;	
-	styleDisplayBlock('cfg_keyborad_grp', config.keyboard.enabled != 0); 	
-	
-	document.getElementById('cfg_ports_0_enabled').checked = config.ports[0].type != SAEV_Config_Ports_Type_None;
-	switch (config.ports[0].type) {
-		case SAEV_Config_Ports_Type_Mouse: document.getElementById('cfg_ports_0')[0].selected = true; break;
-		case SAEV_Config_Ports_Type_Joy0: document.getElementById('cfg_ports_0')[1].selected = true; break;
-	}	
-	switch (config.ports[0].move) {
-		case SAEV_Config_Ports_Move_Arrows: document.getElementById('cfg_ports_0_move')[0].selected = true; break;
-		case SAEV_Config_Ports_Move_Numpad: document.getElementById('cfg_ports_0_move')[1].selected = true; break;
-		case SAEV_Config_Ports_Move_WASD: document.getElementById('cfg_ports_0_move')[2].selected = true; break;
-	}
-	setFireButton('cfg_ports_0_fire_1', config.ports[0].fire[0]);
-	setFireButton('cfg_ports_0_fire_2', config.ports[0].fire[1]);
-	styleDisplayInline('cfg_ports_0_grp', config.ports[0].type != SAEV_Config_Ports_Type_None); 	
-	styleDisplayInline('cfg_ports_0_grp2', config.ports[0].type == SAEV_Config_Ports_Type_Joy0); 
-	
-	document.getElementById('cfg_ports_1_enabled').checked = config.ports[1].type != SAEV_Config_Ports_Type_None;
-	switch (config.ports[1].type) {
-		case SAEV_Config_Ports_Type_Joy1: document.getElementById('cfg_ports_1')[0].selected = true; break;
-	}	
-	switch (config.ports[1].move) {
-		case SAEV_Config_Ports_Move_Arrows: document.getElementById('cfg_ports_1_move')[0].selected = true; break;
-		case SAEV_Config_Ports_Move_Numpad: document.getElementById('cfg_ports_1_move')[1].selected = true; break;
-		case SAEV_Config_Ports_Move_WASD: document.getElementById('cfg_ports_1_move')[2].selected = true; break;
-	}
-	setFireButton('cfg_ports_1_fire_1', config.ports[1].fire[0]);
-	setFireButton('cfg_ports_1_fire_2', config.ports[1].fire[1]);
-	styleDisplayInline('cfg_ports_1_grp', config.ports[1].type == SAEV_Config_Ports_Type_Joy1); 	
-	
-	document.getElementById('cfg_serial_enabled').checked = config.serial.enabled != 0;
-
-	styleDisplayInline('dskchg_grp', 1);
-}
-
-function getMask(type) {
-	switch (type) {
-		case SAEV_Config_Chipset_Type_OCS: return SAEV_Config_Chipset_Mask_OCS;
-		case SAEV_Config_Chipset_Type_ECS_AGNUS: return SAEV_Config_Chipset_Mask_ECS_AGNUS;
-		case SAEV_Config_Chipset_Type_ECS_DENISE: return SAEV_Config_Chipset_Mask_ECS_DENISE;
-		default: return SAEV_Config_Chipset_Mask_OCS;
 	}
 }
 
-function getConfig() {
-	var e;
+function dbFindTypeNamePos(type, name) {
+	for (var i = 0; i < db.length; i++) {
+		if (db[i].type == type && db[i].name == name)
+			return i;
+	}
+	return -1;
+}
 
-	e = document.getElementById('cfg_cpu_speed');
-	config.cpu.speed = parseInt(getSelectValue(e));
-	
-	e = document.getElementById('cfg_chipset_type');
-	config.chipset.mask = getMask(parseInt(getSelectValue(e)));
-	e = document.getElementById('cfg_chipset_cl_enabled');
-	if (e.checked) {
-		e = document.getElementById('cfg_chipset_cl');
-		config.chipset.collision_level = parseInt(getSelectValue(e));
-	} else
-		config.chipset.collision_level = SAEV_Config_Chipset_ColLevel_None;
-	config.chipset.agnus_dip = document.getElementById('cfg_chipset_agnus_dip').checked ? true : false;	
-	config.blitter.immediate = document.getElementById('cfg_blitter_immediate').checked ? true : false;	
-	config.blitter.waiting = config.blitter.immediate ? 0: 1;
-		
-	e = document.getElementById('cfg_mem_chip');
-	config.ram.chip.size = parseInt(getSelectValue(e));
-	e = document.getElementById('cfg_mem_slow');
-	config.ram.slow.size = parseInt(getSelectValue(e));
-	e = document.getElementById('cfg_mem_fast');
-	config.ram.fast.size = parseInt(getSelectValue(e));
+function dbFindId(id) {
+	for (var i = 0; i < db.length; i++) {
+		if (db[i].id == id)
+			return db[i];
+	}
+	return null;
+}
 
-	if (!config.rom.name) {
-		alert('No Kickstart ROM.');
+/*-----------------------------------------------------------------------*/
+/* asynchronous file cache */
+
+const S_PENDING = 1;
+const S_ERROR = 2;
+const S_VALID = 3;
+
+function CacheItem(url) {
+	this.state = S_PENDING;
+	this.url = url;
+	//this.path = "";
+	this.name = "";
+	this.data = "";
+	this.size = 0;
+	this.crc32 = 0;
+}
+function Cache() {
+	var items = [];
+
+	function find(url) {
+		for (var i = 0; i < items.length; i++) {
+			if (items[i].url == url)
+				return items[i];
+		}
 		return false;
 	}
-	e = document.getElementById('cfg_ext_addr');
-	config.ext.addr = parseInt(getSelectValue(e));
 
-	e = document.getElementById('cfg_floppy_speed');
-	config.floppy.speed = parseInt(getSelectValue(e));
-
-	config.audio.enabled = document.getElementById('cfg_audio_enabled').checked ? true : false;
-	if (config.audio.enabled) {
-		e = document.getElementById('cfg_audio_mode');
-		config.audio.mode = parseInt(getSelectValue(e));
-		e = document.getElementById('cfg_audio_channels');
-		config.audio.channels = parseInt(getSelectValue(e));
-		config.audio.filter = document.getElementById('cfg_audio_filter').checked ? true : false;
+	function load(url, handler) {
+		var client = new XMLHttpRequest();
+		client.onload = handler;
+		client.open("GET", url);
+		client.overrideMimeType("text\/plain; charset=x-user-defined"); /* we want binary data */
+		client.send();
 	}
 
-	config.video.id = 'myVideo';
-	config.video.enabled = document.getElementById('cfg_video_enabled').checked ? true : false;
-	config.video.scale = document.getElementById('cfg_video_scale').checked ? true : false;
-	config.video.ntsc = document.getElementById('cfg_video_ntsc').checked ? true : false;
-	config.video.framerate = document.getElementById('cfg_video_skip').checked ? 2 : 1;
+	this.req = function(path, name, size, crc, dst) {
+		var url = path + "/" + name;
+		var item = null;
 
-	config.keyboard.enabled = document.getElementById('cfg_keyborad_enabled').checked ? true : false;
-	config.keyboard.mapShift = document.getElementById('cfg_keyborad_mapshift').checked ? true : false;
+		if (dst !== false)
+			dst.clr();
 
-	e = document.getElementById('cfg_ports_0');
-	config.ports[0].type = parseInt(getSelectValue(e));
-	if (config.ports[0].type == SAEV_Config_Ports_Type_Joy0) {
-		e = document.getElementById('cfg_ports_0_move');
-		config.ports[0].move = parseInt(getSelectValue(e));
-		e = document.getElementById('cfg_ports_0_fire_1');
-		config.ports[0].fire[0] = parseInt(getSelectValue(e));
-		e = document.getElementById('cfg_ports_0_fire_2');
-		config.ports[0].fire[1] = parseInt(getSelectValue(e));
-		if (config.ports[0].fire[0] != SAEV_Config_Ports_Fire_None && config.ports[0].fire[0] == config.ports[0].fire[1]) {
-			alert('Fire-button 1/2 on port 0 can\'t be the same.');
+		if ((item = find(url)) !== false) {
+			if (dst !== false) {
+				//dst.path = item.path;
+				dst.name = item.name;
+				dst.data = item.data;
+				dst.size = item.size;
+				dst.crc32 = item.crc32;
+			}
+			//console.log("cache.req() '"+url+"' is cached.");
+			return true;
+		}
+		item = new CacheItem(url);
+		items.push(item);
+
+		//console.log("cache.req() start downloading '"+url+"'...");
+
+		load(url, function() {
+			if (this.status == 200) {
+				if (this.responseText.length == size) {
+					/*if (crc !== false) {
+						var hash = crc32(this.responseText);
+						if (hash != crc) {
+							item.state = S_ERROR;
+							alert(sprintf("Wrong checksum for '%s'\n\n(should be $%08x, but is $%08x)\n\nTry to flush the browser-cache with 'Ctrl+Shift+Del' and press F5 to reload...", url, crc, hash));
+							return;
+						}
+					}*/
+					//item.path = path;
+					item.name = name;
+					item.data = this.responseText;
+					item.size = size;
+					item.crc32 = crc;
+					item.state = S_VALID;
+					if (dst !== false) {
+						//dst.path = item.path;
+						dst.name = item.name;
+						dst.data = item.data;
+						dst.size = item.size;
+						dst.crc32 = item.crc32;
+					}
+					//console.log("cache.req() downloaded of '"+url+"' done.");
+				} else {
+					item.state = S_ERROR;
+					alert(sprintf("Wrong file-length for '%s'\n\n(should be %d, but is %d)", url, size, this.responseText.length));
+				}
+			} else {
+				item.state = S_ERROR;
+				alert(sprintf("Error while downloading '%s' (http status: %d)", url, this.status));
+			}
+		});
+		return false;
+	}
+
+	this.state = function() {
+		for (var i = 0; i < items.length; i++) {
+			if (items[i].state != S_VALID)
+				return items[i].state;
+		}
+		return S_VALID;
+	}
+}
+
+/*---------------------------------*/
+
+function loadFile(e, callback) {
+	var reader = new FileReader();
+	reader.onload = callback;
+	reader.readAsBinaryString(e);
+}
+
+/*-----------------------------------------------------------------------*/
+/* database cfg */
+
+function setDatabaseConfig() {
+	//setSelect("cfg_video_resolution_1", cfg.video.hresolution);
+	//setCheckbox("cfg_video_skip_1", cfg.video.framerate != 1);
+
+	styleDisplayBlock("config_database", 1);
+	styleDisplayTableCell("controls_disk", 0);
+}
+
+function getDatabaseEntryFilename(dbe, disk, adf) {
+	if (dbe.numdisks == 1)
+		return dbe.name + (adf ? ".adf" : "");
+	else
+		return dbe.name + " (Disk "+String(disk+1)+")" + (adf ? ".adf" : "");
+}
+function getDatabaseFloppy() {
+	if (dbNum == 0) { /* nothing selected */
+		for (var i = 0; i < 4; i++) {
+			cfg.floppy.drive[i].type = i == 0 ? SAEC_Config_Floppy_Type_35_DD : SAEC_Config_Floppy_Type_None;
+			cfg.floppy.drive[i].file.clr();
+		}
+		cfg.floppy.speed = SAEC_Config_Floppy_Speed_Original;
+		return true;
+	}
+
+	if (typeof db[dbNum - 1] == "undefined") {
+		//alert("bug!");
+		return false;
+	}
+	var dbe = db[dbNum - 1];
+
+	dskchgList = [];
+	if (dbe.flags & DBF_MDC) { /* manual disk-change required */
+		if (dbe.numdisks == 1)
+			dskchgList.push(dbe.name);
+		else {
+			for (var n = 0; n < dbe.numdisks; n++)
+				dskchgList.push(getDatabaseEntryFilename(dbe, n, false));
+		}
+
+		/* request DF0 immediately */
+		cfg.floppy.drive[0].type = SAEC_Config_Floppy_Type_35_DD;
+		var filename = getDatabaseEntryFilename(dbe, 0, true);
+		cache.req(dbUrl, filename, 0xdc000, false, cfg.floppy.drive[0].file);
+
+		/* precache DF1-DF3 for later */
+		for (var n = 1; n < dbe.numdisks; n++) {
+			cfg.floppy.drive[n].type = SAEC_Config_Floppy_Type_None; /* disable for now. will be enabled when a disk is inserted */
+			cfg.floppy.drive[n].file.clr();
+
+			filename = getDatabaseEntryFilename(dbe, n, true);
+			cache.req(dbUrl, filename, 0xdc000, false, false);
+		}
+	} else { /* request all disks immediately */
+		for (var n = 0; n < dbe.numdisks; n++) {
+			var filename = getDatabaseEntryFilename(dbe, n, true);
+			cfg.floppy.drive[n].type = SAEC_Config_Floppy_Type_35_DD;
+			cache.req(dbUrl, filename, 0xdc000, false, cfg.floppy.drive[n].file);
+		}
+		for (var n = dbe.numdisks; n < 4; n++) {
+			cfg.floppy.drive[n].type = SAEC_Config_Floppy_Type_None;
+			cfg.floppy.drive[n].file.clr();
+		}
+	}
+	cfg.floppy.speed = (dbe.flags & DBF_NOT) == 0 ? SAEC_Config_Floppy_Speed_Turbo : SAEC_Config_Floppy_Speed_Original;
+	return true;
+}
+
+function getDatabaseConfig() {
+	var dbe = dbNum > 0 ? db[dbNum - 1] : null;
+
+	if (dbe !== null) {
+		if (dbe.flags & DBF_AGA)
+			sae.setModel(SAEC_Model_A1200, 0); /* set an A1200 for AGA */
+		else if (dbe.flags & DBF_ECS)
+			sae.setModel(SAEC_Model_A500P, 0); /* set an A500+ for ECS */
+		else
+			sae.setModel(SAEC_Model_A500, 0); /* set an A500 for OCS */
+
+		if (dbe.flags & DBF_030)
+			cfg.cpu.model = SAEC_Config_CPU_Model_68030;
+
+		cfg.memory.z2FastSize = 4 << 20; /* give 4MB Zorro2 memory */
+
+		cfg.chipset.colLevel = SAEC_Config_Chipset_ColLevel_None;
+		if (dbe.flags & DBF_COL)
+			cfg.chipset.colLevel = SAEC_Config_Chipset_ColLevel_Sprite_Playfield; /* enable collision-detection */
+
+		if (dbe.flags & DBF_BIM)
+			cfg.chipset.blitter.immediate = true;
+	} else {
+		sae.setModel(SAEC_Model_A500, 0);
+
+		cfg.memory.z2FastSize = 4 << 20; /* give 4MB Zorro2 memory */
+	}
+	cache.req(URL_DATABASE, AROS_ROM_FILE, 0x80000, AROS_ROM_CRC, cfg.memory.rom);
+	cache.req(URL_DATABASE, AROS_EXT_FILE, 0x80000, AROS_EXT_CRC, cfg.memory.extRom);
+
+	if (!getDatabaseFloppy())
+		return false;
+
+	cfg.video.id = "myVideo"; /* html-div element to add video-output */
+
+	/*cfg.video.hresolution = getSelect("cfg_video_resolution_1");
+	if (cfg.video.hresolution == SAEC_Config_Video_HResolution_LoRes)
+		cfg.video.vresolution = SAEC_Config_Video_VResolution_NonDouble;
+	else
+		cfg.video.vresolution = SAEC_Config_Video_VResolution_Double;
+
+	cfg.video.framerate = getCheckbox("cfg_video_skip_1") ? 2 : 1;*/
+
+	//cfg.video.size_win.width = SAEC_Video_DEF_AMIGA_WIDTH << cfg.video.hresolution;
+	//cfg.video.size_win.height = SAEC_Video_DEF_AMIGA_HEIGHT << cfg.video.hresolution;
+
+	setHooks();
+	return true;
+}
+
+/*-----------------------------------------------------------------------*/
+/* advanced cfg */
+
+function setRomName() {
+	var e = document.getElementById("cfg_rom_name");
+	if (cfg.memory.rom.name.length) {
+		if (defRomInfo !== null) {
+			var name = defRomInfo.name;
+			e.className = (defRomInfo.type & SAEC_RomType_ALL_KICK) ? "green" : "orange";
+			setDisabled("cfg_rom_info", 0);
+		} else {
+			var name = cfg.memory.rom.name;
+			e.className = "orange";
+			setDisabled("cfg_rom_info", 1);
+		}
+		e.innerHTML = name.length > MAX_FILENAME ? name.substr(0, MAX_FILENAME)+" [...]" : name;
+
+		styleDisplayInline("cfg_rom_remove", 1);
+		styleDisplayInline("cfg_rom_info", 1);
+	} else {
+		e.className = "red";
+		e.innerHTML = "&lt;unset&gt; (required)";
+		styleDisplayInline("cfg_rom_remove", 0);
+		styleDisplayInline("cfg_rom_info", 0);
+		document.getElementById("cfg_rom_file").value = "";
+	}
+}
+
+function setExtName() {
+	var e = document.getElementById("cfg_ext_name");
+	if (cfg.memory.extRom.name.length) {
+		if (extRomInfo !== null) {
+			var name = extRomInfo.name;
+			e.className = (extRomInfo.type & SAEC_RomType_ALL_EXT) ? "green" : "orange";
+			setDisabled("cfg_ext_info", 0);
+		} else {
+			var name = cfg.memory.extRom.name;
+			e.className = "orange";
+			setDisabled("cfg_ext_info", 1);
+		}
+		e.innerHTML = name.length > MAX_FILENAME ? name.substr(0, MAX_FILENAME)+" [...]" : name;
+
+		styleDisplayInline("cfg_ext_remove", 1);
+		styleDisplayInline("cfg_ext_info", 1);
+	} else {
+		e.className = "gray";
+		e.innerHTML = "&lt;unset&gt;";
+		styleDisplayInline("cfg_ext_remove", 0);
+		styleDisplayInline("cfg_ext_info", 0);
+		document.getElementById("cfg_ext_file").value = "";
+	}
+}
+
+function setKeyName() {
+	var e = document.getElementById("cfg_key_name");
+	if (cfg.memory.romKey.name.length) {
+		if (romKeyInfo !== null) {
+			var name = romKeyInfo.name;
+			e.className = (romKeyInfo.type & SAEC_RomType_KEY) ? "green" : "orange";
+			setDisabled("cfg_key_info", 0);
+		} else {
+			var name = cfg.memory.romKey.name;
+			e.className = "orange";
+			setDisabled("cfg_key_info", 1);
+		}
+		e.innerHTML = name.length > MAX_FILENAME ? name.substr(0, MAX_FILENAME)+" [...]" : name;
+
+		styleDisplayInline("cfg_key_remove", 1);
+		styleDisplayInline("cfg_key_info", 1);
+	} else {
+		if (defRomEncrypted || extRomEncrypted) {
+			e.className = "red";
+			e.innerHTML = "&lt;unset&gt; (required)";
+		} else {
+			e.className = "gray";
+			e.innerHTML = "&lt;unset&gt;";
+		}
+		styleDisplayInline("cfg_key_remove", 0);
+		styleDisplayInline("cfg_key_info", 0);
+		document.getElementById("cfg_key_file").value = "";
+	}
+}
+
+function setAMaxName() {
+	var e = document.getElementById("cfg_amax_name");
+	if (cfg.memory.amaxRom.name.length) {
+		if (amaxInfo !== null) {
+			var name = amaxInfo.name;
+			e.className = (amaxInfo.type & SAEC_RomType_AMAX) ? "green" : "orange";
+			setDisabled("cfg_amax_info", 0);
+		} else {
+			var name = cfg.memory.amaxRom.name;
+			e.className = "orange";
+			setDisabled("cfg_amax_info", 1);
+		}
+		e.innerHTML = name.length > MAX_FILENAME ? name.substr(0, MAX_FILENAME)+" [...]" : name;
+
+		styleDisplayInline("cfg_amax_remove", 1);
+		styleDisplayInline("cfg_amax_info", 1);
+	} else {
+		e.className = "gray";
+		e.innerHTML = "&lt;unset&gt;";
+		styleDisplayInline("cfg_amax_remove", 0);
+		styleDisplayInline("cfg_amax_info", 0);
+		document.getElementById("cfg_amax_file").value = "";
+	}
+}
+
+function setFloppyName(n) {
+	var e = document.getElementById("cfg_df"+n+"_name");
+	if (cfg.floppy.drive[n].file.size) {
+		e.className = "";
+		if (cfg.floppy.drive[n].file.name.length > MAX_FILENAME)
+			e.innerHTML = cfg.floppy.drive[n].file.name.substr(0, MAX_FILENAME)+" [...]";
+		else
+			e.innerHTML = cfg.floppy.drive[n].file.name;
+		styleDisplayInline("cfg_df"+n+"_eject", 1);
+		styleDisplayInline("cfg_df"+n+"_info", 1);
+	} else {
+		e.className = "gray";
+		e.innerHTML = "&lt;unset&gt;";
+		styleDisplayInline("cfg_df"+n+"_eject", 0);
+		styleDisplayInline("cfg_df"+n+"_info", 0);
+	}
+}
+
+function setMountName(n) {
+	var ci = cfg.mount.config[n].ci;
+	var e = document.getElementById("cfg_mount_"+n+"_name");
+
+	if (ci.file.name.length) {
+		e.className = "";
+		if (ci.file.name.length > MAX_FILENAME)
+			e.innerHTML = ci.file.name.substr(0, MAX_FILENAME)+" [...]";
+		else
+			e.innerHTML = ci.file.name;
+
+		styleDisplayInline("cfg_mount_"+n+"_remove", 1);
+		if (n < 4) styleDisplayInline("cfg_mount_"+n+"_setup", 1);
+	} else {
+		e.className = "gray";
+		e.innerHTML = "&lt;unset&gt;";
+		styleDisplayInline("cfg_mount_"+n+"_remove", 0);
+		if (n < 4) styleDisplayInline("cfg_mount_"+n+"_setup", 0);
+	}
+}
+
+function setAdvandedFloppy(n) {
+	if (cfg.floppy.drive[n].type != SAEC_Config_Floppy_Type_None) {
+		setCheckbox("cfg_df"+n+"_enabled", true);
+		setSelect("cfg_df"+n+"_type", cfg.floppy.drive[n].type);
+		setCheckbox("cfg_df"+n+"_wp", cfg.floppy.drive[n].file.prot);
+		setFloppyName(n);
+		styleDisplayInline("cfg_df"+n+"_grp", 1);
+	} else {
+		setCheckbox("cfg_df"+n+"_enabled", false);
+		styleDisplayInline("cfg_df"+n+"_grp", 0);
+	}
+}
+
+function setAdvandedMount(n) {
+	var ci = cfg.mount.config[n].ci;
+	if (ci.controller_type != 0) {
+		if (ci.controller_type == SAEC_Config_Mount_Controller_Type_MB_IDE) {
+			setSelect("cfg_mount_"+n+"_controller_media", ci.controller_media_type);
+			setSelect("cfg_mount_"+n+"_controller_level", ci.unit_feature_level);
+		}
+		if (ci.controller_type != SAEC_Config_Mount_Controller_Type_PCMCIA_IDE)
+			setCheckbox("cfg_mount_"+n+"_readonly", ci.readonly);
+
+		setMountName(n);
+		setCheckbox("cfg_mount_"+n+"_enabled", true);
+		styleDisplayInline("cfg_mount_"+n+"_grp", 1);
+	} else {
+		setCheckbox("cfg_mount_"+n+"_enabled", false);
+		styleDisplayInline("cfg_mount_"+n+"_grp", 0);
+	}
+}
+
+function fixAdvandedConfig() {
+	/* video */
+	if (cfg.video.enabled) {
+		if (!inf.video.canvas && !inf.video.webGL)
+			cfg.video.enabled = false;
+		else if (SAEV_config.video.api == SAEC_Config_Video_API_WebGL && !inf.video.webGL)
+			SAEV_config.video.api = SAEC_Config_Video_API_Canvas;
+	}
+	/* audio */
+	if (cfg.audio.mode >= SAEC_Config_Audio_Mode_On) {
+		if (!inf.audio.webAudio)
+			cfg.audio.mode = SAEC_Config_Audio_Mode_Off_Emul;
+	}
+}
+
+function setAdvandedConfig() {
+	fixAdvandedConfig();
+
+	/* cpu */
+	setRadio("cfg_cpu_model", cfg.cpu.model);
+	setRadio("cfg_cpu_speed", cfg.cpu.speed);
+	setCheckbox("cfg_cpu_compatible", cfg.cpu.compatible);
+	setCheckbox("cfg_cpu_address_space_32", cfg.cpu.addressSpace24 == false);
+
+	/* chipset */
+	if (cfg.chipset.mask & SAEC_Config_Chipset_Mask_AGA)
+		setRadio("cfg_chipset_mask", 3);
+	else if ((cfg.chipset.mask & SAEC_Config_Chipset_Mask_ECS_AGNUS) && (cfg.chipset.mask & SAEC_Config_Chipset_Mask_ECS_DENISE)) {
+		setRadio("cfg_chipset_mask", 2);
+		setSelect("cfg_chipset_mask_ecs", 3);
+	} else if (cfg.chipset.mask & SAEC_Config_Chipset_Mask_ECS_AGNUS) {
+		setRadio("cfg_chipset_mask", 2);
+		setSelect("cfg_chipset_mask_ecs", 1);
+	} else if (cfg.chipset.mask & SAEC_Config_Chipset_Mask_ECS_DENISE) {
+		setRadio("cfg_chipset_mask", 2);
+		setSelect("cfg_chipset_mask_ecs", 2);
+	} else
+		setRadio("cfg_chipset_mask", 1);
+
+	setRadio("cfg_chipset_ntsc", cfg.chipset.ntsc ? 1 : 0);
+
+	setSelect("cfg_chipset_cl", cfg.chipset.colLevel);
+
+	setRadio("cfg_blitter_immediate", cfg.chipset.blitter.immediate ? 0 : 1);
+	setSelect("cfg_blitter_waiting", cfg.chipset.blitter.waiting);
+
+	/* chipset features */
+	//setSelect("cfg_chipset_features", cfg.chipset.compatible);
+	switch (cfg.chipset.compatible) {
+		case SAEC_Config_Chipset_Compatible_Generic: setSelect("cfg_chipset_features", "generic"); break;
+		case SAEC_Config_Chipset_Compatible_A500: setSelect("cfg_chipset_features", "A500"); break;
+		case SAEC_Config_Chipset_Compatible_A500P: setSelect("cfg_chipset_features", "A500P"); break;
+		case SAEC_Config_Chipset_Compatible_A600: setSelect("cfg_chipset_features", "A600"); break;
+		case SAEC_Config_Chipset_Compatible_A1000: setSelect("cfg_chipset_features", "A1000"); break;
+		case SAEC_Config_Chipset_Compatible_A1000V: setSelect("cfg_chipset_features", "A1000V"); break;
+		case SAEC_Config_Chipset_Compatible_A1200: setSelect("cfg_chipset_features", "A1200"); break;
+		case SAEC_Config_Chipset_Compatible_A2000: setSelect("cfg_chipset_features", "A2000"); break;
+		case SAEC_Config_Chipset_Compatible_A3000: setSelect("cfg_chipset_features", "A3000"); break;
+		case SAEC_Config_Chipset_Compatible_A4000: setSelect("cfg_chipset_features", "A4000"); break;
+		//case SAEC_Config_Chipset_Compatible_A4000T: setSelect("cfg_chipset_features", "A4000T"); break;
+		//case SAEC_Config_Chipset_Compatible_CDTV: setSelect("cfg_chipset_features", "CDTV"); break;
+		//case SAEC_Config_Chipset_Compatible_CDTVCR: setSelect("cfg_chipset_features", "CDTVCR"); break;
+		//case SAEC_Config_Chipset_Compatible_CD32: setSelect("cfg_chipset_features", "CD32"); break;
+		case SAEC_Config_Chipset_Compatible_Manual: setSelect("cfg_chipset_features", "manual"); break;
+	}
+	styleDisplayBlock("cfg_chipset_features_grp", cfg.chipset.compatible == SAEC_Config_Chipset_Compatible_Manual);
+	{
+		setSelect("cfg_chipset_cia_tod", cfg.chipset.cia.tod);
+		setCheckbox("cfg_chipset_cia_todbug", cfg.chipset.cia.todBug);
+		setCheckbox("cfg_chipset_cia_overlay", cfg.chipset.cia.overlay);
+		setCheckbox("cfg_chipset_cia_type6526", cfg.chipset.cia.type6526);
+
+		setSelect("cfg_chipset_rtc_type", cfg.chipset.rtc.type);
+
+		setSelect("cfg_chipset_ide", cfg.chipset.ide == -1 ? 0 : cfg.chipset.ide);
+		setCheckbox("cfg_chipset_pcmcia", cfg.chipset.pcmcia);
+
+		setCheckbox("cfg_chipset_agnus_dip", cfg.chipset.agnusDIP);
+
+		setCheckbox("cfg_rom_mirror_a8", cfg.chipset.mirrorA8);
+		setCheckbox("cfg_rom_mirror_e0", cfg.chipset.mirrorE0);
+
+		setCheckbox("cfg_chipset_z3autoconfig", cfg.chipset.z3AutoConfig);
+	}
+
+	/* ram */
+	setSelect("cfg_mem_chip", cfg.memory.chipSize >> 10);
+	setSelect("cfg_mem_slow", cfg.memory.bogoSize >> 10);
+	setSelect("cfg_mem_ramsey_low", cfg.memory.ramsey.lowSize >> 10);
+	setSelect("cfg_mem_ramsey_high", cfg.memory.ramsey.highSize >> 10);
+	setSelect("cfg_mem_z2fast", cfg.memory.z2FastSize >> 10);
+	setCheckbox("cfg_mem_z2fastautoconfig", cfg.memory.z2FastAutoConfig);
+	setSelect("cfg_mem_z3fast", cfg.memory.z3FastSize >> 10);
+	setSelect("cfg_mem_z3mapping", cfg.memory.z3Mapping);
+
+	/* rom */
+	setCheckbox("cfg_rom_use_aros", useAROS);
+	styleDisplayBlock("cfg_rom_grp", useAROS ? false : true);
+	if (!useAROS) {
+		setRomName();
+		setExtName();
+		setKeyName();
+		setAMaxName();
+	}
+	setCheckbox("cfg_rom_kickshifter", cfg.memory.kickShifter);
+
+	/* floppy */
+	for (var i = 0; i < 4; i++)
+		setAdvandedFloppy(i);
+	setSelect("cfg_floppy_speed", cfg.floppy.speed);
+	setCheckbox("cfg_floppy_autoext2", cfg.floppy.autoEXT2 != 0);
+
+	/* mount */
+	for (var i = 0; i < 6; i++)
+		setAdvandedMount(i);
+
+	/* video */
+	setCheckbox("cfg_video_enabled", cfg.video.enabled);
+	setDisabled("cfg_video_enabled", !inf.video.canvas && !inf.video.webGL);
+	//if (cfg.video.enabled)
+	{
+		setSelect("cfg_video_api", cfg.video.api);
+		setDisabled("cfg_video_api", inf.video.webGL == false);
+		setSelect("cfg_video_color_mode", cfg.video.colorMode);
+		setCheckbox("cfg_video_antialias", cfg.video.antialias);
+		//setRadio("cfg_video_fs", cfg.video.apmode[0].gfx_fullscreen);
+		//setText("cfg_video_win_width", cfg.video.size_win.width);
+		//setText("cfg_video_win_height", cfg.video.size_win.height);
+		//setText("cfg_video_fs_width", cfg.video.size_fs.width);
+		//setText("cfg_video_fs_height", cfg.video.size_fs.height);
+		setSelect("cfg_video_resolution", cfg.video.hresolution);
+		setSelect("cfg_video_linemode", cfg.video.pscanlines == 1 ? 2 : cfg.video.vresolution);
+		setSelect("cfg_video_interlace", cfg.video.iscanlines);
+		setDisabled("cfg_video_interlace", cfg.video.vresolution == SAEC_Config_Video_VResolution_NonDouble);
+		setCheckbox("cfg_video_skip", cfg.video.framerate != 1);
+		setCheckbox("cfg_video_xcenter", cfg.video.xcenter != 0);
+		setCheckbox("cfg_video_ycenter", cfg.video.ycenter != 0);
+		setText("cfg_video_brightness", cfg.video.luminance);
+		setText("cfg_video_contrast", cfg.video.contrast);
+		setText("cfg_video_gamma", cfg.video.gamma);
+		setText("cfg_video_alpha", cfg.video.alpha);
+		setDisabled("cfg_video_alpha", cfg.video.colorMode < 5);
+		setText("cfg_video_background", sprintf("%06X", cfg.video.backgroundColor));
+		setDisabled("cfg_video_background", cfg.video.colorMode < 5);
+		setCheckbox("cfg_video_blackerthanblack", cfg.video.blackerThanBlack);
+		setCheckbox("cfg_video_refreshindicator", cfg.video.refreshIndicator);
+		styleDisplayBlock("cfg_video_error_webgl", inf.video.webGL == false);
+	}
+	styleDisplayBlock("cfg_video_grp", cfg.video.enabled != 0);
+	styleDisplayBlock("cfg_video_error_canvas", inf.video.canvas == false && inf.video.webGL == false);
+
+	/* audio */
+	setCheckbox("cfg_audio_enabled", cfg.audio.mode != SAEC_Config_Audio_Mode_Off);
+	setSelect("cfg_audio_buffer_frames", cfg.audio.bufferFrames);
+	setSelect("cfg_audio_mode", cfg.audio.mode);
+	setDisabled("cfg_audio_mode", inf.audio.webAudio == false);
+	setSelect("cfg_audio_filter", cfg.audio.filter);
+	setSelect("cfg_audio_filtertype", cfg.audio.filterType);
+	setSelect("cfg_audio_freq", cfg.audio.freq);
+	setSelect("cfg_audio_separation", cfg.audio.stereoSeparation);
+	setSelect("cfg_audio_delay", cfg.audio.stereoDelay);
+	setSelect("cfg_audio_channels", cfg.audio.channels);
+	setSelect("cfg_audio_interpolation", cfg.audio.interpol);
+	styleDisplayBlock("cfg_audio_grp", cfg.audio.mode != SAEC_Config_Audio_Mode_Off);
+	styleDisplayBlock("cfg_audio_error", inf.audio.webAudio == false);
+
+	/* ports */
+	setSelect("cfg_ports_0", cfg.ports[0].type);
+	setSelect("cfg_ports_0_move", cfg.ports[0].move);
+	setSelect("cfg_ports_0_fire_1", cfg.ports[0].fire[0]);
+	setSelect("cfg_ports_0_fire_2", cfg.ports[0].fire[1]);
+	styleDisplayInline("cfg_ports_0_grp", cfg.ports[0].type == SAEC_Config_Ports_Type_Joy0);
+
+	setSelect("cfg_ports_1", cfg.ports[1].type);
+	setSelect("cfg_ports_1_move", cfg.ports[1].move);
+	setSelect("cfg_ports_1_fire_1", cfg.ports[1].fire[0]);
+	setSelect("cfg_ports_1_fire_2", cfg.ports[1].fire[1]);
+	styleDisplayInline("cfg_ports_1_grp", cfg.ports[1].type == SAEC_Config_Ports_Type_Joy1);
+
+	setCheckbox("cfg_keyborad_enabled", cfg.keyboard.enabled);
+
+	setCheckbox("cfg_serial_enabled", cfg.serial.enabled);
+
+	styleDisplayTableCell("controls_disk", 1);
+}
+
+function getAdvandedFloppy() {
+	for (var n = 0; n < 4; n++) {
+		if (getCheckbox("cfg_df"+n+"_enabled")) {
+			cfg.floppy.drive[n].type = getSelect("cfg_df"+n+"_type");
+			cfg.floppy.drive[n].file.prot = getCheckbox("cfg_df"+n+"_wp");
+		}
+	}
+	cfg.floppy.speed = getSelect("cfg_floppy_speed");
+	cfg.floppy.autoEXT2 = getCheckbox("cfg_floppy_autoext2") ? 1 : 0;
+}
+function getAdvandedMount() {
+	for (var n = 0; n < 6; n++) {
+		var ci = cfg.mount.config[n].ci;
+		if (getCheckbox("cfg_mount_"+n+"_enabled")) {
+			if (n < 4) {
+				ci.controller_type = SAEC_Config_Mount_Controller_Type_MB_IDE;
+				ci.controller_unit = n;
+				ci.controller_media_type = getSelect("cfg_mount_"+n+"_controller_media");
+				ci.unit_feature_level = getSelect("cfg_mount_"+n+"_controller_level");
+			} else if (n == 4)
+				ci.controller_type = SAEC_Config_Mount_Controller_Type_PCMCIA_SRAM;
+			else
+				ci.controller_type = SAEC_Config_Mount_Controller_Type_PCMCIA_IDE;
+			if (n != 5)
+				ci.readonly = getCheckbox("cfg_mount_"+n+"_readonly");
+		} else
+			ci.controller_type = 0;
+	}
+}
+function getAdvandedConfig() {
+	/* cpu */
+	cfg.cpu.model = getRadio("cfg_cpu_model");
+	cfg.cpu.speed = getRadio("cfg_cpu_speed");
+	cfg.cpu.compatible = getCheckbox("cfg_cpu_compatible");
+	cfg.cpu.addressSpace24 = getCheckbox("cfg_cpu_address_space_32") ? false : true;
+
+	/* chipset */
+	cfg.chipset.mask = SAEC_Config_Chipset_Mask_OCS;
+	switch (getRadio("cfg_chipset_mask")) {
+		case 1: break;
+		case 2: {
+			switch (getSelect("cfg_chipset_mask_ecs")) {
+				case 1: cfg.chipset.mask |= SAEC_Config_Chipset_Mask_ECS_AGNUS; break;
+				case 2: cfg.chipset.mask |= SAEC_Config_Chipset_Mask_ECS_DENISE; break;
+				case 3: cfg.chipset.mask |= (SAEC_Config_Chipset_Mask_ECS_AGNUS | SAEC_Config_Chipset_Mask_ECS_DENISE); break;
+			}
+			break;
+		}
+		case 3: cfg.chipset.mask |= (SAEC_Config_Chipset_Mask_ECS_AGNUS | SAEC_Config_Chipset_Mask_ECS_DENISE | SAEC_Config_Chipset_Mask_AGA); break;
+	}
+	cfg.chipset.ntsc = getRadio("cfg_chipset_ntsc") == 1;
+
+	cfg.chipset.colLevel = getSelect("cfg_chipset_cl");
+
+	cfg.chipset.blitter.immediate = getRadio("cfg_blitter_immediate") == 0;
+	cfg.chipset.blitter.waiting = getSelect("cfg_blitter_waiting");
+
+	//cfg.chipset.compatible = getSelect("cfg_chipset_features");
+	switch (getSelect("cfg_chipset_features", true)) {
+		case "generic": cfg.chipset.compatible = SAEC_Config_Chipset_Compatible_Generic; break;
+		case "A500": cfg.chipset.compatible = SAEC_Config_Chipset_Compatible_A500; break;
+		case "A500P": cfg.chipset.compatible = SAEC_Config_Chipset_Compatible_A500P; break;
+		case "A600": cfg.chipset.compatible = SAEC_Config_Chipset_Compatible_A600; break;
+		case "A1000": cfg.chipset.compatible = SAEC_Config_Chipset_Compatible_A1000; break;
+		case "A1000V": cfg.chipset.compatible = SAEC_Config_Chipset_Compatible_A1000V; break;
+		case "A1200": cfg.chipset.compatible = SAEC_Config_Chipset_Compatible_A1200; break;
+		case "A2000": cfg.chipset.compatible = SAEC_Config_Chipset_Compatible_A2000; break;
+		case "A3000": cfg.chipset.compatible = SAEC_Config_Chipset_Compatible_A3000; break;
+		case "A4000": cfg.chipset.compatible = SAEC_Config_Chipset_Compatible_A4000; break;
+		//case "A4000T": cfg.chipset.compatible = SAEC_Config_Chipset_Compatible_A4000T; break;
+		//case "CDTV": cfg.chipset.compatible = SAEC_Config_Chipset_Compatible_CDTV; break;
+		//case "CDTVCR": cfg.chipset.compatible = SAEC_Config_Chipset_Compatible_CDTVCR; break;
+		//case "CD32": cfg.chipset.compatible = SAEC_Config_Chipset_Compatible_CD32; break;
+		case "manual": cfg.chipset.compatible = SAEC_Config_Chipset_Compatible_Manual; break;
+	}
+	if (cfg.chipset.compatible == SAEC_Config_Chipset_Compatible_Manual) {
+		cfg.chipset.cia.tod = getSelect("cfg_chipset_cia_tod");
+		cfg.chipset.cia.todBug = getCheckbox("cfg_chipset_cia_todbug");
+		cfg.chipset.cia.overlay = getCheckbox("cfg_chipset_cia_overlay");
+		cfg.chipset.cia.type6526 = getCheckbox("cfg_chipset_cia_type6526");
+
+		cfg.chipset.rtc.type = getSelect("cfg_chipset_rtc_type");
+
+		cfg.chipset.ide = getSelect("cfg_chipset_ide");
+		cfg.chipset.pcmcia = getCheckbox("cfg_chipset_pcmcia");
+
+		cfg.chipset.agnusDIP = getCheckbox("cfg_chipset_agnus_dip");
+		cfg.chipset.mirrorA8 = getCheckbox("cfg_rom_mirror_a8");
+		cfg.chipset.mirrorE0 = getCheckbox("cfg_rom_mirror_e0");
+
+		cfg.chipset.z3AutoConfig = getCheckbox("cfg_chipset_z3autoconfig");
+	}
+
+	/* ram */
+	cfg.memory.chipSize = getSelect("cfg_mem_chip") << 10;
+	cfg.memory.bogoSize = getSelect("cfg_mem_slow") << 10;
+	cfg.memory.ramsey.lowSize = getSelect("cfg_mem_ramsey_low") << 10;
+	cfg.memory.ramsey.highSize = getSelect("cfg_mem_ramsey_high") << 10;
+	cfg.memory.z2FastSize = getSelect("cfg_mem_z2fast") << 10;
+	cfg.memory.z2FastAutoConfig = getCheckbox("cfg_mem_z2fastautoconfig");
+	cfg.memory.z3FastSize = getSelect("cfg_mem_z3fast") << 10;
+	cfg.memory.z3Mapping = getSelect("cfg_mem_z3mapping");
+
+	/* rom */
+	useAROS = getCheckbox("cfg_rom_use_aros");
+	if (useAROS) {
+		cache.req(URL_DATABASE, AROS_ROM_FILE, 0x80000, AROS_ROM_CRC, cfg.memory.rom);
+		cache.req(URL_DATABASE, AROS_EXT_FILE, 0x80000, AROS_EXT_CRC, cfg.memory.extRom);
+		cfg.memory.romKey.clr();
+	} else {
+		if (cfg.memory.rom.size == 0) {
+			alert(saee2text(SAEE_Memory_NoKickstartRom));
+			changePage(PID_ROM);
 			return false;
 		}
 	}
-	e = document.getElementById('cfg_ports_1');
-	config.ports[1].type = parseInt(getSelectValue(e));
-	if (config.ports[1].type == SAEV_Config_Ports_Type_Joy1) {
-		e = document.getElementById('cfg_ports_1_move');
-		config.ports[1].move = parseInt(getSelectValue(e));
-		e = document.getElementById('cfg_ports_1_fire_1');
-		config.ports[1].fire[0] = parseInt(getSelectValue(e));
-		e = document.getElementById('cfg_ports_1_fire_2');
-		config.ports[1].fire[1] = parseInt(getSelectValue(e));
-		if (config.ports[1].fire[0] != SAEV_Config_Ports_Fire_None && config.ports[1].fire[0] == config.ports[1].fire[1]) {
-			alert('Fire-button 1/2 on port 1 can\'t be the same.');
+	cfg.memory.kickShifter = getCheckbox("cfg_rom_kickshifter");
+
+	/* floppy */
+	getAdvandedFloppy();
+
+	/* mount */
+	getAdvandedMount()
+
+	/* video */
+	cfg.video.id = "myVideo";
+	cfg.video.enabled = getCheckbox("cfg_video_enabled");
+	if (cfg.video.enabled) {
+		cfg.video.api = getSelect("cfg_video_api");
+		cfg.video.colorMode = getSelect("cfg_video_color_mode");
+		cfg.video.antialias = getCheckbox("cfg_video_antialias");
+		//cfg.video.apmode[0].gfx_fullscreen = getRadio("cfg_video_fs");
+		//cfg.video.size_win.width = getText("cfg_video_win_width");
+		//cfg.video.size_win.height = getText("cfg_video_win_height");
+		//cfg.video.size_fs.width = getText("cfg_video_fs_width");
+		//cfg.video.size_fs.height = getText("cfg_video_fs_height");
+		cfg.video.hresolution = getSelect("cfg_video_resolution");
+		switch (getSelect("cfg_video_linemode")) {
+			case 0:
+				cfg.video.vresolution = SAEC_Config_Video_VResolution_NonDouble;
+				cfg.video.pscanlines = 0;
+				cfg.video.iscanlines = 0;
+				break;
+			case 1:
+				cfg.video.vresolution = SAEC_Config_Video_VResolution_Double;
+				cfg.video.pscanlines = 0;
+				cfg.video.iscanlines = getSelect("cfg_video_interlace");
+				break;
+			case 2:
+				cfg.video.vresolution = SAEC_Config_Video_VResolution_Double;
+				cfg.video.pscanlines = 1;
+				cfg.video.iscanlines = getSelect("cfg_video_interlace");
+				break;
+		}
+		cfg.video.framerate = getCheckbox("cfg_video_skip") ? 2 : 1;
+		cfg.video.xcenter = getCheckbox("cfg_video_xcenter") ? 2 : 0;
+		cfg.video.ycenter = getCheckbox("cfg_video_ycenter") ? 2 : 0;
+		cfg.video.luminance = getText("cfg_video_brightness");
+		cfg.video.contrast = getText("cfg_video_contrast");
+		cfg.video.gamma = getText("cfg_video_gamma");
+		cfg.video.backgroundColor = Number("0x"+getText("cfg_video_background", true));
+		cfg.video.alpha = getText("cfg_video_alpha");
+		cfg.video.blackerThanBlack = getCheckbox("cfg_video_blackerthanblack");
+		cfg.video.refreshIndicator = getCheckbox("cfg_video_refreshindicator");
+		cfg.video.size_win.width = SAEC_Video_DEF_AMIGA_WIDTH << cfg.video.hresolution;
+		cfg.video.size_win.height = SAEC_Video_DEF_AMIGA_HEIGHT << cfg.video.vresolution;
+	}
+
+	/* audio */
+	if (getCheckbox("cfg_audio_enabled"))
+		cfg.audio.mode = getSelect("cfg_audio_mode");
+	else
+		cfg.audio.mode = SAEC_Config_Audio_Mode_Off;
+
+	if (cfg.audio.mode != SAEC_Config_Audio_Mode_Off) {
+		cfg.audio.bufferFrames = getSelect("cfg_audio_buffer_frames");
+		cfg.audio.filter = getSelect("cfg_audio_filter");
+		cfg.audio.filterType = getSelect("cfg_audio_filtertype");
+		cfg.audio.freq = getSelect("cfg_audio_freq");
+		cfg.audio.stereoSeparation = getSelect("cfg_audio_separation");
+		cfg.audio.stereoDelay = getSelect("cfg_audio_delay");
+		cfg.audio.channels = getSelect("cfg_audio_channels");
+		cfg.audio.interpol = getSelect("cfg_audio_interpolation");
+	}
+
+	/* ports */
+	cfg.ports[0].type = getSelect("cfg_ports_0");
+	if (cfg.ports[0].type == SAEC_Config_Ports_Type_Joy0) {
+		cfg.ports[0].move = getSelect("cfg_ports_0_move");
+		cfg.ports[0].fire[0] = getSelect("cfg_ports_0_fire_1");
+		cfg.ports[0].fire[1] = getSelect("cfg_ports_0_fire_2");
+		if (cfg.ports[0].fire[0] != SAEC_Config_Ports_Fire_None && cfg.ports[0].fire[0] == cfg.ports[0].fire[1]) {
+			alert("Fire-button 1/2 on port 0 can\"t be the same.");
 			return false;
 		}
-	}		
+	}
+	cfg.ports[1].type = getSelect("cfg_ports_1");
+	if (cfg.ports[1].type == SAEC_Config_Ports_Type_Joy1) {
+		cfg.ports[1].move = getSelect("cfg_ports_1_move");
+		cfg.ports[1].fire[0] = getSelect("cfg_ports_1_fire_1");
+		cfg.ports[1].fire[1] = getSelect("cfg_ports_1_fire_2");
+		if (cfg.ports[1].fire[0] != SAEC_Config_Ports_Fire_None && cfg.ports[1].fire[0] == cfg.ports[1].fire[1]) {
+			alert("Fire-button 1/2 on port 1 can\"t be the same.");
+			return false;
+		}
+	}
 
-	config.serial.enabled = document.getElementById('cfg_serial_enabled').checked ? true : false;
+	cfg.keyboard.enabled = getCheckbox("cfg_keyborad_enabled");
 
-	config.hooks.error = hooks_error;
-	config.hooks.power_led = hooks_power_led;
-	config.hooks.floppy_motor = hooks_floppy_motor;
-	config.hooks.floppy_step = hooks_floppy_step;
-	config.hooks.fps = hooks_fps;					
-	config.hooks.cpu = hooks_cpu;		
-		
-	if (config.chipset.mask != SAEV_Config_Chipset_Mask_OCS)
-		config.chipset.agnus_dip = false;
+	cfg.serial.enabled = getCheckbox("cfg_serial_enabled");
 
-	return true;	
-}	
+	/* hooks */
+	setHooks();
+	return true;
+}
 
 /*-----------------------------------------------------------------------*/
 /* main */
 
-function init() {
-	cache = new Cache();
-	
-	SAE({cmd:'init'});		
-
-	info = SAE({cmd:'getInfo'}); 
-	config = SAE({cmd:'getConfig'}); 
-	//console.log(info);	
-	//console.log(config);	
-	
-	setSimpleConfig();
-
-	if (window.location.hash.length > 1) {
-		var start = false;
-		var name = urldecode(window.location.hash.substr(1));
-		while (true) {
-			var tmp = name.replace('_', ' ');
-			if (tmp == name) break;
-			name = tmp;	
-		}					
-		for (var i = 0; i < db[0].length; i++) {
-			if (db[0][i][0] == name) {
-				document.getElementById('cfg_game')[i+1].selected = true;
-				preSelect(1);
-				start = true;
-				break;
-			}		
-		}		
-		if (!start) {
-			for (var i = 0; i < db[1].length; i++) {
-				if (db[1][i][0] == name) {
-					document.getElementById('cfg_demo')[i+1].selected = true;
-					preSelect(2);
-					start = true;
-					break;
-				}		
-			}		
-		}
-		if (start)
-			simpleStart();
-	}
-}	
-
-function mainStart() {
-	return SAE({cmd: 'start'});
-}
 function start() {
-	document.body.style.backgroundColor = '#000';
-	styleDisplayBlock('base', 0);
-	styleDisplayBlock('emul', 1);
-	
-	if (mode == 0) {	
-		var item = dbNum > 0 ? db[dbGrp - 1][dbNum - 1] : null;
-		if (item) {
-			var name = item[0];
-			while (true) {
-				var tmp = name.replace(' ', '_');
-				if (tmp == name) break;
-				name = tmp;	
-			}					
-			window.location.hash = name;
-		} else
-			window.location.hash = '';
-	} else	
-		window.location.hash = '';
-	
-	//SAE({cmd:'setConfig',data:config});
-	/*var result = SAE({cmd:'start'});
-	if (result.error != SAEE_None) {
-		stop();
-		alert(result.message);		
-	}*/
+	var s = cache.state();
+	if (s == S_VALID) { /* all files are downloaded or cached, go! */
+		freezeButtons(false, true);
+		switchBaseEmul(true);
 
-	if (BrowserDetect.browser == 'Firefox') {	/* Thanks 'dmcoles' */
-		console.log('Enabling audio-start delay for Firefox...');
-		setTimeout(mainStart, 50);	
-	} else
-		mainStart();	
-}	
-
-function simpleStart2() {
-	if (getSimpleConfig())
-		start();	
-	else {
-		disabled('cfg_simple_start', 0);				
-		document.getElementById('cfg_simple_start').innerHTML = 'Play';
+		var err = sae.start(); /* this does start the emulator */
+		if (err != SAEE_None) {
+			switchBaseEmul(false);
+			alert(saee2text(err));
+		}
+	}
+	else if (s == S_PENDING) { /* files are still downloading, wait... */
+		setTimeout(start, 250);
+	}
+	else /*if (s == S_ERROR)*/ { /* XMLHttpRequest-error */
+		freezeButtons(false, true);
 	}
 }
-function simpleStart() {
-	disabled('cfg_simple_start', 1);				
-	document.getElementById('cfg_simple_start').innerHTML = 'Loading...';
-	setTimeout('simpleStart2()', 1);
+/*function delayedStart() {
+	if (SAEC_Info.browser.id == SAEC_Info_Brower_ID_Firefox) {	// Thanks "dmcoles"
+		console.log("delayedStart() enabling audio-start delay for Firefox...");
+		setTimeout(start, 50);
+	} else
+		start();
+}*/
+
+function databaseStart() {
+	if (getDatabaseConfig()) {
+		freezeButtons(true, true);
+		//addItemToURL();
+		//delayedStart();
+		start();
+	}
 }
 
-function advandedStart2() {
-	if (getConfig())
-		start();
-	else {
-		disabled('cfg_start', 0);				
-		document.getElementById('cfg_start').innerHTML = 'Start';
-	}	
-}	
 function advandedStart() {
-	disabled('cfg_start', 1);				
-	document.getElementById('cfg_start').innerHTML = 'Loading...';
-	setTimeout('advandedStart2()', 1);
-}	
-	
+	if (getAdvandedConfig()) {
+		freezeButtons(true, true);
+ 		//delayedStart();
+		start();
+	}
+}
+
 function stop() {
-	SAE({cmd:'stop'});	
+	sae.stop();
 
 	if (paused) {
-		var e = document.getElementById('status_pr');
-		e.value = 'pause';	
-		e.onclick = function () {
-			pause(1);
-		};
 		paused = false;
+		switchPauseResume(paused);
 	}
 	if (dskchg)
 		dskchgClose();
 
-	disabled('cfg_simple_start', 0);				
-	disabled('cfg_start', 0);				
-	document.getElementById('cfg_simple_start').innerHTML = 'Play';
-	document.getElementById('cfg_start').innerHTML = 'Start';
+	if (mode == MODE_Advanced)
+		setAdvandedConfig();
 
-	if (mode == 1)
-		setConfig();
-
-	styleDisplayBlock('emul', 0);
-	styleDisplayBlock('base', 1);
-	document.body.style.backgroundColor = '#fff';
-}	
+	switchBaseEmul(false);
+}
 
 function reset() {
-	SAE({cmd:'reset'});		
-}	
+	sae.reset();
+
+	if (paused) {
+		paused = false;
+		switchPauseResume(paused);
+	}
+	if (dskchg)
+		dskchgClose();
+}
 
 function pause(p) {
-	var e = document.getElementById('status_pr');
-	e.innerHTML = p ? 'Resume' : 'Pause';	
-	e.onclick = function () {
-		pause(1 - p);
-	};
-		
+	switchPauseResume(p);
 	paused = p;
 
-	SAE({cmd:'pause',state:p});		
-}	
-
-/*-----------------------------------------------------------------------*/
-/* config */
-
-function switchCfg(m)
-{
-	styleDisplayBlock('config_advanced', m == 1);
-	styleDisplayBlock('config_simple', m != 1);
-	if (m == 0)
-		setSimpleConfig();		
-	else
-		setConfig();
-	
-	mode = m;
+	sae.pause(p); /* true == pause, false == resume */
 }
 
-/*-----------------------------------------------------------------------*/
-/* simple config */
+/*---------------------------------*/
 
-function preSelect(grp)
-{
-	var num;
-	if (grp == 1) {
-		num = parseInt(getSelectValue(document.getElementById('cfg_game')));
-		unselect(document.getElementById('cfg_demo'));		
-	} else {
-		unselect(document.getElementById('cfg_game'));		
-		num = parseInt(getSelectValue(document.getElementById('cfg_demo')));
-	}	
-	dbGrp = grp;
-	dbNum = num;	
+function init() {
+	cache = new Cache();
 
-	if (num == 0) {
-		styleDisplayTable('cfg_info', 0);
-		return;
-	}	
-	var item = db[grp - 1][num - 1];
-		
-	document.getElementById('cfg_info_name').innerHTML = item[0];
-	if (typeof(item[1]) == 'object') {
-		document.getElementById('cfg_info_comp').innerHTML = item[1][0];
-		document.getElementById('cfg_info_publ').innerHTML = item[1][1];
-		document.getElementById('cfg_info_lic').innerHTML = item[1][2];
-	} else {
-		document.getElementById('cfg_info_comp').innerHTML = item[1];
-		document.getElementById('cfg_info_publ').innerHTML = '-';		
-		document.getElementById('cfg_info_lic').innerHTML = '-';		
-	}
-	document.getElementById('cfg_info_year').innerHTML = item[2];
-	styleDisplayTable('cfg_info', 1);
-	styleDisplayInline('dskchg_grp', item[4][0] ? 1 : 0);	
+	sae = new ScriptedAmigaEmulator(); /* create emulator */
+	inf = sae.getInfo(); /* reference to cfg */
+	cfg = sae.getConfig(); /* reference to cfg */
 
-	if (item[6].length) {
-		document.getElementById('cfg_info_load').innerHTML = item[6];	
-		styleDisplayTableRow('cfg_info_load_grp', 1);
-	} else
-		styleDisplayTableRow('cfg_info_load_grp', 0);
-	
-	if (grp == 2) {
-		styleDisplayTableRow('cfg_info_ctrl_grp', 0);	
-	} else {
-		var keys = [];
-		if (item[5][0]) {
-			var input = [
-				['Movement','Arrows'],
-				['Fire 1',fireButtonName(item[5][1])],
-				['Fire 2',fireButtonName(item[5][2])]
-			];
-			keys = keys.concat(input);
+	//console.log(inf);
+	//console.log(cfg);
+
+	initHooks();
+
+	dbInit();
+	setDatabaseConfig();
+
+	if (window.location.hash.length > 1) {
+		var start = false;
+		var name = decodeURL(window.location.hash.substr(1));
+		while (true) {
+			var tmp = name.replace("_", " ");
+			if (tmp == name) break;
+			name = tmp;
 		}
-		if (item[7].length)
-			keys = keys.concat(item[7]);
-
-		var ctrl = '';
-		for (var i = 0; i < keys.length; i++)
-			ctrl += keys[i][0]+': '+keys[i][1]+'<br/>';						
-
-		var ctrl = '<table style="border:1px solid #ccc;padding:2px;background-color:#fcfcfc">';
-		for (var i = 0; i < keys.length; i++)
-			ctrl += '<tr><td class="armsb">'+keys[i][0]+':</td><td>'+keys[i][1]+'</td></tr>';						
-		ctrl += '</table>';
-
-		document.getElementById('cfg_info_ctrl').innerHTML = ctrl;
-		styleDisplayTableRow('cfg_info_ctrl_grp', 1);
+		var pos;
+		if ((pos = dbFindTypeNamePos(DBT_GAME, name)) != -1) {
+			setSelect("cfg_game", pos+1);
+			preSelect(DBT_GAME);
+			start = true;
+		}
+		if (!start) {
+			if ((pos = dbFindTypeNamePos(DBT_DEMO, name)) != -1) {
+				setSelect("cfg_demo", pos+1);
+				preSelect(DBT_DEMO);
+				start = true;
+			}
+		}
+		if (!start) {
+			if ((pos = dbFindTypeNamePos(DBT_DAGA, name)) != -1) {
+				setSelect("cfg_demo_aga", pos+1);
+				preSelect(DBT_DAGA);
+				start = true;
+			}
+		}
+		if (!start) {
+			if ((pos = dbFindTypeNamePos(DBT_TOOL, name)) != -1) {
+				//document.getElementById("cfg_tool")[pos+1].selected = true;
+				setSelect("cfg_tool", pos+1);
+				preSelect(DBT_TOOL);
+				start = true;
+			}
+		}
+		if (start)
+			databaseStart();
 	}
 }
 
 /*-----------------------------------------------------------------------*/
-/* advanced config */
+/*-----------------------------------------------------------------------*/
+/*-----------------------------------------------------------------------*/
 
-function romAROS() {
-	//document.getElementById('cfg_rom_aros').innerHTML = 'Loading...';				
-	disabled('cfg_rom_aros', 1);				
-	
-	config.rom.name = aros_rom_file;
-	config.rom.size = SAEV_Config_ROM_Size_512K;
-	if ((config.rom.data = cache.loadRom(0)) === null)
-		return false;	
-	
-	config.ext.name = aros_ext_file;
-	config.ext.size = SAEV_Config_EXT_Size_512K;
-	config.ext.addr = SAEV_Config_EXT_Addr_E0;
-	if ((config.ext.data = cache.loadRom(1)) === null)
-		return false;	
+function switchCfg(m) {
+	if (m == MODE_Database) {
+		if (mode == MODE_Advanced) {
+			if (!confirm("Going back to the database will reset the current configuration.\n\nAre you sure?"))
+				return;
+		} else {
+			alert("Click this logo in the advanced-config, if you want to return here.");
+			return;
+		}
+	}
+	mode = m;
 
-	/*document.getElementById('cfg_rom_aros').style.visibility = 'hidden';*/	
+	styleDisplayBlock("config_database", m == MODE_Database);
+	styleDisplayBlock("config_advanced", m == MODE_Advanced);
 
-	setRomName(config.rom.name);
-	setExtName(config.ext.name);
-	document.getElementById('cfg_ext_addr')[0].selected = true;
-	styleDisplayInline('cfg_ext_remove', 1);
-	styleDisplayTableRow('cfg_ext_addr_grp', 1); 	
-	disabled('cfg_rom_aros', 0);
-	return true;
+	sae.setDefaults();
+
+	if (m == MODE_Database) {
+		if (page == PID_Floppy_Info && floppyNum != -1)
+			floppyCloseInfo();
+		else if (page == PID_Mount_Setup && mountConfigNum != -1)
+			mountCloseSetup(false);
+
+		setDatabaseConfig();
+		changePage(PID_None);
+	} else /*if (m == MODE_Advanced)*/ {
+		preSelect(0);
+
+		setAdvandedConfig();
+		if (page == PID_None)
+			changePage(PID_Model);
+	}
+}
+
+/*-----------------------------------------------------------------------*/
+/* database cfg */
+
+function preSelect(grp) {
+	function insertRow1(table, item) {
+		var row = table.insertRow(-1);
+		var cell = row.insertCell(-1);
+		cell.innerHTML = item;
+		cell.colSpan = 4;
+	}
+	function insertRow2(table, item) {
+		var row = table.insertRow(-1);
+		var cell1 = row.insertCell(-1);
+		var cell2 = row.insertCell(-1);
+		cell1.className = "arm";
+		cell1.innerHTML = '<span class="label">'+item[0]+'</span>';
+		cell2.className = "alm";
+		cell2.innerHTML = item[1];
+		cell2.colSpan = 3;
+		cell2.style.width = "100%";
+	}
+	function insertRow4(table, item1, item2) {
+		var row = table.insertRow(-1);
+		var cell1 = row.insertCell(-1);
+		var cell2 = row.insertCell(-1);
+		if (item1 !== false) {
+			cell1.className = "arm";
+			cell1.innerHTML = '<span class="label">'+item1[0]+'</span>';
+			cell2.className = "alm";
+			cell2.innerHTML = item1[1];
+		}
+		cell1 = row.insertCell(-1);
+		cell2 = row.insertCell(-1);
+		cell2.style.width = "50%";
+		if (item2 !== false) {
+			cell1.className = "arm";
+			cell1.innerHTML = '<span class="label">'+item2[0]+'</span>';
+			cell2.className = "alm";
+			cell2.innerHTML = item2[1];
+		}
+	}
+
+	/* remove old box */
+	var div = document.getElementById("config_database_info");
+	var table = document.getElementById("config_database_info_content");
+	if (table)
+		div.removeChild(table);
+
+	var id = "";
+	if (dbGrp > 0 && dbGrp != grp) {
+		id = DB_IDS[0][dbGrp - 1];
+		setSelect(id, 0);
+	}
+
+	if (grp > 0) {
+		id = DB_IDS[0][grp - 1];
+		dbUrl = DB_URLS[grp - 1];
+		dbGrp = grp;
+		dbNum = getSelect(id);
+	} else {
+		dbGrp = 0;
+		dbNum = 0;
+		dbUrl = "";
+		return; /* no group selected */
+	}
+	if (dbNum == 0) /* no entry selected */
+		return;
+
+	/* create new box */
+	var dbe = db[dbNum - 1];
+
+	styleDisplayTableCell("controls_disk", (dbe.flags & DBF_MDC) != 0);
+
+	var href = dbe.name;
+	while (true) {
+		var tmp = href.replace(" ", "_");
+		if (tmp == href) break;
+		href = tmp;
+	}
+	href = "http://" + window.location.hostname + "/#" + href;
+	var nameLink = dbe.name+" (<a target=\"_blank\" href=\""+href+"\">share</a>)";
+
+	var license = "";
+	if (dbe.license.length) {
+		if (dbe.license == "PD") license = "Public Domain";
+		else if (dbe.license == "FW") license = "Freeware";
+		else license = dbe.license;
+	}
+
+	if (grp == DBT_GAME) {
+		var keys = [
+			["Movement","Arrows"],
+			["Fire", fireButtonName(16)],
+			["Alt-fire", fireButtonName(17)]
+		];
+		var ctrl = "";
+		for (var i = 0; i < keys.length; i++)
+			ctrl += keys[i][0]+": "+keys[i][1]+"<br/>";
+
+		var ctrl = "<table class=\"ctrl\">";
+		for (var i = 0; i < keys.length; i++)
+			ctrl += "<tr><td class=\"arm\">"+keys[i][0]+":</td><td>"+keys[i][1]+"</td></tr>";
+		ctrl += "</table>";
+	}
+
+	table = document.createElement("table");
+	table.id = "config_database_info_content";
+	table.style.width = "100%";
+	table.style.whiteSpace = "normal";
+
+	insertRow1(table, "<div style=\"height:5px\"></div>");
+	insertRow1(table, "<div class=\"linehoriz\"></div>");
+	insertRow1(table, "<div style=\"height:5px\"></div>");
+
+	insertRow4(table, ["Name", nameLink], dbe.license.length ? ["License", license] : false);
+	insertRow4(table, ["Developer", dbe.developer], dbe.publisher.length ? ["Publisher", dbe.publisher] : false);
+	insertRow2(table, ["Year", dbe.year]);
+	if (grp == DBT_GAME)
+		insertRow2(table, ["Controls", ctrl]);
+	if (dbe.notes.length)
+		insertRow2(table, ["Notes", dbe.notes]);
+
+	div.appendChild(table);
+}
+
+/*-----------------------------------------------------------------------*/
+/* advanced cfg */
+
+function getPageElementID(pid) {
+	switch (pid) {
+		case PID_Model: return "cfg_page_model";
+		case PID_CPU: return "cfg_page_cpu";
+		case PID_Chipset: return "cfg_page_chipset";
+		case PID_RAM: return "cfg_page_ram";
+		case PID_ROM: return "cfg_page_rom";
+		case PID_ROM_Info: return "cfg_page_rom_info";
+		case PID_Floppy: return "cfg_page_floppy";
+		case PID_Floppy_Info: return "cfg_page_floppy_info";
+		case PID_Mount: return "cfg_page_mount";
+		case PID_Mount_Setup: return "cfg_page_mount_setup";
+		case PID_Video: return "cfg_page_video";
+		case PID_Audio: return "cfg_page_audio";
+		case PID_Ports: return "cfg_page_ports";
+	}
+}
+function changePage(pid) {
+	if (page != PID_None && page == pid)
+		return;
+	if (page != PID_None) {
+		if (page == PID_ROM_Info && romNum != -1)
+			closeRomInfo();
+		else if (page == PID_Floppy_Info && floppyNum != -1)
+			floppyCloseInfo();
+		else if (page == PID_Mount_Setup && mountConfigNum != -1)
+			mountCloseSetup(false);
+
+		var id = getPageElementID(page);
+		styleDisplayBlock(id, false);
+	}
+	page = pid;
+	if (page != PID_None) {
+		var id = getPageElementID(page);
+		styleDisplayBlock(id, true);
+	}
+}
+
+/*---------------------------------*/
+
+function selectModel() {
+	var v = getRadio("cfg_model", true);
+	if (v === false)
+		alert("Please select a model.");
+	else {
+		var model, modelConfig = 0;
+		var e = document.getElementById("cfg_model_select");
+		e.disabled = "disabled";
+		e.innerHTML = "DONE";
+
+		switch (v) {
+			case "A500": model = SAEC_Model_A500; modelConfig = getSelect("cfg_model_a500");  break;
+			case "A500P": model = SAEC_Model_A500P; modelConfig = getSelect("cfg_model_a500p"); break;
+			case "A600": model = SAEC_Model_A600; modelConfig = getSelect("cfg_model_a600"); break;
+			case "A1000": model = SAEC_Model_A1000; modelConfig = getSelect("cfg_model_a1000"); break;
+			case "A1200": model = SAEC_Model_A1200; modelConfig = getSelect("cfg_model_a1200"); break;
+			case "A2000": model = SAEC_Model_A2000; break;
+			case "A3000": model = SAEC_Model_A3000; break;
+			case "A4000": model = SAEC_Model_A4000; break;
+			//case "A4000T": model = SAEC_Model_A4000T; break;
+			//case "CDTV": model = SAEC_Model_CDTV; break; modelConfig = getSelect("cfg_model_cdtv"); break;
+			//case "CD32": model = SAEC_Model_CD32; break;
+			default: return;
+		}
+		sae.setModel(model, modelConfig);
+		setAdvandedConfig();
+		setTimeout(selectModelDone, 250);
+	}
+}
+function selectModelUpdate(model) {
+	setRadio("cfg_model", model);
+}
+function selectModelDone() {
+	var e = document.getElementById("cfg_model_select");
+	e.disabled = "";
+	e.innerHTML = "Set";
+}
+
+/*---------------------------------*/
+
+function featuresUpdate() {
+	var manual = getSelect("cfg_chipset_features", true) == "manual";
+	styleDisplayBlock("cfg_chipset_features_grp", manual);
+}
+
+function immediateUpdate(imm) {
+	if (imm) {
+		setSelect("cfg_blitter_waiting", 0);
+		setDisabled("cfg_blitter_waiting", true);
+	} else
+		setDisabled("cfg_blitter_waiting", false);
+}
+
+/*---------------------------------*/
+
+function romUpdate() {
+	var aros = getCheckbox("cfg_rom_use_aros");
+
+	styleDisplayBlock("cfg_rom_grp", aros ? false : true);
+	if (!aros) {
+		cfg.memory.rom.clr();
+		cfg.memory.extRom.clr();
+		cfg.memory.romKey.clr();
+		cfg.memory.amaxRom.clr();
+
+		setRomName();
+		setExtName();
+		setKeyName();
+		setAMaxName();
+	}
+}
+
+function getRomType(ri) {
+	var type = "";
+
+	if (ri.type & SAEC_RomType_ALL_KICK)
+		type = "Kickstart";
+	else if (ri.type & SAEC_RomType_ALL_EXT)
+		type = "Extended";
+	else if (ri.type & SAEC_RomType_ALL_CART)
+		type = "Cartridge";
+	else if (ri.type & SAEC_RomType_KEY)
+		type = "Keyfile";
+	else if (ri.type & SAEC_RomType_AMAX)
+		type = "Macintosh";
+
+	return type;
+}
+
+function openRomInfo(ri) {
+	const NA = "&lt;na&gt;";
+	const NONE = "&lt;none&gt;";
+	function span(cn, str) {
+		return '<span class="'+cn+'">'+str+'</span>';
+	}
+	//sprintf("%08X%08X%08X%08X%08X", ri.sha1[0], ri.sha1[1], ri.sha1[2], ri.sha1[3], ri.sha1[4])
+	var isKey = (ri.type & SAEC_RomType_KEY) != 0;
+
+	if (isKey) {
+		//setText2("cfg_rom_info_name", ri.name);
+		setText2("cfg_rom_info_models", "All");
+
+		setText2("cfg_rom_info_size", sprintf("%d (%dK)", ri.size, ri.size >> 10));
+		setText2("cfg_rom_info_crc32", sprintf("%08X", ri.crc32));
+
+		setText2("cfg_rom_info_checksum", span("gray", NA));
+
+		setText2("cfg_rom_info_version", span("gray", NA));
+		setText2("cfg_rom_info_encrytion", "Cloanto");
+
+		setText2("cfg_rom_info_type", getRomType(ri));
+		setText2("cfg_rom_info_cpu", span("gray", NA));
+
+		setText2("cfg_rom_info_partnumber", span("gray", NA));
+	} else {
+		var cpu = String(ri.cpu);
+		if (ri.cpu == 68020 && ri.addressSpace24)
+			cpu = "68EC020";
+		else if (ri.cpu == 68000)
+			cpu = "All";
+		else {
+			if (ri.cpuExact)
+				cpu += " only";
+			else
+				cpu += " minimum";
+			if (!ri.addressSpace24)
+				cpu += " / 32bit";
+		}
+		//setText2("cfg_rom_info_name", ri.name);
+		setText2("cfg_rom_info_models", ri.models);
+
+		setText2("cfg_rom_info_size", sprintf("%d (%dK)", ri.size, ri.size >> 10));
+		setText2("cfg_rom_info_crc32", sprintf("%08X", ri.crc32));
+
+		if (ri.checksum !== false)
+			setText2("cfg_rom_info_checksum", sprintf("%08X (%s)", ri.checksum, ri.checksumValid ? span("green", "valid") : span("orange", "invalid")));
+		else
+			setText2("cfg_rom_info_checksum", span("gray", NA));
+
+		if (ri.type & SAEC_RomType_AMAX)
+			setText2("cfg_rom_info_version", sprintf("%03x %04x %04x", ri.ver, ri.rev, ri.subVer));
+		else if (ri.type & SAEC_RomType_ALL_KICK)
+			setText2("cfg_rom_info_version", sprintf("%d.%d (exec.library %d.%d)", ri.ver, ri.rev, ri.subVer, ri.subRev));
+		else
+			setText2("cfg_rom_info_version", sprintf("%d.%d (%d.%d)", ri.ver, ri.rev, ri.subVer, ri.subRev));
+
+		setText2("cfg_rom_info_encrytion", ri.cloanto ? "Cloanto" : span("gray", NONE));
+
+		setText2("cfg_rom_info_type", getRomType(ri));
+		setText2("cfg_rom_info_cpu", cpu);
+
+		setText2("cfg_rom_info_partnumber", ri.partNumber.length ? ri.partNumber : span("gray", NA));
+	}
+	romNum = 0;
+	freezeButtons(true, false);
+	changePage(PID_ROM_Info);
+}
+function closeRomInfo() {
+	romNum = -1;
+	changePage(PID_ROM);
+	freezeButtons(false, false);
 }
 
 function romSelect() {
-	var e = document.getElementById('cfg_rom_file').files[0];
-	if (!e) return;
-	if (!(e.size == 0x40000 || e.size == 0x80000)) {
-		alert('Invalid rom-size, 256 or 512kb.');	
-		return;
-	}
-	loadLocal(e, function (event) {  
-		/*
-		document.getElementById('cfg_rom_aros').style.visibility = 'visible';	
-		document.getElementById('cfg_rom_aros').innerHTML = 'Set AROS';				
-		disabled('cfg_rom_aros', 0);*/				
-		config.rom.name = e.name;
-		config.rom.size = e.size == 0x40000 ? SAEV_Config_ROM_Size_256K : SAEV_Config_ROM_Size_512K;	
-		config.rom.data = event.target.result;
-		setRomName(config.rom.name);
-	});
-}		
+	var e = document.getElementById("cfg_rom_file").files[0];
+	if (e) {
+		loadFile(e, function (event) {
+			//cfg.memory.rom.path = e.path;
+			cfg.memory.rom.name = e.name;
+			cfg.memory.rom.data = event.target.result;
+			cfg.memory.rom.size = e.size;
+			cfg.memory.rom.crc32 = crc32(event.target.result);
 
-function extSelect() {
-	var e = document.getElementById('cfg_ext_file').files[0];
-	if (!e) return;
-	if (!(e.size == 0x40000 || e.size == 0x80000)) {
-		alert('Invalid extended rom-size, 256 or 512kb.');	
-		return;
+			defRomInfo = new SAEO_RomInfo();
+			var err = sae.getRomInfo(defRomInfo, cfg.memory.rom);
+			if (err == SAEE_None) {
+				defRomEncrypted = defRomInfo.cloanto;
+				if (!(defRomInfo.type & SAEC_RomType_ALL_KICK))
+					alert("A 'Kickstart'-ROM is required, but you selected a/an '"+getRomType(defRomInfo)+"'-ROM.");
+			} else {
+				defRomInfo = null;
+				if (err != SAEE_Memory_RomUnknown) {
+					if (err == SAEE_Memory_RomKey || err == SAEE_Memory_RomDecode) {
+						defRomEncrypted = true;
+						setKeyName();
+						if (err == SAEE_Memory_RomDecode)
+							alert(saee2text(err));
+					}
+				}
+			}
+			setRomName();
+		});
 	}
-	loadLocal(e, function (event) {  
-		/*document.getElementById('cfg_rom_aros').style.visibility = 'visible';	
-		document.getElementById('cfg_rom_aros').innerHTML = 'Set AROS';				
-		disabled('cfg_rom_aros', 0);*/ 	
-		config.ext.name = e.name;
-		config.ext.size = e.size == 0x40000 ? SAEV_Config_EXT_Size_256K : SAEV_Config_EXT_Size_512K;	
-		config.ext.data = event.target.result;
-		setExtName(config.ext.name);
-		styleDisplayInline('cfg_ext_remove', 1);
-		styleDisplayTableRow('cfg_ext_addr_grp', 1); 	
-	});
-}		
-
-function extRemove() {
-	/*document.getElementById('cfg_rom_aros').style.visibility = 'visible';	
-	document.getElementById('cfg_rom_aros').innerHTML = 'Set AROS';				
-	disabled('cfg_rom_aros', 0);*/ 	
-	config.ext.name = null;
-	config.ext.size = SAEV_Config_EXT_Size_None;
-	config.ext.data = null;
-	setExtName(config.ext.name);
-	styleDisplayInline('cfg_ext_remove', 0);
-	styleDisplayTableRow('cfg_ext_addr_grp', 0); 	
+}
+function romRemove() {
+	cfg.memory.rom.clr();
+	setRomName();
+	if (defRomEncrypted) {
+		defRomEncrypted = false;
+		setKeyName();
+	}
+}
+function romOpenInfo() {
+	if (defRomInfo !== null)
+		openRomInfo(defRomInfo);
 }
 
-function floppyUpdate(n) {
-	if (document.getElementById('cfg_df'+n+'_enabled').checked) {
-		styleDisplayInline('cfg_df'+n+'_grp', 1);
-		 	
-		var e = document.getElementById('cfg_df'+n+'_type');
-		config.floppy.drive[n].type = parseInt(getSelectValue(e));
-		floppyEject(n);		
-	} else {
-		styleDisplayInline('cfg_df'+n+'_grp', 0); 	
-		floppyEject(n);		
-		config.floppy.drive[n].type = SAEV_Config_Floppy_Type_None;
+function extSelect() {
+	var e = document.getElementById("cfg_ext_file").files[0];
+	if (e) {
+		loadFile(e, function (event) {
+			//cfg.memory.extRom.path = e.path;
+			cfg.memory.extRom.name = e.name;
+			cfg.memory.extRom.data = event.target.result;
+			cfg.memory.extRom.size = e.size;
+			cfg.memory.extRom.crc32 = crc32(event.target.result);
+
+			extRomInfo = new SAEO_RomInfo();
+			var err = sae.getRomInfo(extRomInfo, cfg.memory.extRom);
+			if (err == SAEE_None) {
+				extRomEncrypted = extRomInfo.cloanto;
+				if (!(extRomInfo.type & SAEC_RomType_ALL_EXT))
+					alert("A 'Extended'-ROM is required, but you selected a/an '"+getRomType(extRomInfo)+"'-ROM.");
+			} else {
+				extRomInfo = null;
+				if (err != SAEE_Memory_RomUnknown) {
+					if (err == SAEE_Memory_RomKey || err == SAEE_Memory_RomDecode) {
+						extRomEncrypted = true;
+						setKeyName();
+						if (err == SAEE_Memory_RomDecode)
+							alert(saee2text(err));
+					}
+				}
+			}
+			setExtName();
+		});
 	}
+}
+function extRemove() {
+	cfg.memory.extRom.clr();
+	setExtName();
+	if (extRomEncrypted) {
+		extRomEncrypted = false;
+		setKeyName();
+	}
+}
+function extOpenInfo() {
+	if (extRomInfo !== null)
+		openRomInfo(extRomInfo);
+}
+
+function keySelect() {
+	var e = document.getElementById("cfg_key_file").files[0];
+	if (e) {
+		loadFile(e, function (event) {
+			//cfg.memory.romKey.path = e.path;
+			cfg.memory.romKey.name = e.name;
+			cfg.memory.romKey.data = event.target.result;
+			cfg.memory.romKey.size = e.size;
+			cfg.memory.romKey.crc32 = crc32(event.target.result);
+
+			romKeyInfo = new SAEO_RomInfo();
+			var err = sae.getRomInfo(romKeyInfo, cfg.memory.romKey);
+			if (err != SAEE_None)
+				romKeyInfo = null;
+
+			setKeyName();
+
+			if (cfg.memory.rom.size && defRomEncrypted) {
+				defRomInfo = new SAEO_RomInfo();
+				var err = sae.getRomInfo(defRomInfo, cfg.memory.rom);
+				if (err != SAEE_None) {
+					defRomInfo = null;
+					if (err != SAEE_Memory_RomUnknown)
+						alert(saee2text(err));
+				}
+				setRomName();
+			}
+			if (cfg.memory.extRom.size && extRomEncrypted) {
+				extRomInfo = new SAEO_RomInfo();
+				var err = sae.getRomInfo(extRomInfo, cfg.memory.extRom);
+				if (err != SAEE_None) {
+					extRomInfo = null;
+					if (err != SAEE_Memory_RomUnknown)
+						alert(saee2text(err));
+				}
+				setExtName();
+			}
+		});
+	}
+}
+function keyRemove() {
+	cfg.memory.romKey.clr();
+	setKeyName();
+
+	if (defRomInfo !== null && defRomEncrypted) {
+		defRomInfo = null;
+		setRomName();
+	}
+	if (extRomInfo !== null && extRomEncrypted) {
+		extRomInfo = null;
+		setExtName();
+	}
+}
+function keyOpenInfo() {
+	if (romKeyInfo !== null)
+		openRomInfo(romKeyInfo);
+}
+
+function amaxSelect() {
+	var e = document.getElementById("cfg_amax_file").files[0];
+	if (e) {
+		loadFile(e, function (event) {
+			//cfg.memory.amaxRom.path = e.path;
+			cfg.memory.amaxRom.name = e.name;
+			cfg.memory.amaxRom.data = event.target.result;
+			cfg.memory.amaxRom.size = e.size;
+			cfg.memory.amaxRom.crc32 = crc32(event.target.result);
+
+			amaxInfo = new SAEO_RomInfo();
+			var err = sae.getRomInfo(amaxInfo, cfg.memory.amaxRom);
+			if (err == SAEE_None) {
+				if (!(amaxInfo.type & SAEC_RomType_AMAX))
+					alert("A 'Macintosh'-ROM is required, but you selected a/an '"+getRomType(amaxInfo)+"'-ROM.");
+			} else
+				amaxInfo = null;
+
+			setAMaxName();
+		});
+	}
+}
+function amaxRemove() {
+	cfg.memory.amaxRom.clr();
+	amaxInfo = null;
+	setAMaxName();
+}
+function amaxOpenInfo() {
+	if (amaxInfo !== null)
+		openRomInfo(amaxInfo);
+}
+
+/*---------------------------------*/
+
+function floppyEnable(n) {
+	if (getCheckbox("cfg_df"+n+"_enabled")) {
+		styleDisplayInline("cfg_df"+n+"_grp", 1);
+		cfg.floppy.drive[n].type = getSelect("cfg_df"+n+"_type");
+		cfg.floppy.drive[n].file.prot = getCheckbox("cfg_df"+n+"_wp");
+	} else {
+		styleDisplayInline("cfg_df"+n+"_grp", 0);
+		cfg.floppy.drive[n].type = SAEC_Config_Floppy_Type_None;
+		cfg.floppy.drive[n].file.prot = false;
+	}
+	floppyEject(n);
+}
+
+function floppyIsUsed(n) {
+	return (
+		cfg.floppy.drive[n].type != SAEC_Config_Floppy_Type_None &&
+		cfg.floppy.drive[n].file.size
+	);
+}
+function floppyWaitSelect() {
+	var s = cache.state();
+	if (s == S_VALID) { /* all files are downloaded or cached, go! */
+		for (var n = 0; n < 4; n++) {
+			if (floppyIsUsed(n))
+				setFloppyName(n);
+		}
+		freezeButtons(false, false);
+	}
+	else if (s == S_PENDING) { /* files are still downloading, wait... */
+		setTimeout(floppyWaitSelect, 250);
+	}
+	else /*if (s == S_ERROR)*/ { /* XMLHttpRequest-error */
+		for (var n = 0; n < 4; n++) {
+			if (cfg.floppy.drive[n].type == SAEC_Config_Floppy_Type_None)
+				floppyEject(n);
+		}
+		freezeButtons(false, false);
+	}
+}
+function floppySelect(grp) {
+	var id = DB_IDS[1][grp - 1];
+	var url = DB_URLS[grp - 1];
+	var num = getSelect(id);
+	var dbe = db[num - 1];
+
+	for (var n = 0; n < 4; n++) {
+		if (floppyIsUsed(n))
+			floppyEject(n);
+	}
+	for (n = 0; n < dbe.numdisks; n++) {
+		if (cfg.floppy.drive[n].type == SAEC_Config_Floppy_Type_None) {
+			setCheckbox("cfg_df"+n+"_enabled", true);
+			floppyEnable(n);
+		}
+
+		var filename = getDatabaseEntryFilename(dbe, n, true);
+		cfg.floppy.drive[n].type = SAEC_Config_Floppy_Type_35_DD;
+		cache.req(url, filename, 0xdc000, false, cfg.floppy.drive[n].file);
+
+		var e = document.getElementById("cfg_df"+n+"_name");
+		e.className = "orange";
+		e.innerHTML = "&lt;Downloading, please wait...&gt;";
+	}
+	cfg.floppy.speed = (dbe.flags & DBF_NOT) == 0 ? SAEC_Config_Floppy_Speed_Turbo : SAEC_Config_Floppy_Speed_Original;
+	setSelect("cfg_floppy_speed", cfg.floppy.speed);
+
+	setSelect(id, 0);
+	freezeButtons(true, false);
+	floppyWaitSelect();
 }
 
 function floppyInsert(n) {
-	var e = document.getElementById('cfg_df'+n+'_file').files[0];
-	var ok = true; //false;
-
-	if (!e) return;
-	/*if (e.size == 0xDC000)  {
-		if (AMIGA.config.floppy.drive[n].type == SAEV_Config_Floppy_Type_35_DD) 
-			ok = true;
-		else
-			alert('DF'+n+' is configured as HD-drive (1760kb), but you selected a DD-diskimage (880kb).');
-	}
-	else if (e.size == 0x1B8000) {
-		if (AMIGA.config.floppy.drive[n].type == SAEV_Config_Floppy_Type_35_HD) 
-			ok = true;
-		else
-			alert('DF'+n+' is configured as DD-drive (880kb), but you selected a HD-diskimage (1760kb).');
-	} else 
-		alert('Invalid diskimage-size, 880 or 1460 kb.');
-	*/
-
-	if (ok)
-		loadLocal(e, function (event) {  
-			config.floppy.drive[n].name = e.name;						
-			config.floppy.drive[n].data = event.target.result;						
-			setFloppyName(n, config.floppy.drive[n].name);
-			styleDisplayInline('cfg_df'+n+'_eject', 1); 				
+	var e = document.getElementById("cfg_df"+n+"_file").files[0];
+	if (e) {
+		loadFile(e, function(event) {
+			var file = cfg.floppy.drive[n].file;
+			//file.path = e.path;
+			file.name = e.name;
+			file.data = event.target.result;
+			file.size = e.size;
+			file.crc32 = crc32(event.target.result);
+			setFloppyName(n);
 		});
+	}
 }
 
 function floppyEject(n) {
-	config.floppy.drive[n].name = null;						
-	config.floppy.drive[n].data = null;						
-	setFloppyName(n, null);
-	styleDisplayInline('cfg_df'+n+'_eject', 0); 		
+	cfg.floppy.drive[n].file.clr();
+	setFloppyName(n);
+	document.getElementById("cfg_df"+n+"_file").value = "";
 }
 
-function audioUpdate() {
-	styleDisplayTable('cfg_audio_grp', document.getElementById('cfg_audio_enabled').checked);
+/*function floppyInfo(n) {
+	var file = cfg.floppy.drive[n].file;
+	if (file.size != 0) {
+		var di = sae.info(n);
+		var txt = "";
+		var i, j;
+
+		//txt += "Disk is: " + (di.unreadable ? "Unreadable" : "Ready") + "\n";
+		txt += "Label: " + (di.diskname.length ? "'"+di.diskname+"'" : "<unnamed>") + "\n";
+		txt += "Disksize: " + String(file.size) + " ("+String(file.size >> 10)+"K)\n";
+		txt += "Disktype: " + (di.hd ? "High Density (HD)" : "Double Density (DD)") + "\n";
+		txt += "Bootblock checksum: " + (di.bootblockChecksumValid ? "Valid" : "Invalid") + "\n";
+		txt += "Bootblock type: " + (di.bootblockType == 0 ? "Custom" : (di.bootblockType == 1 ? "Standard 1.x" : "Standard 2.x+")) + "\n";
+		txt += sprintf("CRC32: 0x%08x\n", di.crc32);
+		txt += "\n";
+		txt += "Press F12 if you want to see the bootblock in the developer-console...";
+
+		var bb = "Bootblock of '"+file.name+"' in DF"+String(n)+":\n";
+		for (j = 0; j < 32; j++) {
+			for (i = 0; i < 32; i++) {
+				var chr = di.bootblock[j * 32 + i];
+				bb += sprintf("%02X", chr);
+			}
+			bb += " ";
+			for (i = 0; i < 32; i++) {
+				var chr = di.bootblock[j * 32 + i];
+				if (chr >= 32 && chr <= 126)
+					bb += String.fromCharCode(chr);
+				else
+					bb += ".";
+			}
+			bb += "\n";
+		}
+		console.log(bb);
+
+		alert(txt);
+	}
+}*/
+
+function floppyOpenInfo(n) {
+	const NA = "&lt;na&gt;";
+	function span(cn, str) {
+		return '<span class="'+cn+'">'+str+'</span>';
+	}
+	var file = cfg.floppy.drive[n].file;
+	var di = new SAEO_DiskInfo();
+	var err = sae.getDiskInfo(di, n);
+	if (err != SAEE_None)
+		alert(saee2text(err));
+
+	floppyNum = n;
+
+	setText2("cfg_floppy_info_label", di.diskname.length ? di.diskname : span("gray", NA));
+	setText2("cfg_floppy_info_size", sprintf("%d (%dK)", file.size, file.size >> 10));
+	setText2("cfg_floppy_info_disktype", di.hd ? "High Density (HD)" : "Double Density (DD)");
+
+	if (di.bootblockChecksum !== false && di.bootblockChecksum !== 0)
+		setText2("cfg_floppy_info_checksum", sprintf("%08X (%s)", di.bootblockChecksum, di.bootblockChecksumValid ? span("green", "valid") : span("orange", "invalid")));
+	else
+		setText2("cfg_floppy_info_checksum", span("gray", NA));
+
+	setText2("cfg_floppy_info_boottype", di.bootblockType == 0 ? "Custom" : (di.bootblockType == 1 ? span("green", "Standard 1.x") : span("green", "Standard 2.x+")));
+	setText2("cfg_floppy_info_crc32", sprintf("%08X", di.crc32));
+
+	var bb = "";
+	for (j = 0; j < 42; j++) {
+		for (i = 0; i < 24; i++) {
+			var chr = di.bootblock[j * 24 + i];
+			bb += sprintf("%02X", chr);
+		}
+		bb += " ";
+		for (i = 0; i < 24; i++) {
+			var chr = di.bootblock[j * 24 + i];
+			if (chr >= 32 && chr <= 126)
+				bb += String.fromCharCode(chr);
+			else
+				bb += ".";
+		}
+		bb += "\n";
+	}
+	setText("cfg_floppy_info_bootblock", bb);
+	if (inf.browser.id != SAEC_Info_Brower_ID_Chrome)
+		document.getElementById("cfg_floppy_info_bootblock").style.fontSize = "12px";
+
+	freezeButtons(true, false);
+	changePage(PID_Floppy_Info);
 }
 
-function videoUpdate() {
-	styleDisplayBlock('cfg_video_grp', document.getElementById('cfg_video_enabled').checked);
+function floppyCloseInfo() {
+	floppyNum = -1;
+	changePage(PID_Floppy);
+	freezeButtons(false, false);
 }
 
-function spritesUpdate() {
-	styleDisplayInline('cfg_chipset_cl_grp', document.getElementById('cfg_chipset_cl_enabled').checked);
+function floppyUpdate() {
+	var v = getSelect("fc_type");
+	var dis = v > SAEC_Disk_Create_Type_35_HD;
+	if (dis) {
+		document.getElementById("fc_label").value = "";
+		setCheckbox("fc_ffs", false);
+		setCheckbox("fc_bootable", false);
+	}
+	setDisabled("fc_label", dis);
+	setDisabled("fc_ffs", dis);
+	setDisabled("fc_bootable", dis);
+}
+function floppyCreate(mode) {
+	var n = getSelect("fc_unit");
+	var type = getSelect("fc_type");
+	var label = document.getElementById("fc_label").value;
+	var ffs = getCheckbox("fc_ffs");
+	var bootable = getCheckbox("fc_bootable");
+
+	var name = label.length ? label : "empty"+String(n);
+	name = name.split(' ').join('_');
+	name = name.toLowerCase();
+	name += (type == SAEC_Disk_Create_Type_35_DD_PC || type == SAEC_Disk_Create_Type_35_HD_PC ? ".img" : ".adf");
+
+	if (sae.createDisk(n, name, mode, type, label, ffs, bootable) == SAEE_None)
+		setAdvandedFloppy(n);
 }
 
-function keyboradUpdate() {
-	styleDisplayBlock('cfg_keyborad_grp', document.getElementById('cfg_keyborad_enabled').checked);
+/*---------------------------------*/
+
+function mountEnable(n) {
+	var ci = cfg.mount.config[n].ci;
+	if (getCheckbox("cfg_mount_"+n+"_enabled")) {
+		SAER.setMountInfoDefaults(n);
+
+		if (n < 4) {
+			ci.controller_type = SAEC_Config_Mount_Controller_Type_MB_IDE;
+			ci.controller_unit = n;
+			setSelect("cfg_mount_"+n+"_controller_media", ci.controller_media_type);
+			setSelect("cfg_mount_"+n+"_controller_level", ci.unit_feature_level);
+		} else if (n == 4) {
+			ci.controller_type = SAEC_Config_Mount_Controller_Type_PCMCIA_SRAM;
+			ci.controller_unit = 0;
+		} else {
+			ci.controller_type = SAEC_Config_Mount_Controller_Type_PCMCIA_IDE;
+			ci.controller_unit = 0;
+		}
+		setMountName(n);
+		styleDisplayInline("cfg_mount_"+n+"_grp", 1);
+	} else {
+		ci.controller_type = 0;
+		mountRemove(n);
+		styleDisplayInline("cfg_mount_"+n+"_grp", 0);
+	}
+	//setAdvandedMount(n);
 }
 
-function portUpdate(n) {
-	var v = document.getElementById('cfg_ports_'+n+'_enabled').checked;
-	styleDisplayInline('cfg_ports_'+n+'_grp', v); 	
-	if (n == 0) {
-		if (v)
-			portUpdate2();
-		else
-			styleDisplayInline('cfg_ports_0_grp2', 0); 	
+function mountSelect(n) {
+	var e = document.getElementById("cfg_mount_"+n+"_file").files[0];
+	if (e) {
+		loadFile(e, function(event) {
+			var ci = cfg.mount.config[n].ci;
+
+			var ok = true;
+			if (e.size < 512) {
+				alert("The selected hard-file is too small. (512 bytes minimum)")
+				ok = false;
+			}
+			if (ci.controller_type == SAEC_Config_Mount_Controller_Type_PCMCIA_SRAM && e.size > 4 * 1024 * 1024) {
+				alert("The selected hard-file is too large for a PCMCIA SRAM-card. (4096K maximum)")
+				ok = false;
+			}
+			if (ok) {
+				ci.file.name = e.name;
+				ci.file.data = event.target.result;
+				ci.file.size = e.size;
+				ci.file.crc32 = false;
+
+				if (n < 4) {
+					var haveRDB = ci.file.data.substr(0, 4) == "RDSK";
+					if (haveRDB)
+						;//queryRDB(ci);
+					else {
+						var blocks = Math.floor(ci.file.size / ci.blocksize);
+						ci.highcyl = Math.floor(blocks / (ci.surfaces * ci.sectors));
+						ci.devname = "IDE"+String(n);
+					}
+					setDisabled("cfg_mount_"+n+"_setup", haveRDB);
+				}
+				setMountName(n);
+			} else
+				document.getElementById("cfg_mount_"+n+"_file").value = "";
+		});
 	}
 }
-function portUpdate2() {
-	var e = document.getElementById('cfg_ports_0');
-	var v = parseInt(getSelectValue(e));
-	styleDisplayInline('cfg_ports_0_grp2', v == 2); 	
+
+function mountRemove(n) {
+	cfg.mount.config[n].ci.file.clr();
+	setMountName(n);
+	document.getElementById("cfg_mount_"+n+"_file").value = "";
+}
+
+function mountOpenSetup(n) {
+	mountConfigNum = n;
+	var ci = cfg.mount.config[n].ci;
+	setText("cfg_mount_surfaces", ci.surfaces);
+	setText("cfg_mount_sectors", ci.sectors);
+	setText("cfg_mount_blocksize", ci.blocksize);
+	//setText("cfg_mount_highcyl", ci.highcyl);
+	setText("cfg_mount_reserved", ci.reserved);
+	setText("cfg_mount_bootpri", ci.bootpri);
+	setText("cfg_mount_devname", ci.devname);
+
+	freezeButtons(true, false);
+	changePage(PID_Mount_Setup);
+}
+
+function mountCloseSetup(use) {
+	if (use) {
+		var ci = cfg.mount.config[mountConfigNum].ci;
+		var surfaces = getText("cfg_mount_surfaces");
+		var sectors = getText("cfg_mount_sectors");
+		var blocksize = getText("cfg_mount_blocksize");
+		var reserved = getText("cfg_mount_reserved");
+		var bootpri = getText("cfg_mount_bootpri");
+		var devname = getText("cfg_mount_devname", true);
+
+		if (blocksize < 512 || blocksize > 65536 || (blocksize & 511) != 0) {
+			alert("'Blocksize' must be smaller or equal 65536 and a multiple of 512.");
+			document.getElementById("cfg_mount_blocksize").focus();
+			return;
+		}
+		var blocks = Math.floor(ci.file.size / blocksize);
+		if (reserved >= blocks) {
+			alert("Number of 'Reserved'-blocks is beyond the disk-size.");
+			document.getElementById("cfg_mount_reserved").focus();
+			return;
+		}
+		if (isNaN(bootpri)) {
+			alert("The value at 'Bootpri' is not a number.");
+			document.getElementById("cfg_mount_bootpri").focus();
+			return;
+		}
+		else if (bootpri < -128 || bootpri > 127) {
+			alert("'Bootpri' must between -128 and 127.");
+			document.getElementById("cfg_mount_bootpri").focus();
+			return;
+		}
+		if (devname.length == 0) {
+			alert("'Name' is empty.");
+			document.getElementById("cfg_mount_devname").focus();
+			return;
+		}
+		ci.surfaces = surfaces;
+		ci.sectors = sectors;
+		ci.blocksize = blocksize;
+		//ci.highcyl = Math.floor(blocks / (surfaces * sectors));
+		ci.reserved = reserved;
+		ci.bootpri = bootpri;
+		ci.devname = devname;
+	}
+	mountConfigNum = -1;
+	changePage(PID_Mount);
+	freezeButtons(false, false);
+}
+
+/*---------------------------------*/
+
+function videoUpdate() {
+	styleDisplayBlock("cfg_video_grp", getCheckbox("cfg_video_enabled"));
+}
+function videoUpdateAPI() {
+	if (getSelect("cfg_video_api") == SAEC_Config_Video_API_WebGL) {
+		setDisabled("cfg_video_color_mode", false);
+		setDisabled("cfg_video_antialias", false);
+	} else {
+		setSelect("cfg_video_color_mode", 5);
+		setDisabled("cfg_video_color_mode", true);
+		setDisabled("cfg_video_antialias", true);
+	}
+	videoUpdateCM();
+}
+function videoUpdateCM() {
+	if (getSelect("cfg_video_color_mode") < 5) {
+		setDisabled("cfg_video_background", true);
+		setDisabled("cfg_video_alpha", true);
+	} else {
+		setDisabled("cfg_video_background", false);
+		setDisabled("cfg_video_alpha", false);
+	}
+}
+function videoUpdateLineMode() {
+	setDisabled("cfg_video_interlace", getSelect("cfg_video_linemode") == SAEC_Config_Video_VResolution_NonDouble);
+}
+
+/*---------------------------------*/
+
+function audioUpdate() {
+	styleDisplayBlock("cfg_audio_grp", getCheckbox("cfg_audio_enabled"));
+}
+
+function filterUpdate() {
+	var v = getSelect("cfg_audio_filter");
+	document.getElementById("cfg_audio_filtertype").disabled = v == 0;
+}
+
+function channelsUpdate() {
+	var v = getSelect("cfg_audio_channels");
+	document.getElementById("cfg_audio_separation").disabled = v == 1;
+	document.getElementById("cfg_audio_delay").disabled = v == 1;
+}
+
+/*---------------------------------*/
+
+function portUpdate(n) {
+	var v = getSelect("cfg_ports_"+n);
+	if (n == 0)
+		styleDisplayInline("cfg_ports_0_grp", v == SAEC_Config_Ports_Type_Joy0);
+	else
+		styleDisplayInline("cfg_ports_1_grp", v == SAEC_Config_Ports_Type_Joy1);
 }
 
 /*-----------------------------------------------------------------------*/
 /* status hooks */
 
-function hooks_error(err, msg) {
+function hook_log_error(err, msg) {
 	stop();
-	if (msg !== null)
+	if (msg.length)
 		alert(msg);
-}	
+}
 
-function hooks_power_led(on) {
-	var e = document.getElementById('led_pwr');
-	if (e) e.style.color = on ? '#8c8' : '#888';
+const COL_GRAY = "#888";
+const COL_GREEN = "#8C8";
+const COL_RED = "#E88";
+const COL_ORANGE = "#CC8";
+
+var e_led_power = null;
+var e_led_hd = null;
+var e_led_df = [null,null,null,null];
+var e_led_fps = null;
+var e_led_cpu = null;
+
+function hook_led_power(on) {
+	e_led_power.style.color = on ? COL_GREEN : COL_GRAY;
 }
-function hooks_floppy_motor(unit, on) {
-	var e;
-	switch (unit) {
-		case 0: e = document.getElementById('led_df0'); break;
-		case 1: e = document.getElementById('led_df1'); break;
-		case 2: e = document.getElementById('led_df2'); break;
-		case 3: e = document.getElementById('led_df3'); break;
-	}
-	if (e) e.style.color = on ? '#8c8' : '#888';
+function hook_led_hd(rw) {
+	e_led_hd.style.color = rw == 1 ? COL_GREEN : (rw == 2 ? COL_RED : COL_GRAY);
 }
-function hooks_floppy_step(unit, cyl) {
-	var e;
-	switch (unit) {
-		case 0: e = document.getElementById('led_df0'); break;
-		case 1: e = document.getElementById('led_df1'); break;
-		case 2: e = document.getElementById('led_df2'); break;
-		case 3: e = document.getElementById('led_df3'); break;
+function hook_led_df(unit, dis, cyl, side, rw) {
+	if (dis) {
+		e_led_df[unit].innerHTML = "-";
+		e_led_df[unit].style.color = COL_GRAY;
+	} else {
+		//e_led_df[unit].innerHTML = sprintf("%02d", cyl);
+		//e_led_df[unit].innerHTML = String(80 * side + cyl);
+		//e_led_df[unit].innerHTML = String(cyl)+"'"+String(side);
+		e_led_df[unit].innerHTML = String(cyl);
+		e_led_df[unit].style.color = rw == 1 ? COL_GREEN : (rw == 2 ? COL_RED : COL_GRAY);
 	}
-	if (e) e.innerHTML = cyl;
 }
-function hooks_fps(fps) {
-	var e = document.getElementById('led_fps');
-	if (e) e.innerHTML = fps;//+'/'+(config.video.ntsc?'60.0':'50.0');
-}	
-function hooks_cpu(usage) {
-	var e = document.getElementById('led_cpu');
-	if (e) {
-		e.style.color = usage <= 100 ? '#8c8' : (usage > 100 && usage < 120 ? '#cc8' : '#d88');
-		e.innerHTML = usage+'%';
+function hook_led_fps(fps, paused) {
+	if (paused) {
+		e_led_fps.innerHTML = "0.0"; //"PAUSE";
+	} else {
+		//e_led_fps.innerHTML = sprintf("%.1f", fps);
+		e_led_fps.innerHTML = fps.toFixed(1);
 	}
-}	
-	
+	e_led_fps.style.color = COL_GRAY;
+}
+function hook_led_cpu(usage, paused) {
+	if (paused) {
+		e_led_cpu.innerHTML = "0&#37;"; //"PAUSE";
+		e_led_cpu.style.color = COL_GRAY;
+	} else {
+		//e_led_cpu.innerHTML = sprintf("%.0f", usage) + "&#37;";
+		e_led_cpu.innerHTML = usage.toFixed(0) + "&#37;";
+		if (usage < 90)
+			e_led_cpu.style.color = COL_GREEN;
+		else if (usage < 110)
+			e_led_cpu.style.color = COL_ORANGE;
+		else
+			e_led_cpu.style.color = COL_RED;
+	}
+}
+
+function initHooks() {
+	e_led_power = document.getElementById("status_led_power");
+	e_led_hd = document.getElementById("status_led_hd");
+	e_led_df[0] = document.getElementById("status_led_df0");
+	e_led_df[1] = document.getElementById("status_led_df1");
+	e_led_df[2] = document.getElementById("status_led_df2");
+	e_led_df[3] = document.getElementById("status_led_df3");
+	e_led_fps = document.getElementById("status_led_fps");
+	e_led_cpu = document.getElementById("status_led_cpu");
+}
+function setHooks() {
+	cfg.hook.log.error = hook_log_error;
+
+	cfg.hook.led.power = hook_led_power;
+	cfg.hook.led.hd = hook_led_hd;
+	cfg.hook.led.df = hook_led_df;
+	cfg.hook.led.fps = hook_led_fps;
+	cfg.hook.led.cpu = hook_led_cpu;
+}
+
 /*-----------------------------------------------------------------------*/
 /* disk change */
 
 function dskchgOpen() {
 	if (!dskchg) {
-		if (mode == 0) {
-			var s = document.getElementById('cfg_dskchg_select');
+		if (mode == MODE_Database) {
+			var s = document.getElementById("dskchg_select");
 			for (var i = 0; i < dskchgList.length; i++) {
 				var filename = dskchgList[i];
-				var e = document.createElement('option');
+				var e = document.createElement("option");
 				e.value = filename;
 				e.text = filename;
 				s.add(e, null);
 			}
-			styleDisplayBlock('dskchg_simple', 1);                                                     
+			styleDisplayBlock("dskchg_database", 1);
 		} else
-			styleDisplayBlock('dskchg', 1); 
-			                                                    
+			styleDisplayBlock("dskchg_advanced", 1);
+
 		dskchg = true;
 	} else
 		dskchgClose();
@@ -1447,88 +2579,58 @@ function dskchgOpen() {
 
 function dskchgClose() {
 	if (dskchg) {
-		if (mode == 0) {
-			styleDisplayBlock('dskchg_simple', 0); 
-			var s = document.getElementById('cfg_dskchg_select');
+		if (mode == MODE_Database) {
+			styleDisplayBlock("dskchg_database", 0);
+			var s = document.getElementById("dskchg_select");
 			for (var i = s.length - 1; i > 0; i--)
 				s.remove(i);
   		} else
-			styleDisplayBlock('dskchg', 0);
-			 
+			styleDisplayBlock("dskchg_advanced", 0);
+
 		dskchg = false;
 	}
 }
 
 function dskchgEject() {
 	if (dskchg) {
-		var n = getSelectValue(document.getElementById('cfg_dskchg_unit'));
-		dskchgClose();	
-		
-		SAE({cmd:'eject',unit:n});			
+		var n = getSelect("dskchg_unit");
+		dskchgClose();
+
 		floppyEject(n);
+		sae.eject(n);
 	}
 }
 
 function dskchgInsert() {
-	if (!dskchg) return;
-	var n = getSelectValue(document.getElementById('cfg_dskchg_unit'));
-	var e = document.getElementById('cfg_dskchg_file').files[0];
-	var ok = true; //false;
+	if (dskchg) {
+		var e = document.getElementById("dskchg_file").files[0];
+		if (e) {
+			loadFile(e, function(event) {
+				var n = getSelect("dskchg_unit");
 
-	if (!e) return;
-	/*if (e.size == 0xDC000)  {
-		if (AMIGA.config.floppy.drive[n].type == SAEV_Config_Floppy_Type_35_DD) 
-			ok = true;
-		else
-			alert('DF'+n+' is configured as HD-drive (1760kb), but you selected a DD-diskimage (880kb).');
-	} else if (e.size == 0x1B8000) {
-		if (AMIGA.config.floppy.drive[n].type == SAEV_Config_Floppy_Type_35_HD) 
-			ok = true;
-		else
-			alert('DF'+n+' is configured as DD-drive (880kb), but you selected a HD-diskimage (1760kb).');
-	} else 
-		alert('Invalid diskimage-size, 880 or 1460 kb.');
-	*/
-	if (ok) {
-		loadLocal(e, function (event) {  
-			dskchgClose();		
-			
-			setFloppyName(n, e.name);
-			styleDisplayInline('cfg_df'+n+'_eject', 1); 				
-			
-			config.floppy.drive[n].type = SAEV_Config_Floppy_Type_35_DD;
-			config.floppy.drive[n].name = e.name;						
-			config.floppy.drive[n].data = event.target.result;						
+				dskchgClose();
 
-			/*SAE({
-				cmd:'insert',
-				unit:n,
-				name:e.name,
-				data:event.target.result
-			});*/			
-			SAE({
-				cmd:'insert',
-				unit:n
-			});			
-		});
-	}				
-}
-
-function dskchgSelect() {
-	if (!dskchg) return;
-	var filename = getSelectValue(document.getElementById('cfg_dskchg_select'));
-	var url = 'http://'+window.location.hostname+'/db/' + (dbGrp == 1 ? 'games/' : 'demos/') + filename + '.adf';
-	var n = 0;
-
-	if ((config.floppy.drive[n].data = cache.loadDisk(url)) !== null) {
-		dskchgClose();		
-		config.floppy.drive[n].type = SAEV_Config_Floppy_Type_35_DD;
-		config.floppy.drive[n].name = filename;
-
-		SAE({
-			cmd:'insert',
-			unit:n
-		});			
+				cfg.floppy.drive[n].type = SAEC_Config_Floppy_Type_35_DD;
+				var file = cfg.floppy.drive[n].file;
+				//file.path = e.path;
+				file.name = e.name;
+				file.data = event.target.result;
+				file.size = e.size;
+				file.crc32 = crc32(event.target.result);
+				sae.insert(n);
+			});
+		}
 	}
 }
 
+function dskchgSelect() {
+	if (dskchg) {
+		var filename = getSelect("dskchg_select", true) + ".adf";
+		var n = 0; /* DF0 */
+
+		dskchgClose();
+
+		if (cache.req(dbUrl, filename, 0xdc000, false, cfg.floppy.drive[n].file))
+			sae.insert(n);
+	}
+}

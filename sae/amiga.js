@@ -1,426 +1,582 @@
-/**************************************************************************
-* SAE - Scripted Amiga Emulator
-*
-* 2012-2015 Rupert Hausberger
-*
-* https://github.com/naTmeg/ScriptedAmigaEmulator
-*
-**************************************************************************/
+/*-------------------------------------------------------------------------
+| SAE - Scripted Amiga Emulator
+| https://github.com/naTmeg/ScriptedAmigaEmulator
+|
+| Copyright (C) 2012-2016 Rupert Hausberger
+|
+| This program is free software; you can redistribute it and/or
+| modify it under the terms of the GNU General Public License
+| as published by the Free Software Foundation; either version 2
+| of the License, or (at your option) any later version.
+|
+| This program is distributed in the hope that it will be useful,
+| but WITHOUT ANY WARRANTY; without even the implied warranty of
+| MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+| GNU General Public License for more details.
+|
+| Notes on the global-namespace
+| -----------------------------
+| Global object:
+| function SAEO_<name>() {}
+|
+| Global error constant:
+| const SAEE_<object_name>_<name>;
+|
+| Global constant:
+| const SAEC_<object_name>_<name>;
+|
+| Global variable:
+| var SAEV_<object_name>_<name>;
+|
+| Global function:
+| function SAEF_<object_name>_<name>() {}
+|
+| Global reference (pointer) to another object:
+| var SAER_<object_name>_<name>;
+|
+|
+| Tags that may appear in comments (use full-word, case-sensitive text-search)
+| --------------------------------
+| OWN   Own code added.
+| ATT   Attention, possible source of error or problem.
+| FIX   Need to be fixed or implemented.
+| OPT   Need or can be optimized.
+| ORG   Original code, e.g. something required to be disabled.
+| SECT  Code section.
+-------------------------------------------------------------------------*/
 
-function set_special(x) { AMIGA.spcflags |= x; }
-function clr_special(x) { AMIGA.spcflags &= ~x; }
- 
-function Amiga() {
-	this.info = {
-		version: SAEV_Version+'.'+SAEV_Revision+'.'+SAEV_Revision_Sub,
-		browser_name: BrowserDetect.browser,
-		browser_version: BrowserDetect.version,
-		os: BrowserDetect.OS,
-		video:0,
-		audio:0
-	};
-	this.config = new Config();
-	this.mem = new Memory();
-	this.expansion = new Expansion();
-	this.input = new Input();
-	this.serial = new Serial();
-	this.events = new Events();
-	this.disk = new Disk();
-	this.cia = new CIA();
-	this.rtc = new RTC();
-	this.custom = new Custom();
-	this.blitter = new Blitter();
-	this.copper = new Copper();
-	this.playfield = new Playfield();
-	this.video = new Vide0();
-	this.audio = new Audi0();
-	this.cpu = new CPU();
+const SAEC_Version = 0;
+const SAEC_Revision = 9;
+const SAEC_Patch = 0;
 
-	this.state = ST_STOP;
-	this.delay = 0;
-	this.spcflags = 0;
-	//this.loading = 0;
-		
-	this.intena = 0;
-	this.intreq = 0;
-	this.dmacon = 0;
-	this.adkcon = 0;
-	
-	this.info.video = this.video.available; 
-	this.info.audio = this.audio.available; 
-	
-	/*---------------------------------*/
+/*---------------------------------*/
+/* errors */
 
-	this.setup = function () {
-		this.mem.setup();
-		this.expansion.setup();
-		this.events.setup();
-		this.playfield.setup();
-		this.video.setup();
-		this.cia.setup();
-		this.rtc.setup();
-		this.input.setup();
-		this.disk.setup();
-		this.audio.setup();
-		this.custom.setup();
-		this.cpu.setup();
-	};
-
-	this.cleanup = function () {
-		this.audio.cleanup();
-		this.video.cleanup();
-		this.playfield.cleanup();
-		this.input.cleanup();
-	};
-
-	this.reset = function () {
-		BUG.info('Amiga.reset()');
-
-		this.delay = 0;
-		this.spcflags = 0;
-		//this.loading = 0;
-
-		this.intena = 0;
-		this.intreq = 0;
-		this.dmacon = 0;
-		this.adkcon = 0;
-
-		this.expansion.reset();
-		this.events.reset();
-		this.playfield.reset();
-		this.cia.reset();
-		this.disk.reset();
-		this.input.reset();
-		this.serial.reset();
-		this.blitter.reset();
-		this.copper.reset();
-		this.audio.reset();
-		this.custom.reset();
-		this.cpu.reset(this.mem.rom.lower);
-	};
-
-	this.dump = function () {
-		this.cpu.dump();
-		//this.cia.dump();
-	};
-	
-	/*---------------------------------*/
-
-	/*this.waitForStart = function() {
-		if (this.loading)
-			setTimeout('AMIGA.waitForStart()', 10);
-		else {
-			this.reset();
-			this.state = ST_CYCLE;
-			setTimeout('AMIGA.cycle()', 0);
-		}
-	}
-	this.start = function() {
-		this.setup();
-		this.waitForStart();
-	}*/
-	
-	
-	this.start = function () {
-		if (this.state == ST_STOP) {
-			this.setup();
-			this.reset();
-			this.state = ST_CYCLE;
-			setTimeout('AMIGA.cycle()', 0);
-		}
-	};
-	
-	this.stop = function () {
-		if (this.state != ST_STOP) {
-			this.state = ST_STOP;
-			this.cleanup();
-		}
-	};
-	
-	this.pause = function (state) {
-		if (this.state != ST_STOP) {
-			this.state = state ? ST_PAUSE : ST_CYCLE;
-			this.audio.pauseResume(state);
-		}
-	};
-	
-	/*this.insert = function(unit, name, data) {
-		//this.disk.insert_data(unit, data);		
-		this.disk.insert(unit, name, data);
-		this.config.floppy.drive[unit].name = name;
-	}
-	this.eject = function(unit) {
-		if (this.config.floppy.drive[unit].name) {
-			this.disk.eject(unit);
-			//this.disk.eject_data(unit);
-			this.config.floppy.drive[unit].name = null;
-			BUG.info('amiga.eject() DF%d ejected', unit);
-		} else
-			BUG.info('amiga.eject() DF%d in empty', unit);
-	}
-	*/
-	
-	this.insert = function (unit) {
-		if (this.state != ST_STOP)
-			this.disk.insert(unit);
-	};
-		
-	this.eject = function (unit) {
-		if (this.state != ST_STOP)
-			this.disk.eject(unit);
-	};
-
-	/*---------------------------------*/
-	/* mainloop */	
-	
-	this.cycle = function () {
-		try {
-			this.cpu.cycle();
-		} catch (e) {
-			if (e instanceof VSync) {
-				//console.log(e.error, e.message);
-				this.state = ST_IDLE;
-			} else if (e instanceof FatalError) {
-				this.state = ST_STOP;
-				this.stop();
-				this.config.hooks.error(e.error, e.message);
-			} else /* normal exception */ {
-				this.state = ST_STOP;
-				this.stop();
-				console.log(e);
-			}
-		}
-		if (this.state == ST_IDLE) {
-			this.state = ST_CYCLE;
-			setTimeout('AMIGA.cycle()', this.delay);
-		}
-		else if (this.state == ST_PAUSE)
-			AMIGA.cyclePause();
-		else
-			AMIGA.cycleExit();
-	};
-
-	this.cyclePause = function () {
-		if (this.state == ST_CYCLE)
-			setTimeout('AMIGA.cycle()', 0);
-		else if (this.state == ST_PAUSE)
-			setTimeout('AMIGA.cyclePause()', 500);
-		else
-			AMIGA.cycleExit();
-	};
-	
-	this.cycleExit = function () {
-		this.dump();
-		//this.cia.dump();
-	};
-		
-	/*---------------------------------*/
-
-	this.dmaen = function (dmamask) {
-		return ((this.dmacon & DMAF_DMAEN) != 0 && (this.dmacon & dmamask) != 0);
-	};
-
-	this.DMACONR = function (hpos) {
-		this.playfield.decide_line(hpos);
-		this.playfield.decide_fetch(hpos);
-		this.dmacon &= ~(0x4000 | 0x2000);
-		var iz = this.blitter.getIntZero();
-		this.dmacon |= ((iz[0] ? 0 : 0x4000) | (iz[1] ? 0x2000 : 0));
-		return this.dmacon;
-	};
-
-	this.DMACON = function (v, hpos) {
-		var oldcon = this.dmacon;
-
-		this.playfield.decide_line(hpos);
-		this.playfield.decide_fetch(hpos);
-
-		if (v & INTF_SETCLR)
-			this.dmacon |= v & ~INTF_SETCLR;
-		else
-			this.dmacon &= ~v;
-
-		this.dmacon &= 0x1fff;
-
-		var changed = this.dmacon ^ oldcon;
-
-		var oldcop = (oldcon & DMAF_COPEN) != 0 && (oldcon & DMAF_DMAEN) != 0;
-		var newcop = (this.dmacon & DMAF_COPEN) != 0 && (this.dmacon & DMAF_DMAEN) != 0;
-		if (oldcop != newcop) {
-			if (newcop && !oldcop) {
-				this.copper.compute_spcflag_copper(this.events.hpos());
-			} else if (!newcop) {
-				this.copper.enabled_thisline = false;
-				clr_special(SPCFLAG_COPPER);
-			}
-		}
-		if ((this.dmacon & DMAF_BLTPRI) > (oldcon & DMAF_BLTPRI) && this.blitter.getState() != BLT_done)
-			set_special(SPCFLAG_BLTNASTY);
-		if (this.dmaen(DMAF_BLTEN) && this.blitter.getState() == BLT_init)
-			this.blitter.setState(BLT_work);
-		if ((this.dmacon & (DMAF_BLTPRI | DMAF_BLTEN | DMAF_DMAEN)) != (DMAF_BLTPRI | DMAF_BLTEN | DMAF_DMAEN))
-			clr_special(SPCFLAG_BLTNASTY);
-
-		if (changed & (DMAF_DMAEN | 0x0f))
-			this.audio.state_machine();
-
-		if (changed & (DMAF_DMAEN | DMAF_BPLEN)) {
-			this.playfield.update_ddf_change();
-			if (this.dmaen(DMAF_BPLEN))
-				this.playfield.maybe_start_bpl_dma(hpos);
-		}
-		this.events.schedule();
-	};
-	
-	/*---------------------------------*/
-
-	this.ADKCONR = function () {
-		return this.adkcon;
-	};
-
-	this.ADKCON = function (v, hpos) {
-		if (this.config.audio.enabled)
-			this.audio.update();
-
-		this.disk.update(hpos);
-		this.disk.update_adkcon(v);
-
-		if (v & INTF_SETCLR)
-			this.adkcon |= v & ~INTF_SETCLR;
-		else
-			this.adkcon &= ~v;
-
-		this.audio.update_adkmasks();
-	};
-
-	/*---------------------------------*/
-
-	this.INTENAR = function () {
-		return this.intena;
-	};
-
-	this.INTENA = function (v) {
-		if (v & INTF_SETCLR)
-			this.intena |= v & ~INTF_SETCLR;
-		else
-			this.intena &= ~v;
-
-		if (v & INTF_SETCLR)
-			this.doint();
-	};
-
-	/*---------------------------------*/
-
-	this.INTREQR = function () {
-		return this.intreq;
-	};
-
-	this.INTREQ_0 = function (v) {
-		var old = this.intreq;
-
-		if (v & INTF_SETCLR)
-			this.intreq |= v & ~INTF_SETCLR;
-		else
-			this.intreq &= ~v;
-
-		if ((v & INTF_SETCLR) && this.intreq != old)
-			this.doint();
-	};
-
-	this.INTREQ = function (v) {
-		this.INTREQ_0(v);
-		this.cia.rethink();
-	};
-
-	/*---------------------------------*/
-
-	this.intlev = function () {
-		var imask = this.intreq & this.intena;
-
-		if (imask && (this.intena & INTF_INTEN)) {
-			if (imask & 0x2000) return 6;
-			if (imask & 0x1800) return 5;
-			if (imask & 0x0780) return 4;
-			if (imask & 0x0070) return 3;
-			if (imask & 0x0008) return 2;
-			if (imask & 0x0007) return 1;
-		}
-		return -1;
-	};
-
-	this.doint = function() {
-		if (AMIGA.config.cpu.compatible)
-			set_special(SPCFLAG_INT);
-		else
-			set_special(SPCFLAG_DOINT);        
-	}
+function SAEO_Error(err, msg) {
+	this.err = err;
+	this.msg = msg;
 }
+SAEO_Error.prototype = new Error;
+
+const SAEE_None = 0;
+
+const SAEE_AlreadyRunning = 1;
+const SAEE_NotRunning = 2;
+const SAEE_NoTimer = 3;
+const SAEE_NoMemory = 4;
+const SAEE_Assert = 5;
+const SAEE_Internal = 6;
+
+const SAEE_Config_Invalid = 10;
+
+const SAEE_CPU_Internal = 20;
+const SAEE_CPU_Requires68020 = 21;
+const SAEE_CPU_Requires680EC20 = 22;
+const SAEE_CPU_Requires68030 = 23;
+const SAEE_CPU_Requires68040 = 24;
+
+const SAEE_Memory_NoKickstartRom = 30;
+const SAEE_Memory_NoExtendedRom = 31;
+const SAEE_Memory_RomSize = 32;
+const SAEE_Memory_RomKey = 33;
+const SAEE_Memory_RomDecode = 34;
+const SAEE_Memory_RomChecksum = 35;
+const SAEE_Memory_RomUnknown = 36;
+
+const SAEE_Video_ElementNotFound = 40;
+const SAEE_Video_RequiresCanvas = 41;
+const SAEE_Video_RequiresWegGl = 42;
+const SAEE_Video_ComphileShader = 43;
+const SAEE_Video_LinkShader = 44;
+
+const SAEE_Audio_RequiresWebAudio = 50;
 
 /*-----------------------------------------------------------------------*/
-/* This API will change in the future. */
+/* global references */
 
-var BUG = null;
-var AMIGA = null;
+var SAER = null;
 
-function SAE(x) {
-	try {
-		switch (x.cmd) {
-			case 'init':
-				BUG = new Debug();
-				BUG.info('API.init() SEA %d.%d.%d', SAEV_Version, SAEV_Revision, SAEV_Revision_Sub);
+/*---------------------------------*/
+/* global constants */
 
-				AMIGA = new Amiga();
-				//return AMIGA.config;
-				break;
-			case 'reset':
-				BUG.info('API.reset()');
-				AMIGA.reset();
-				break;
-			case 'start':
-				BUG.info('API.start()');
-				AMIGA.start();
-				break;
-			case 'stop':
-				BUG.info('API.stop()');
-				AMIGA.stop();
-				break;
-			case 'pause':
-				BUG.info('API.pause() %d', x.state);
-				AMIGA.pause(x.state);
-				break;
-			/*case 'insert':
-				BUG.info('API.insert() DF%d, name "%s", length %d', x.unit, x.name, x.data.length);
-				AMIGA.insert(x.unit, x.name, x.data);
-				break;*/
-			case 'insert':
-				BUG.info('API.insert() DF%d', x.unit);
-				AMIGA.insert(x.unit);
-				break;
-			case 'eject':
-				BUG.info('API.eject() DF%d', x.unit);
-				AMIGA.eject(x.unit);
-				break;
-			case 'getInfo':
-				BUG.info('API.getInfo()');
-				return AMIGA.info;
-			case 'getConfig':
-				BUG.info('API.getConfig()');
-				return AMIGA.config;
-			/*case 'setConfig':
-				BUG.info('API.setConfig() size '+x.data.ext.size);
-				AMIGA.config = x.data;
-				break;*/
-		}		
-	} catch (e) {
-		if (e instanceof FatalError) {
-			AMIGA.stop();
-			//return { error:e.error, message:e.message };
-			AMIGA.config.hooks.error(e.error, e.message);
-		} else
-			console.log(e);		
+const SAEC_spcflag_STOP = 2;
+const SAEC_spcflag_COPPER = 4;
+const SAEC_spcflag_INT = 8;
+const SAEC_spcflag_BRK = 16;
+//const SAEC_spcflag_UAEINT = 32;
+const SAEC_spcflag_TRACE = 64;
+const SAEC_spcflag_DOTRACE = 128;
+const SAEC_spcflag_DOINT = 256;
+const SAEC_spcflag_BLTNASTY = 512;
+//const SAEC_spcflag_EXEC = 1024;
+//const SAEC_spcflag_ACTION_REPLAY = 2048;
+//const SAEC_spcflag_TRAP = 4096; /* enforcer-hack */
+const SAEC_spcflag_MODE_CHANGE = 8192;
+const SAEC_spcflag_CHECK = 32768;
+
+const SAEC_command_Quit = 1;
+const SAEC_command_Reset = 2;
+const SAEC_command_KeyboardReset = 3;
+const SAEC_command_HardReset = 4;
+const SAEC_command_Pause = 5;
+const SAEC_command_Resume = 6;
+
+/*---------------------------------*/
+
+const SAEC_Info_Brower_ID_Unknown = 0;
+const SAEC_Info_Brower_ID_Chrome = 1;
+const SAEC_Info_Brower_ID_Safari = 2;
+const SAEC_Info_Brower_ID_Opera = 3;
+const SAEC_Info_Brower_ID_Firefox = 4;
+const SAEC_Info_Brower_ID_InternetExplorer = 5;
+
+const SAEC_info = (function() {
+	var info = {
+		browser: {
+			id: SAEC_Info_Brower_ID_Unknown,
+			name: "Unknown",
+			plat: "Unknown",
+			lang: "en"
+		},
+		memory: {
+			maxSize: 0
+		},
+		audio: {
+			webAudio: false
+		},
+		video: {
+			canvas: false,
+			webGL: false
+		}
+	};
+
+	/* browser */
+	if (navigator.userAgent.indexOf("Chrome") > -1) {
+		info.browser.id = SAEC_Info_Brower_ID_Chrome;
+		info.browser.name = "Google Chrome";
 	}
-	//return SAEE_None;
-	//return { error:SAEE_None, message:'' };
-	return 0;
+	else if (navigator.userAgent.indexOf("Safari") > -1) {
+		info.browser.id = SAEC_Info_Brower_ID_Safari;
+		info.browser.name = "Apple Safari";
+	}
+	else if (navigator.userAgent.indexOf("Opera") > -1) {
+		info.browser.id = SAEC_Info_Brower_ID_Opera;
+		info.browser.name = "Opera";
+	}
+	else if (navigator.userAgent.indexOf("Firefox") > -1) {
+		info.browser.id = SAEC_Info_Brower_ID_Firefox;
+		info.browser.name = "Mozilla Firefox";
+	}
+	else if (navigator.userAgent.indexOf("MSIE") > -1) {
+		info.browser.id = SAEC_Info_Brower_ID_InternetExplorer;
+		info.browser.name = "Microsoft Internet Explorer";
+	}
+	info.browser.plat = navigator.platform;
+	info.browser.lang = navigator.language;
+
+	/* max memory */
+	if (0) {
+		var size = 1048576;
+		while (true) {
+			try {
+				var data = new Uint8Array(size);
+				delete data;
+				info.memory.maxSize = size;
+			} catch (e) {
+				break;
+			}
+			size *= 2;
+		}
+	} else
+		info.memory.maxSize = 1073741824; //1G
+
+	/* audio */
+	var audioContext = null;
+	try {
+		var audioContextDriver = window.AudioContext || window.webkitAudioContext;
+		audioContext = new audioContextDriver();
+		var audioProcessor = audioContext.createScriptProcessor(1024, 2, 2);
+
+		info.audio.webAudio = true;
+
+		if (audioContext.close) audioContext.close().then(function() {});
+		audioContext = null;
+	} catch (e) {
+		if (audioContext) {
+			if (audioContext.close) audioContext.close().then(function() {});
+			audioContext = null;
+		}
+	}
+
+	/* video */
+	var canvas = document.createElement("canvas");
+	if (canvas && canvas.getContext) {
+		try {
+			var ctx = canvas.getContext("2d");
+			var imageData = ctx.createImageData(16, 16);
+			info.video.canvas = true;
+			try {
+				const glParams = {
+					alpha: false,
+					depth: true,
+					stencil: false,
+					antialias: false,
+					premultipliedAlpha: false,
+					preserveDrawingBuffer: true,
+					failIfMajorPerformanceCaveat: false
+				};
+				ctx = canvas.getContext("webgl", glParams) || canvas.getContext("experimental-webgl", glParams);
+				info.video.webGL = true;
+			} catch(e) {}
+		} catch(e) {}
+	}
+
+	return info;
+})();
+
+/*---------------------------------*/
+/* global variables */
+
+var SAEV_spcflags = 0;
+var SAEV_command = 0;
+
+/*---------------------------------*/
+/* global functions */
+
+function SAEF_setSpcFlags(x) { SAEV_spcflags |= x; };
+function SAEF_clrSpcFlags(x) { SAEV_spcflags &= ~x; };
+
+/*---------------------------------*/
+
+function SAEF_now() {
+	return Math.floor(performance.now() * 1000); /* micro-seconds since page-load */
+}
+function SAEF_sleep(ms) {
+	var start = performance.now();
+	while ((performance.now() - start) < ms) {} /* pretty nasty */
 }
 
+/*---------------------------------*/
+/* debug */
+
+function SAEF_log() {
+	if (SAEV_config.debug.level >= SAEC_Config_Debug_Level_Log && arguments.length) {
+		var str = sprintf.apply(this, arguments);
+		if (console.log) console.log(str);
+	}
+}
+function SAEF_info() {
+	if (SAEV_config.debug.level >= SAEC_Config_Debug_Level_Info && arguments.length) {
+		var str = sprintf.apply(this, arguments);
+		if (console.info) console.info(str);
+	}
+}
+function SAEF_warn() {
+	if (SAEV_config.debug.level >= SAEC_Config_Debug_Level_Warn && arguments.length) {
+		var str = sprintf.apply(this, arguments);
+		if (console.warn) console.warn(str);
+
+	}
+}
+function SAEF_error() {
+	if (SAEV_config.debug.level >= SAEC_Config_Debug_Level_Error && arguments.length) {
+		var str = sprintf.apply(this, arguments);
+		if (console.error) console.error(str);
+	}
+}
+function SAEF_fatal() {
+	var argumentsArray = Array.prototype.slice.call(arguments);
+	var err = argumentsArray[0];
+	var str = sprintf.apply(this, argumentsArray.slice(1));
+	if (console.error) console.error(str);
+	throw new SAEO_Error(err, str);
+}
+
+function SAEF_assert(cond) {
+	if (!cond) {
+		var err = SAEE_Assert;
+		var str = "Assertion failed. This is a bug in SAE.";
+		if (console.error) console.error(str);
+		throw new SAEO_Error(err, str);
+	}
+}
+
+/*---------------------------------*/
+
+function ScriptedAmigaEmulator() {
+	SAER = this;
+
+	this.autoconf = new SAEO_AutoConf();
+	this.audio = new SAEO_Audio();
+	this.blitter = new SAEO_Blitter();
+	this.cia = new SAEO_CIA();
+	this.config = new SAEO_Configuration();
+	this.copper = new SAEO_Copper();
+	this.cpu = new SAEO_CPU();
+	this.custom = new SAEO_Custom();
+	this.devices = new SAEO_Devices();
+	this.disk = new SAEO_Disk();
+	this.events = new SAEO_Events();
+	this.expansion = new SAEO_Expansion();
+	this.filesys = new SAEO_Filesys();
+	this.gayle = new SAEO_Gayle();
+	this.gui = new SAEO_GUI();
+	this.hardfile = new SAEO_Hardfile();
+	this.ide = new SAEO_IDE();
+	this.input = new SAEO_Input();
+	this.m68k = new SAEO_M68K();
+	this.memory = new SAEO_Memory();
+	this.playfield = new SAEO_Playfield();
+	this.roms = new SAEO_Roms();
+	this.rtc = new SAEO_RTC();
+	this.serial = new SAEO_Serial();
+	this.video = new SAEO_Video();
+
+	/*---------------------------------*/
+
+	this.running = false;
+	this.paused = false;
+
+	/*-----------------------------------------------------------------------*/
+
+	this.dump = function () {
+		this.m68k.dump();
+		//this.memory.dump();
+		//this.cia.dump();
+	};
+
+	/*-----------------------------------------------------------------------*/
+
+	this.do_start_program = function() {
+		if (SAEV_command >= 0)
+			SAEV_command = SAEC_command_Reset;
+
+		this.m68k.m68k_go(true);
+	}
+
+	this.do_leave_program = function() {
+		//sampler_free();
+		this.video.cleanup();
+		this.input.cleanup();
+		this.disk.cleanup();
+		this.audio.cleanup();
+		//dump_counts();
+		this.serial.cleanup();
+		/*#ifdef CDTV
+		cdtv_free();
+		cdtvcr_free();
+		#endif
+		#ifdef CD32
+		akiko_free();
+		cd32_fmv_free();
+		#endif*/
+		//this.gui.cleanup(); //empty
+		//#ifdef AUTOCONFIG
+		this.expansion.cleanup();
+		//#endif
+		//#ifdef FILESYS
+		this.filesys.cleanup();
+		//#endif
+		this.gayle.cleanup();
+		/*idecontroller_free();
+		device_func_reset();
+		#ifdef WITH_TOCCATA
+		sndboard_free();
+		#endif*/
+		this.memory.cleanup();
+		//free_shm();
+		this.autoconf.cleanup();
+	}
+
+	this.start_program = function() {
+		this.do_start_program();
+	}
+
+	this.leave_program = function() {
+		this.dump();
+		this.do_leave_program();
+	}
+
+	this.pause_program = function(p) {
+		this.audio.pauseResume(p);
+		this.events.pauseResume(p);
+	}
+
+	/*---------------------------------*/
+	/* API */
+
+	this.getVersion = function(str) {
+		if (str)
+			return sprintf("%d.%d.%d", SAEC_Version, SAEC_Revision, SAEC_Patch);
+		else
+			return [SAEC_Version, SAEC_Revision, SAEC_Patch];
+	}
+	this.getInfo = function() {
+		return SAEC_info;
+	}
+	this.getConfig = function() {
+		return SAEV_config;
+	}
+
+	this.setDefaults = function() {
+		return this.config.setDefaults();
+	}
+	this.setModel = function(model, config) {
+		return this.config.setModel(model, config);
+	}
+
+	this.setMountInfoDefaults = function(num) {
+		var ci = SAEV_config.mount.config[num].ci;
+		this.filesys.uci_set_defaults(ci, false);
+	}
+
+	this.start = function() {
+		if (SAER.running) {
+			SAEF_warn("sae.start() emulation already running");
+			return SAEE_AlreadyRunning;
+		}
+		SAEF_info("sae.start() starting...");
+
+		var err;
+		if ((err = this.config.setup()) != SAEE_None)
+			return err;
+		if ((err = this.video.obtain()) != SAEE_None)
+			return err;
+		if ((err = this.audio.obtain()) != SAEE_None)
+			return err;
+
+		this.input.setup(); //inputdevice_init();
+
+		if ((err = this.gui.setup()) != SAEE_None)
+			return err;
+
+		/*#ifdef PICASSO96
+		picasso_reset();
+		#endif*/
+
+		//this.config.fixup_prefs(currprefs, true);
+		//SAEV_config.audio.mode = 0; /* force sound settings change */
+
+		this.memory.hardreset(2);
+		if ((err = this.memory.reset(true)) == SAEE_None)
+		{
+			/*#ifdef AUTOCONFIG
+			native2amiga_install();
+			#endif*/
+			this.custom.setup(); //OWN
+			this.blitter.setup(); //OWN
+			this.playfield.setup(); //custom_init();
+			this.serial.setup();
+			this.disk.setup();
+
+			this.events.reset_frame_rate_hack();
+			if ((err = this.m68k.setup()) == SAEE_None) /* m68k_init() must come after reset_frame_rate_hack() */
+			{
+				//this.gui.update(); //empty
+				if ((err = this.video.setup(true)) == SAEE_None)
+				{
+					if ((err = this.audio.setup()) == SAEE_None)
+					{
+						this.start_program();
+						SAEF_info("sae.start() ...done");
+						return SAEE_None;
+					}
+					this.video.cleanup();
+				}
+			}
+		}
+		this.input.cleanup();
+		SAEF_error("sae.start() ...error %d", err);
+		return err;
+	}
+
+	this.stop = function() { //uae_quit()
+		if (this.running) {
+			SAEF_info("sae.stop()");
+			if (SAEV_command != -SAEC_command_Quit)
+				SAEV_command = -SAEC_command_Quit;
+
+			return SAEE_None;
+		} else {
+			SAEF_warn("sae.stop() emulation not running");
+			return SAEE_NotRunning;
+		}
+	};
+
+	this.reset = function(hardreset, keyboardreset) { //uae_reset(hardreset, keyboardreset)
+		if (typeof hardreset == "undefined") var hardreset = 1;
+		if (typeof keyboardreset == "undefined") var keyboardreset = 0;
+		if (this.running) {
+			SAEF_info("sae.reset() hard %d, keyboard %d", hardreset, keyboardreset);
+			if (SAEV_command == 0) {
+				SAEV_command = -SAEC_command_Reset;
+				if (keyboardreset)
+					SAEV_command = -SAEC_command_KeyboardReset;
+				if (hardreset)
+					SAEV_command = -SAEC_command_HardReset;
+			}
+			return SAEE_None;
+		} else {
+			SAEF_warn("sae.reset() emulation not running");
+			return SAEE_NotRunning;
+		}
+	};
+
+	this.pause = function(pause) {
+		if (this.running) {
+			if (!this.paused && pause) {
+				SAEF_info("sae.pause() pausing emulation");
+				SAEV_command = SAEC_command_Pause;
+			}
+			else if (this.paused && !pause) {
+				SAEF_info("sae.pause() resuming emulation");
+				SAEV_command = SAEC_command_Resume;
+			}
+			return SAEE_None;
+		} else {
+			SAEF_warn("sae.pause() emulation not running");
+			return SAEE_NotRunning;
+		}
+	};
+
+	this.insert = function(unit) {
+		if (this.running) {
+			var file = SAEV_config.floppy.drive[unit].file;
+			this.disk.insert(unit, file);
+			SAEF_info("sae.insert() unit %d inserted, name '%s', size %d, protected %d", unit, file.name, file.size, file.prot?1:0);
+			return SAEE_None;
+		} else {
+			SAEF_warn("sae.insert() emulation not running");
+			return SAEE_NotRunning;
+		}
+	};
+
+	this.eject = function(unit) {
+		if (this.running) {
+			this.disk.eject(unit);
+			SAEF_info("sae.eject() unit %d ejected", unit);
+			return SAEE_None;
+		} else {
+			SAEF_warn("sae.eject() emulation not running");
+			return SAEE_NotRunning;
+		}
+	};
+
+	this.getRomInfo = function(ri, file) {
+		return this.roms.examine(ri, file);
+	};
+
+	this.getDiskInfo = function(di, unit) {
+		return this.disk.examine(di, unit);
+	};
+
+	this.createDisk = function(unit, name, mode, type, label, ffs, bootable) {
+		if (!this.disk.create(unit, name, mode, type, label, ffs, bootable))
+			return SAEE_NoMemory;
+		return SAEE_None;
+	};
+
+	/*---------------------------------*/
+
+	SAEF_info("SAE %d.%d.%d", SAEC_Version, SAEC_Revision, SAEC_Patch);
+}

@@ -1,63 +1,106 @@
+/*-------------------------------------------------------------------------
+| SAE - Scripted Amiga Emulator
+| https://github.com/naTmeg/ScriptedAmigaEmulator
+|
+| Copyright (C) 2012-2016 Rupert Hausberger
+|
+| This program is free software; you can redistribute it and/or
+| modify it under the terms of the GNU General Public License
+| as published by the Free Software Foundation; either version 2
+| of the License, or (at your option) any later version.
+|
+| This program is distributed in the hope that it will be useful,
+| but WITHOUT ANY WARRANTY; without even the implied warranty of
+| MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+| GNU General Public License for more details.
+-------------------------------------------------------------------------*/
 
-a:link		{ color:#2040c0; text-decoration:none; }
-a:visited	{ color:#2040c0; text-decoration:none; }
-a:hover		{ color:#2040c0; text-decoration:underline; }
-
-.alt { text-align:left; vertical-align:top; }
-.alm { text-align:left; vertical-align:middle; }
-.almsg { text-align:left; vertical-align:middle; font-size:x-small; color:gray; }
-.alb { text-align:left; vertical-align:bottom; }
-
-.act { text-align:center; vertical-align:top; }
-.acm { text-align:center; vertical-align:middle; }
-.acmsb { text-align:center; vertical-align:middle; font-size:x-small; font-weight:bold; }
-.acmsg { text-align:center; vertical-align:middle; font-size:x-small; color:gray; }
-.acb { text-align:center; vertical-align:bottom; }
-
-.art { text-align:right; vertical-align:top; }
-.arm { text-align:right; vertical-align:middle; }
-.armb { text-align:right; vertical-align:middle; font-weight:bold; }
-.arms { text-align:right; vertical-align:middle; font-size:x-small; }
-.armsb { text-align:right; vertical-align:middle; font-size:x-small; font-weight:bold; }
-.armsg { text-align:right; vertical-align:middle; font-size:x-small; color:gray; }
-.arb { text-align:right; vertical-align:bottom; }
-
-.fsxs { font-size:x-small; }
-.fsl { font-size:large; }
-.fwb { font-weight:bold; }
-
-.info { 
-	font-size:x-small;
-	color:gray;
-	vertical-align:text-top;
-}
-
-.gray { color:gray; }
-.green { color:green; }
-.red { color:red; }
+a:link		{ color:#24c; text-decoration:none; }
+a:visited	{ color:#24c; text-decoration:none; }
+a:hover		{ color:#24c; text-decoration:underline; }
 
 body {
 	top:0;
 	left:0;
 	margin:0;
 	padding:0;
-	font-family:verdana,serif;
-	font-size:small;
-	background-color:#fff;
+	font-family:Verdana;
+	font-size:13px;
+	background-color:#f8f8f8;
+	-webkit-touch-callout:none;
+	-webkit-user-select:none;
+	-khtml-user-select:none;
+	-moz-user-select:none;
+	-ms-user-select:none;
+	user-select:none;
+}
+
+table {
+	white-space:nowrap;
+}
+td {
+	text-align:left;
+	vertical-align:top;
+}
+
+textarea {
+	resize:none;
+	font-size:13px;
+	font-family:monospace;
+	border-left:1px solid #ccc;
+	border-top:1px solid #ccc;
+	border-right:1px solid #fff;
+	border-bottom:1px solid #fff;
+}
+
+input[type=text] {
+	font-size:13px;
+	border-left:1px solid #ccc;
+	border-top:1px solid #ccc;
+	border-right:1px solid #fff;
+	border-bottom:1px solid #fff;
+}
+
+/*---------------------------------*/
+
+.gray { color:gray; }
+.green { color:green; }
+.orange { color:orange; }
+.red { color:red; }
+
+.alt { text-align:left; vertical-align:top; }
+.alm { text-align:left; vertical-align:middle; }
+.alb { text-align:left; vertical-align:bottom; }
+
+.act { text-align:center; vertical-align:top; }
+.acm { text-align:center; vertical-align:middle; }
+.acb { text-align:center; vertical-align:bottom; }
+
+.art { text-align:right; vertical-align:top; }
+.arm { text-align:right; vertical-align:middle; }
+.arb { text-align:right; vertical-align:bottom; }
+
+.label {
+	font-size:11px;
+	font-weight:bold;
+	color:#333;
+}
+.info {
+	font-size:11px;
+	color:dimgray;
+}
+.warn {
+	font-size:11px;
+	color:red;
 }
 
 .noscript {
 	margin:auto;
 	padding:4px;
+	font-size:17px;
 	font-weight:bold;
-	font-size:medium;
 	text-align:center;
 	color:red;
-}
-
-.hr {
-	width:100%;
-	border-top:1px solid #ccc;
 }
 
 .head {
@@ -69,123 +112,195 @@ body {
 .foot {
 	width:100%;
 	margin:auto;
+	font-size:11px;
 	text-align:center;
-	font-size:x-small;
 }
 
-#config_simple  {
-	width:780px;
-	padding:10px;
-	margin:auto;
-	border:1px solid #ccc;
-	background-color:#fcfcfc;
-}
-.config_simple_hof  {
-	width:380px;
-	margin:auto;
-	padding:10px;
-	border:1px solid #ccc;
-	background-color:#f8f8f8;
-}
-#cfg_info td  {
-	padding:2px;
-}
-
-#config_advanced {
-	width:780px;
-	margin:auto;
-	padding:10px;
-	border:1px solid #ccc;
-	background-color:#f8f8f8;
-	display:none;
-}
-#config_advanced table {
+.linehoriz {
 	width:100%;
-	line-height:20px;
+	border-top:1px solid #bbb;
 }
 
-#config .tl {
-	border-top:1px solid #ccc;
+.text {
+	border-left:1px solid #bbb;
+	border-top:1px solid #bbb;
+	border-right:1px solid #fff;
+	border-bottom:1px solid #fff;
+	background-color:#fff;
+	-webkit-touch-callout:text;
+	-webkit-user-select:text;
+	-khtml-user-select:text;
+	-moz-user-select:text;
+	-ms-user-select:text;
+	user-select:text;
 }
-#config .bl {
-	border-bottom:1px solid #ccc;
+
+/*---------------------------------*/
+
+#myVideo {
+	margin:auto;
 }
-#config .wauto {
-	width:auto;
-}
+
+/*---------------------------------*/
+
 #config select {
-	border:1px solid #ccc;
+	border-left:2px solid #fff;
+	border-top:2px solid #fff;
+	border-right:1px solid #bbb;
+	border-bottom:1px solid #bbb;
+	background-color:#f8f8f8;
 }
 #config .button {
-	width:100px;
-	border:1px solid #ccc;
-	background-color:#fff;
+	width:75px;
+	border-left:1px solid #fff;
+	border-top:1px solid #fff;
+	border-right:1px solid #bbb;
+	border-bottom:1px solid #bbb;
+	background-color:#f8f8f8;
 }
 #config .button:hover {
-	background-color:#eee;
+	background-color:#e8e8e8;
 }
 #config .sbutton {
 	width:100px;
 	padding:2px;
-	font-weight:bold;
-	border:1px solid #ccc;
-	background-color:#fff;
+	border-left:1px solid #fff;
+	border-top:1px solid #fff;
+	border-right:1px solid #bbb;
+	border-bottom:1px solid #bbb;
+	background-color:#f8f8f8;
 }
 #config .sbutton:hover {
-	background-color:#eee;
+	background-color:#e8e8e8;
 }
-#cfg_demo, #cfg_game {
-	width:100%;	
+
+#config_database  {
+	width:720px;
+	padding:10px;
+	margin:auto;
+	border-left:1px solid #fff;
+	border-top:1px solid #fff;
+	border-right:1px solid #bbb;
+	border-bottom:1px solid #bbb;
+	background-color:#f0f0f0;
 }
+#config_database_hof  {
+	width:75%;
+	margin:auto;
+	padding:10px;
+	border-left:1px solid #bbb;
+	border-top:1px solid #bbb;
+	border-right:1px solid #fff;
+	border-bottom:1px solid #fff;
+	background-color:#e8e8e8;
+}
+#config_database_hof .ctrl  {
+	padding:2px;
+	margin:0;
+	border-left:1px solid #bbb;
+	border-top:1px solid #bbb;
+	border-right:1px solid #fff;
+	border-bottom:1px solid #fff;
+	background-color:#f0f0f0;
+}
+
+#config_advanced {
+	width:720px;
+	margin:auto;
+	padding:10px;
+	border-left:1px solid #fff;
+	border-top:1px solid #fff;
+	border-right:1px solid #bbb;
+	border-bottom:1px solid #bbb;
+	background-color:#f0f0f0;
+	display:none;
+}
+#config_advanced table {
+	width:100%;
+}
+
+#config_advanced .menu {
+	padding:10px;
+	border-left:1px solid #ccc;
+	border-top:1px solid #ccc;
+	border-right:1px solid #fff;
+	border-bottom:1px solid #fff;
+	background-color:#e8e8e8;
+}
+#config_advanced .menu a:link {
+	font-size:13px;
+	color:#000;
+	text-decoration:none;
+}
+#config_advanced .menu a:hover {
+	color:#888;
+	text-decoration:none;
+}
+
+#config_advanced .page {
+	padding:10px;
+	border-left:1px solid #ccc;
+	border-top:1px solid #ccc;
+	border-right:1px solid #fff;
+	border-bottom:1px solid #fff;
+	background-color:#e8e8e8;
+	display:none;
+}
+#cfg_page_video  input[type="text"] {
+	width:60px;
+}
+
+/*---------------------------------*/
 
 #emul {
 	display:none;
 }
 
-#status {
-	width:720px;
-	margin:auto;
-	padding:2px;
-	text-align:center;
-	font-size:x-small;
-	color:#888;
-	background-color:#000;
-}
-#status table {
-	margin:auto;
-}
-#dskchg, #dskchg_simple {
-	display:none;
-	width:720px;
-	margin:auto;
-	padding:2px;
-	text-align:center;
-	font-size:x-small;
-	color:#888;
-	background-color:#000;
-}
-#dskchg, #dskchg_simple table {
-	margin:auto;
-}
-
-.dbutton {
+#emul button {
 	width:64px;
-	font-size:x-small;
+	font-size:11px;
+	font-weight:bold;
 	color:#888;
 	border:1px solid #888;
 	background-color:#000;
 }
-.dbutton:hover {
+#emul button:hover {
 	color:#ccc;
 	border:1px solid #ccc;
 }
 
+#controls_status {
+	margin:auto;
+	color:#888;
+	font-size:9px;
+	font-weight:bold;
+}
+
+#dskchg_database, #dskchg_advanced {
+	display:none;
+}
+#dskchg_database table, #dskchg_advanced table {
+	margin:auto;
+}
+#dskchg_database select, #dskchg_advanced select {
+	font-size:11px;
+	font-weight:bold;
+	color:#888;
+	border:1px solid #888;
+	background-color:#000;
+}
+
+/*---------------------------------*/
+
 .readme {
-	width:1004px;
+	width:1080px;
 	margin:auto;
 	padding:10px;
-	border:1px solid #ccc;
-	background-color:#fcfcfc;
+	border-left:1px solid #fff;
+	border-top:1px solid #fff;
+	border-right:1px solid #bbb;
+	border-bottom:1px solid #bbb;
+	background-color:#f0f0f0;
 }
 .readme table {
 	width:100%;
@@ -193,15 +308,57 @@ body {
 .readme table td {
 	vertical-align:top;
 }
-
-/*div.float_box {
-	overflow: hidden;
-	width: 100%;
+.readme li {
+	padding:1px;
 }
-div.float_item {
-	float: left;
-}
-div.float_clear {
-	clear: both;
-}*/
 
+/*---------------------------------*/
+
+#disass  {
+	width:720px;
+	padding:10px;
+	margin:auto;
+	border-left:1px solid #fff;
+	border-top:1px solid #fff;
+	border-right:1px solid #bbb;
+	border-bottom:1px solid #bbb;
+	background-color:#f0f0f0;
+}
+#disass select {
+	border-left:1px solid #fff;
+	border-top:1px solid #fff;
+	border-right:1px solid #bbb;
+	border-bottom:1px solid #bbb;
+}
+#disass input {
+	border-left:1px solid #bbb;
+	border-top:1px solid #bbb;
+	border-right:1px solid #fff;
+	border-bottom:1px solid #fff;
+}
+
+#disass .button {
+	width:100px;
+	border-left:1px solid #fff;
+	border-top:1px solid #fff;
+	border-right:1px solid #bbb;
+	border-bottom:1px solid #bbb;
+	background-color:#f8f8f8;
+}
+#disass .button:hover {
+	background-color:#e8e8e8;
+}
+
+#disass_cfg  {
+	border-left:1px solid #bbb;
+	border-top:1px solid #bbb;
+	border-right:1px solid #fff;
+	border-bottom:1px solid #fff;
+	background-color:#e8e8e8;
+	display:none;
+}
+
+#disass_code {
+	width:100%;
+	display:none;
+}

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en-us">
+	<head>
+		<title>SAE - Scripted Amiga Emulator</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+		<link rel="icon" type="image/x-icon" href="favicon.ico" />
+		<link rel="stylesheet" type="text/css" href="index.css" />
+		<script type="text/javascript" src="sae/prototypes.js"></script>
+		<script type="text/javascript" src="sae/utils.js"></script>
+		<script type="text/javascript" src="sae/cpu.js"></script>
+		<script type="text/javascript" src="sae/disassembler.js"></script>
+		<script type="text/javascript" src="disass.js"></script>
+	</head>
+	<body onload="init()">
+		<div id="base">
+			<div id="head" class="head">
+				<noscript>
+					<div style="height:20px"></div>
+					<div class="noscript">JavaScript is disabled or not supported!</div>
+					<div style="height:20px"></div>
+				</noscript>
+				<div style="height:8px"></div>
+				<img src="images/logo.png" alt="Scripted Amiga Emulator" />
+			</div>
+			<div id="disass">
+				Here you can use the internal disassembler. Code-types are from 68000-68030, no FPU, no MMU.<br />
+				<span class="info">Note: No files or informations about files are transferred to the internet. Disassembling is done in the browser, using javascript.</span>
+				<div style="height:10px"></div>
+				<table>
+					<tr>
+						<td class="arm"><span class="label">File</span></td>
+						<td style="width:100%">
+							<span class="text"><span id="cfg_filename" class="red">&lt;unset&gt; (required)</span></span>
+							<input id="cfg_file" type="file" style="position:absolute;left:-10000px;top:-10000px;" onchange="updFile()" />
+							<button class="button" onclick="document.getElementById('cfg_file').click()">Select</button>
+						</td>
+					</tr>
+				</table>
+				<div style="height:10px"></div>
+				<table id="disass_cfg">
+					<tr>
+						<td>
+							Offset&nbsp;&dollar;<input id="cfg_offset" type="text" value="0" maxlength="8" onchange="updOffset()" style="width:80px" />
+							Limit <input id="cfg_limit" type="text" value="32" maxlength="4" onchange="updLimit()" style="width:40px" />instructions
+							<button class="button" onclick="updNext(1)">Next</button>
+						</td>
+					</tr>
+					<tr>
+						<td>
+							Radix
+							<select id="cfg_radix" size="1" onchange="updRadix()">
+								<option value="10">Dec (10)</option>
+								<option value="16" selected="selected">Hex (16)</option>
+							</select>
+							Hex-prefix
+							<select id="cfg_prefx" size="1" onchange="updPrefx()">
+								<option value="1" selected="selected">&dollar;</option>
+								<option value="2">0x</option>
+							</select>
+							Hex-width
+							<select id="cfg_width" size="1" onchange="updWidth()">
+								<option value="0" selected="selected">Auto</option>
+								<option value="24">24bit (6 chars)</option>
+								<option value="32">32bit (8 chars)</option>
+							</select>
+							<input id="cfg_reloc" type="checkbox" onchange="updReloc()" checked="checked" />Relocate
+						</td>
+					</tr>
+					<tr>
+						<td>
+							Show
+							<input id="cfg_showAddr" type="checkbox" onchange="updShowAddr()" checked="checked" />Address
+							<input id="cfg_showCode" type="checkbox" onchange="updShowCode()" checked="checked" />Code/Memory
+							<input id="cfg_case" type="checkbox" onchange="updCase()" />Upper-case
+						</td>
+					</tr>
+				</table>
+				<div style="height:10px"></div>
+				<textarea rows="33" readonly="readonly" id="disass_code"></textarea>
+			</div>
+			<div style="height:5px"></div>
+			<div id="foot" class="foot" style="line-height:14px">
+				<span class="gray">2012-2016 Rupert Hausberger</span> |
+				<a target="_blank" href="readme.htm">Description</a> |
+				<span class="gray">Disassembler</span> |
+				<a target="_blank" href="https://github.com/naTmeg/ScriptedAmigaEmulator">Source-code</a>
+			</div>
+		</div>
+	</body>
+</html>

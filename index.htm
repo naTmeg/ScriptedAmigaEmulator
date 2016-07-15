@@ -3,19 +3,26 @@
 	<head>
 		<title>SAE - Scripted Amiga Emulator</title>
 		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-		<meta name="author" content="Rupert Hausberger" /> 
-		<meta name="publisher" content="Rupert Hausberger" /> 
-		<meta name="description" content="Experimental Amiga Classic Emulator in Javascript" /> 
-		<meta name="keywords" content="SAE,Javascript,Scripted,Script,HTML5,Amiga,AmigaOS,Emulator,Online" /> 
+		<meta name="author" content="Rupert Hausberger" />
+		<meta name="publisher" content="Rupert Hausberger" />
+		<meta name="description" content="Experimental Amiga Emulator in Javascript" />
+		<meta name="keywords" content="SAE,Javascript,Scripted,Script,HTML5,Amiga,AmigaOS,Emulator,Emulation,68000,68010,68020,Disassembler,Online" />
 		<meta name="robots" content="index,nofollow" />
-		<link rel="icon" type="image/x-icon" href="http://scriptedamigaemulator.net/favicon.ico" />
+		<link rel="icon" type="image/x-icon" href="favicon.ico" />
 		<link rel="stylesheet" type="text/css" href="index.css" />
-		<script type="text/javascript" src="sae/constants.js"></script>
+		<script type="text/javascript" src="sae/prototypes.js"></script>
 		<script type="text/javascript" src="sae/utils.js"></script>
+		<script type="text/javascript" src="sae/dms.js"></script>
 		<script type="text/javascript" src="sae/config.js"></script>
+		<script type="text/javascript" src="sae/roms.js"></script>
 		<script type="text/javascript" src="sae/memory.js"></script>
+		<script type="text/javascript" src="sae/autoconf.js"></script>
 		<script type="text/javascript" src="sae/expansion.js"></script>
 		<script type="text/javascript" src="sae/events.js"></script>
+		<script type="text/javascript" src="sae/gayle.js"></script>
+		<script type="text/javascript" src="sae/ide.js"></script>
+		<script type="text/javascript" src="sae/filesys.js"></script>
+		<script type="text/javascript" src="sae/hardfile.js"></script>
 		<script type="text/javascript" src="sae/input.js"></script>
 		<script type="text/javascript" src="sae/serial.js"></script>
 		<script type="text/javascript" src="sae/custom.js"></script>
@@ -27,634 +34,1704 @@
 		<script type="text/javascript" src="sae/cia.js"></script>
 		<script type="text/javascript" src="sae/disk.js"></script>
 		<script type="text/javascript" src="sae/rtc.js"></script>
+		<script type="text/javascript" src="sae/m68k.js"></script>
 		<script type="text/javascript" src="sae/cpu.js"></script>
 		<script type="text/javascript" src="sae/amiga.js"></script>
 		<script type="text/javascript" src="index.js"></script>
-		<script type="text/javascript" src="ga.js"></script>		
+		<script type="text/javascript" src="ga.js"></script>
 	</head>
-	<body onload="init()">	
+	<body onload="init()">
 		<div id="base">
 			<div id="head" class="head">
 				<noscript>
-					<div class="noscript">This site does require javascript, obviously :)</div>  	
+					<div style="height:20px"></div>
+					<div class="noscript">JavaScript is disabled or not supported!</div>
+					<div style="height:20px"></div>
 				</noscript>
-				<div style="height:8px"></div> 		
-				<img src="images/logo.png" alt="Scripted Amiga Emulator" />	
-			</div>	  					
- 		
-			<div id="config">			  	
-				<div id="config_simple">	
-					<h3>Welcome!</h3>
-					This site is the homepage of the project <a target="_blank" href="https://github.com/naTmeg/ScriptedAmigaEmulator">SAE</a>,
-					an <i>experimental</i> <a target="_blank" href="http://en.wikipedia.org/wiki/Amiga">Amiga</a> emulator in pure JavaScript and HTML5.<br />
-					SAE is based on <a target="_blank" href="http://winuae.net">WinUAE</a> and does use the <a target="_blank" href="http://aros.org">AROS</a>-kickstart replacement. 
-					For more details, please see the <a target="_blank" href="readme.htm">description</a>.<br />           						
-					<br />     		
-					Below you find a collection of pre-installed games and demos to play and test. Press the 'Config'-button to use your own roms or file-images, with advanced options.<br />
-					<br />			 
-					<div class="config_simple_hof">
-						<!--<div class="acm">
-							<span class="fwb">Browser</span>		
-						</div>
-						<table>		
-							<tr>
-								<td class="arms">Supported video-modes:</td>  
-								<td><span id="info_video">-</span></td>   
-							</tr>
-							<tr>
-								<td class="arms">Supported audio-modes:</td>  
-								<td><span id="info_audio">-</span></td>   
-							</tr>
-							<tr>
-								<td class="arms">SAE-Version:</td>  
-								<td><span id="info_version">-</span></td>   
-							</tr>
-						</table>		
-						<div style="height:10px"></div> 													
-						<div class="hr"></div> 
-						<div style="height:10px"></div>--> 													
-						<!--<div class="acm">
-							<span class="fwb">Hall of fame</span>		
-						</div>-->
-						<table>		
-							<tr>
-								<td class="armsb"><label for="cfg_game">Game</label></td>
-								<td>
-												<select id="cfg_game" size="1" onchange="preSelect(1)">
-										<option value="0">- select -</option>
-									</select>
-								</td>   
-							</tr>
-							<tr>  
-								<td class="armsb"><label for="cfg_demo">Demo</label></td>
-								<td>
-												<select id="cfg_demo" size="1" onchange="preSelect(2)">
-										<option value="0">- select -</option>
-									</select>
-								</td>     
-							</tr>
-							<tr>
-								<td class="arms">Audio/Video</td>
-								<td><input id="cfg_audio_enabled_1" type="checkbox" checked="checked" /><input id="cfg_video_enabled_1" type="checkbox" checked="checked" /></td>			
-							</tr>													
-							<tr>
-								<td class="arms">Frameskip</td>
-								<td><input id="cfg_video_skip_1" type="checkbox" checked="checked" /><span class="info">(25 instead of 50 fps)</span></td>			
-							</tr>							
-							<tr>
-								<td class="arms">Extra scale</td>
-								<td><input id="cfg_video_scale_1" type="checkbox" /><span class="info">(double video-size via hardware)</span></td>			
-							</tr>
-						</table>					
-						<div style="height:5px"></div> 
-						<div class="hr"></div> 
-						<table id="cfg_info">
-							<tr>
-								<td class="armsb">Name</td>
-								<td><span id="cfg_info_name"></span></td>
-							</tr>
-							<tr>
-								<td class="armsb">Year</td>
-								<td><span id="cfg_info_year"></span></td>
-							</tr>
-							<tr>
-								<td class="armsb">Developer</td>
-								<td><span id="cfg_info_comp"></span></td>
-							</tr>
-							<tr>
-								<td class="armsb">Publisher</td>
-								<td><span id="cfg_info_publ"></span></td>
-							</tr>
-							<tr>
-								<td class="armsb">License</td>
-								<td><span id="cfg_info_lic"></span></td>
-							</tr>
-							<tr id="cfg_info_ctrl_grp">
-								<td class="armsb">Controls</td>
-								<td><span id="cfg_info_ctrl"></span></td>
-							</tr>
-							<tr id="cfg_info_load_grp">
-								<td class="armsb">Loading</td>
-								<td><span id="cfg_info_load"></span></td>
-							</tr>
-						</table>
-						<div style="height:10px"></div> 
-						<div class="acm">
-							<button class="sbutton" id="cfg_simple_start" onclick="simpleStart()">Play</button>		
-							<button class="button" onclick="switchCfg(1)">Config</button>
-						</div>
-					</div>					
+				<div style="height:8px"></div>
+				<a href="javascript:switchCfg(0)">
+					<img src="images/logo.png" alt="Scripted Amiga Emulator" />
+				</a>
+			</div>
+			<div id="config">
+				<div id="config_database">
+					<span style="font-size:15px;font-weight:bold">Welcome!</span><br />
 					<br />
-					<span class="info">
-					<span class="fwb">Your game or demo online</span><br />		
-					If you want to have your game or demo on this site, please contact me.
-					It would be published under a free license, with a link to your homepage and would be free to play for everyone.
-					This is a non-profit site and an open-source project.
-					</span>						
-				</div>						
-				<div id="config_advanced">
-					<div class="acm"><button class="button" onclick="switchCfg(0)">Back</button></div>  	
-					<table>				
-						<tr>
-							<td class="armsb">CPU</td>
-							<td class="bl">					
-								Speed
-								<select id="cfg_cpu_speed" size="1">
-									<option value="0">Original</option>
-									<option value="-1">Maximum</option>
-								</select>
-							</td>
-						</tr>							
-						<tr>
-							<td class="armsb">Chipset</td>
-							<td class="bl">				
-								Type
-								<select id="cfg_chipset_type" size="1">
-									<option value="1">Original Chip Set (OCS Agnus)</option>
-									<option value="2">Enhanced Chip Set (ECS Agnus only)</option>
-									<option value="3">Enhanced Chip Set (ECS Agnus, ECS Denise)</option>
-								</select><br />						
-								<input id="cfg_chipset_cl_enabled" type="checkbox" onchange="spritesUpdate()" />Collisions								
-								<span id="cfg_chipset_cl_grp">								 
-									<select id="cfg_chipset_cl" size="1">
-										<option value="1">Sprites only</option>
-										<option value="2">Sprites &amp; Playfield (recommended)</option>
-										<option value="3">Full</option>
-									</select>
-								</span><br />
-								<input id="cfg_video_ntsc" type="checkbox" />NTSC<br />
-								<input id="cfg_chipset_agnus_dip" type="checkbox" />A1000 OCS Agnus (8361/8367)<br />																		
-								<input id="cfg_blitter_immediate" type="checkbox" />Blit immediate																		
-							</td>
-						</tr>							
-						<tr>
-							<td class="armsb">RAM</td>
-							<td class="bl">					
-								<table class="wauto">
-									<tr>
-										<td class="arm">Chip:</td>
-										<td>
-											<select id="cfg_mem_chip" size="1">
-												<option value="1">256</option>
-												<option value="2">512</option>
-												<option value="3">1024</option>
-												<option value="4">2048</option>
-											</select>
-											kb
-										</td>
-									</tr>
-									<tr>
-										<td class="arm">Slow:</td>
-										<td>
-											<select id="cfg_mem_slow" size="1">
-												<option value="0">0</option>
-												<option value="1">256</option>
-												<option value="2">512</option>
-												<option value="3">1024</option>
-												<option value="4">1536</option>
-											</select>				
-											kb <span class="gray">(pseudo-fast, bogomem)</span>
-										</td>
-									</tr>	
-									<tr>
-										<td class="arm">Fast:</td>
-										<td>
-											<select id="cfg_mem_fast" size="1">
-												<option value="0">0</option>
-												<option value="1">512</option>
-												<option value="2">1024</option>
-												<option value="3">2048</option>
-												<option value="4">4096</option>
-												<option value="5">8192</option>
-											</select>				
-											kb <span class="gray">(real-fast, commodore a2058 in zorro2)</span>
-										</td>
-									</tr>	
-								</table>
-							</td>
-						</tr>							
-						<tr>
-							<td class="armsb">ROM</td>
-							<td class="bl">								
-								<table id="cfg_rom_grp">
-									<tr>
-										<td class="arm">Kickstart:</td>
-										<td style="width:100%"><span id="cfg_rom_name" class="red">unset (required)</span></td>
-										<td><input id="cfg_rom_file" type="file" style="position:absolute;left:-10000px;top:-10000px;" onchange="romSelect()" /></td>
-										<td><button class="button" onclick="document.getElementById('cfg_rom_file').click()">Select</button></td>
-										<td><button class="button" id="cfg_rom_aros" onclick="romAROS()"><span class="green">Set AROS</span></button></td>										
-									</tr>
-									<tr>
-										<td class="arm">Extended:</td>
-										<td style="width:100%"><span id="cfg_ext_name" class="gray">unset (optional)</span></td>
-										<td><input id="cfg_ext_file" type="file" style="position:absolute;left:-10000px;top:-10000px;" onchange="extSelect()" /></td>
-										<td><button class="button" onclick="document.getElementById('cfg_ext_file').click()">Select</button></td>										
-										<td><button class="button" id="cfg_ext_remove" onclick="extRemove()">Remove</button></td>										
-									</tr>	
-									<tr id="cfg_ext_addr_grp">		
-										<td class="arm">Ext. addr:</td>
-										<td colspan="4">
-											<select id="cfg_ext_addr" size="1">
-												<option value="2">0xE00000</option>
-												<option value="3">0xF00000</option>
-											</select>				
-										</td>			
-									</tr>		
-								</table>
-							</td>
-						</tr>		
-						<tr>
-							<td class="armsb">Floppy</td>
-							<td class="bl">
-								<table style="border-collapse:collapse">
-									<tr>		
-										<td style="width:45px"><input id="cfg_df0_enabled" type="checkbox" onchange="floppyUpdate(0)" />DF0</td>
-										<td>
-											<table id="cfg_df0_grp">
-												<tr>
-													<td>
-														<select id="cfg_df0_type" size="1">
-															<option value="1">3.5" DD</option>
-															<option value="2">3.5" HD</option>
-															<option value="3">5.25" SD</option>
-														</select>				
-													</td>
-													<td style="width:100%"><span id="cfg_df0_name" class="gray">empty (optional)</span></td>
-													<td><input id="cfg_df0_file" type="file" style="position:absolute;left:-10000px;top:-10000px;" onchange="floppyInsert(0)" /></td>
-													<td><button class="button" onclick="document.getElementById('cfg_df0_file').click()">Insert</button></td>
-													<td><button class="button" id="cfg_df0_eject" onclick="floppyEject(0)">Eject</button></td>										
-												</tr>
-											</table>
-										</td>
-									</tr>
-									<tr>		
-										<td><input id="cfg_df1_enabled" type="checkbox" onchange="floppyUpdate(1)" />DF1</td>
-										<td>
-											<table id="cfg_df1_grp">
-												<tr>
-													<td>
-														<select id="cfg_df1_type" size="1">
-															<option value="1">3.5" DD</option>
-															<option value="2">3.5" HD</option>
-															<option value="3">5.25" SD</option>
-														</select>				
-													</td>
-													<td style="width:100%"><span id="cfg_df1_name" class="gray">empty (optional)</span></td>
-													<td><input id="cfg_df1_file" type="file" style="position:absolute;left:-10000px;top:-10000px;" onchange="floppyInsert(1)" /></td>
-													<td><button class="button" onclick="document.getElementById('cfg_df1_file').click()">Insert</button></td>
-													<td><button class="button" id="cfg_df1_eject" onclick="floppyEject(1)">Eject</button></td>										
-												</tr>
-											</table>
-										</td>
-									</tr>
-									<tr>		
-										<td><input id="cfg_df2_enabled" type="checkbox" onchange="floppyUpdate(2)" />DF2</td>
-										<td>
-											<table id="cfg_df2_grp">
-												<tr>
-													<td>
-														<select id="cfg_df2_type" size="1">
-															<option value="1">3.5" DD</option>
-															<option value="2">3.5" HD</option>
-															<option value="3">5.25" SD</option>
-														</select>				
-													</td>
-													<td style="width:100%"><span id="cfg_df2_name" class="gray">empty (optional)</span></td>
-													<td><input id="cfg_df2_file" type="file" style="position:absolute;left:-10000px;top:-10000px;" onchange="floppyInsert(2)" /></td>
-													<td><button class="button" onclick="document.getElementById('cfg_df2_file').click()">Insert</button></td>
-													<td><button class="button" id="cfg_df2_eject" onclick="floppyEject(2)">Eject</button></td>										
-												</tr>
-											</table>
-										</td>
-									</tr>
-									<tr>		
-										<td><input id="cfg_df3_enabled" type="checkbox" onchange="floppyUpdate(3)" />DF3</td>
-										<td>
-											<table id="cfg_df3_grp">
-												<tr>
-													<td>
-														<select id="cfg_df3_type" size="1">
-															<option value="1">3.5" DD</option>
-															<option value="2">3.5" HD</option>
-															<option value="3">5.25" SD</option>
-														</select>				
-													</td>
-													<td style="width:100%"><span id="cfg_df3_name" class="gray">empty (optional)</span></td>
-													<td><input id="cfg_df3_file" type="file" style="position:absolute;left:-10000px;top:-10000px;" onchange="floppyInsert(3)" /></td>
-													<td><button class="button" onclick="document.getElementById('cfg_df3_file').click()">Insert</button></td>
-													<td><button class="button" id="cfg_df3_eject" onclick="floppyEject(3)">Eject</button></td>										
-												</tr>
-											</table>
-										</td>
-									</tr>
-								</table>	
-								Speed:
-								<select id="cfg_floppy_speed" size="1">
-									<option value="0">Turbo</option>
-									<option value="100">Original</option>
-									<option value="200">2x</option>
-									<option value="500">5x</option>
-									<option value="1000">10x</option>
-								</select>																
-								<span class="gray"> ('Turbo' mode is fastest, but not always compatible. All other modes are very slow)</span> 
-							</td>
-						</tr>
-						<tr>
-							<td class="armsb">Audio</td>
-							<td class="bl">
-								<input id="cfg_audio_enabled" type="checkbox" onchange="audioUpdate()" />Enabled 
-								<table id="cfg_audio_grp" class="wauto">
-									<tr>
-										<td class="arm">Mode:</td>
-										<td>
-											<select id="cfg_audio_mode" size="1">
-												<option value="0">Off (emulated)</option>
-												<option value="1">On</option>
-												<option value="2">On (best)</option>
-											</select>			
-										</td>
-										<td class="arm">Channels:</td>
-										<td>
-											<select id="cfg_audio_channels" size="1">
-												<option value="1">1 - Mono</option>
-												<option value="2">2 - Stereo</option>
-											</select>			
-										</td>
-										<td class="arm">Lowpass-filter:</td>
-										<td><input id="cfg_audio_filter" type="checkbox" /></td>
-									</tr>	
-								</table>
-							</td>
-						</tr>
-						<tr>
-							<td class="armsb">Video</td>
-							<td class="bl">
-								<input id="cfg_video_enabled" type="checkbox" onchange="videoUpdate()" />Enabled 								
-								<div id="cfg_video_grp">
-									<!--Driver
-									<select id="cfg_video_mode" size="1">
-										<option value="1">Canvas 2D</option>
-										<option value="2">WebGL</option>
-									</select><br />
-									H-Resolution
-									<select id="cfg_video_hres" size="1">
-										<option value="0">320 pixel (Lores)</option>
-										<option value="1">640 pixel (Hires)</option>
-										<option value="2">1280 pixel (SuperHires, ECS)</option>
-									</select><br />			
-									V-Resolution
-									<select id="cfg_video_vres" size="1">
-										<option value="0">200/256 pixel (Normal)</option>
-										<option value="1">400/512 pixel (Double)</option>
-										<option value="2">400/512 pixel (Scanlines)</option>
-									</select><br />-->			
-									<input id="cfg_video_skip" type="checkbox" />Frameskip <span class="gray">(25 instead of 50 fps)</span><br />
-									<input id="cfg_video_scale" type="checkbox" />Extra scale <span class="gray">(double video-size via hardware)</span>
-								</div>
-							</td>
-						</tr>
-						<tr>
-							<td class="armsb">Keyboard</td>
-							<td class="bl">
-								<input id="cfg_keyborad_enabled" type="checkbox" onchange="keyboradUpdate()" />
-								Enabled <span class="gray">(joysticks does always work)</span>
-								<div id="cfg_keyborad_grp">
-									<input id="cfg_keyborad_mapshift" type="checkbox" />
-									Map L/R-Shift to L/R-Arrows <span class="gray">(team17 pinball games)</span>
-								</div>
-							</td>
-						</tr>
-						<tr>						
-							<td class="armsb">Port 0</td>
-							<td>
-								<input id="cfg_ports_0_enabled" type="checkbox" onchange="portUpdate(0)" />
-								Enabled
-								<span id="cfg_ports_0_grp">
-									<select id="cfg_ports_0" size="1" onchange="portUpdate2()">
-										<option value="1">Mouse</option>
-										<option value="2">Joystick 0</option>
-									</select>
-								</span>
-								<span id="cfg_ports_0_grp2">
-									Move 
-									<select id="cfg_ports_0_move" size="1">
-										<option value="1">Arrows</option>
-										<option value="2">Numpad</option>
-										<option value="3">WASD</option>
-									</select>
-									Fire 1 
-									<select id="cfg_ports_0_fire_1" size="1">
-										<option value="0">None</option>
-										<option value="16">Shift</option>
-										<option value="17">Ctrl</option>
-										<option value="13">Enter</option>
-										<option value="32">Space</option>
-										<option value="8">Backspace</option>
-										<option value="96">Numpad 0</option>
-										<option value="106">Numpad *</option>
-										<option value="107">Numpad </option>
-										<option value="109">Numpad -</option>
-										<option value="110">Numpad .</option>
-										<option value="111">Numpad /</option>
-										<option value="46">Delete</option>
-										<option value="45">Insert</option>
-										<option value="34">Page down</option>
-										<option value="33">Page up</option>
-										<option value="35">End</option>
-										<option value="36">Home</option>
-										<option value="19">Pause</option>
-										<option value="144">Num lock</option>
-										<option value="145">Scroll lock</option>
-										<option value="49">1</option>
-										<option value="50">2</option>
-										<!--<option value="122">F11</option>
-										<option value="123">F12</option>
-										<option value="186">Semi-colon</option>
-										<option value="187">Equal</option>
-										<option value="188">Comma</option>
-										<option value="189">Dash</option>
-										<option value="190">Period</option>
-										<option value="222">Quote</option>
-										<option value="226">Less greater </option>
-										<option value="191">Forward slash</option>
-										<option value="220">Back slash</option>
-										<option value="219">Open bracket</option>
-										<option value="221">Close bracket</option>
-										<option value="192">Grave accent</option>-->
-									</select>
-									Fire 2 
-									<select id="cfg_ports_0_fire_2" size="1">
-										<option value="0">None</option>
-										<option value="16">Shift</option>
-										<option value="17">Ctrl</option>
-										<option value="13">Enter</option>
-										<option value="32">Space</option>
-										<option value="8">Backspace</option>
-										<option value="96">Numpad 0</option>
-										<option value="106">Numpad *</option>
-										<option value="107">Numpad </option>
-										<option value="109">Numpad -</option>
-										<option value="110">Numpad .</option>
-										<option value="111">Numpad /</option>
-										<option value="46">Delete</option>
-										<option value="45">Insert</option>
-										<option value="34">Page down</option>
-										<option value="33">Page up</option>
-										<option value="35">End</option>
-										<option value="36">Home</option>
-										<option value="19">Pause</option>
-										<option value="144">Num lock</option>
-										<option value="145">Scroll lock</option>
-										<option value="49">1</option>
-										<option value="50">2</option>
-									</select>
-								</span>
-							</td>
-						</tr>	
-						<tr>						
-							<td class="armsb">Port 1</td>
-							<td class="bl">							
-								<input id="cfg_ports_1_enabled" type="checkbox" onchange="portUpdate(1)" />
-								Enabled
-								<span id="cfg_ports_1_grp">
-									<select id="cfg_ports_1" size="1">
-										<option value="3">Joystick 1</option>
-									</select>
-									Move 
-									<select id="cfg_ports_1_move" size="1">
-										<option value="1">Arrows</option>
-										<option value="2">Numpad</option>
-										<option value="3">WASD</option>
-									</select>
-									Fire 1 
-									<select id="cfg_ports_1_fire_1" size="1">
-										<option value="0">None</option>
-										<option value="16">Shift</option>
-										<option value="17">Ctrl</option>
-										<option value="13">Enter</option>
-										<option value="32">Space</option>
-										<option value="8">Backspace</option>
-										<option value="96">Numpad 0</option>
-										<option value="106">Numpad *</option>
-										<option value="107">Numpad </option>
-										<option value="109">Numpad -</option>
-										<option value="110">Numpad .</option>
-										<option value="111">Numpad /</option>
-										<option value="46">Delete</option>
-										<option value="45">Insert</option>
-										<option value="34">Page down</option>
-										<option value="33">Page up</option>
-										<option value="35">End</option>
-										<option value="36">Home</option>
-										<option value="19">Pause</option>
-										<option value="144">Num lock</option>
-										<option value="145">Scroll lock</option>
-										<option value="123">F12</option>
-									</select>
-									Fire 2 
-									<select id="cfg_ports_1_fire_2" size="1">
-										<option value="0">None</option>
-										<option value="16">Shift</option>
-										<option value="17">Ctrl</option>
-										<option value="13">Enter</option>
-										<option value="32">Space</option>
-										<option value="8">Backspace</option>
-										<option value="96">Numpad 0</option>
-										<option value="106">Numpad *</option>
-										<option value="107">Numpad </option>
-										<option value="109">Numpad -</option>
-										<option value="110">Numpad .</option>
-										<option value="111">Numpad /</option>
-										<option value="46">Delete</option>
-										<option value="45">Insert</option>
-										<option value="34">Page down</option>
-										<option value="33">Page up</option>
-										<option value="35">End</option>
-										<option value="36">Home</option>
-										<option value="19">Pause</option>
-										<option value="144">Num lock</option>
-										<option value="145">Scroll lock</option>
-										<option value="123">F12</option>
-									</select>
-								</span>
-							</td>
-						</tr>						
-						<tr>
-							<td class="armsb">Serial</td>
-							<td>
-								<input id="cfg_serial_enabled" type="checkbox" />
-								Enabled    
-							</td>
-						</tr>	
-					</table>	
-					<div style="height:10px"></div> 
-					<div class="acm">
-						<button class="sbutton" id="cfg_start" onclick="advandedStart()">Start</button>		
+					This site is the home- and demopage of the <a target="_blank" href="https://github.com/naTmeg/ScriptedAmigaEmulator">SAE</a>,
+					an <a target="_blank" href="https://en.wikipedia.org/wiki/Amiga">Amiga</a> emulator in pure HTML5 and JavaScript.<br />
+					It is heavily based on <a target="_blank" href="http://winuae.net">WinUAE</a> and does use the <a target="_blank" href="http://aros.org">AROS</a>-Kickstart replacement.
+					For more informations,<br />please see the <a target="_blank" href="readme.htm">description.</a><br />
+					<br />
+					Select an item to 'Start' from the database, or press 'Config' for an advanced setup...
+					<div style="height:10px"></div>
+					<div id="config_database_hof">
+						<div class="acm">
+							<table style="width:100%">
+								<tr>
+									<td class="arm"><span class="label">Game</span></td>
+									<td>
+										<select id="cfg_game" size="1" onchange="preSelect(1)" style="width:100%">
+											<option value="0" selected="selected" style="display:none;">-select-</option>
+										</select>
+									</td>
+									<td class="arm"><span class="label">Demo</span></td>
+									<td>
+										<select id="cfg_demo" size="1" onchange="preSelect(2)" style="width:100%">
+											<option value="0" selected="selected" style="display:none;">-select-</option>
+										</select>
+									</td>
+								</tr>
+								<tr>
+									<td class="arm"><span class="label">Tool</span></td>
+									<td>
+										<select id="cfg_tool" size="1" onchange="preSelect(4)" style="width:100%">
+											<option value="0" selected="selected" style="display:none;">-select-</option>
+										</select>
+									</td>
+									<td class="arm"><span class="label">AGA-Demo</span></td>
+									<td>
+										<select id="cfg_demo_aga" size="1" onchange="preSelect(3)" style="width:100%">
+											<option value="0" selected="selected" style="display:none;">-select-</option>
+										</select>
+									</td>
+								</tr>
+								<!--<tr><td colspan="4"><div style="height:5px"></div></td></tr>
+								<tr><td colspan="4"><div class="linehoriz"></div></td></tr>
+								<tr><td colspan="4"><div style="height:5px"></div></td></tr>
+								<tr>
+									<td class="arm" colspan="2"><span class="label">Options</span></td>
+									<td colspan="2">
+										<select id="cfg_video_resolution_1" size="1">
+											<option value="0">Lores (360x284)</option>
+											<option value="1">Hires (720x568)</option>
+										</select><br />
+										<input id="cfg_video_skip_1" type="checkbox" />Frameskip <span class="info">(render every 2nd frame only)</span>
+									</td>
+								</tr>-->
+							</table>
+						</div>
+						<div id="config_database_info"></div>
 					</div>
-				</div>			
-			</div>  				
-			<div style="height:6px"></div> 		
+					<div style="height:10px"></div>
+					<div class="acm">
+						<button class="sbutton" id="cfg_database_start" onclick="databaseStart()">Start</button>
+						<button class="sbutton" id="cfg_database_config" onclick="switchCfg(1)">Config</button>
+					</div>
+				</div>
+				<div id="config_advanced">
+					<table style="border-collapse:collapse">
+						<tr>
+							<td>
+								<div class="menu">
+									<a href="javascript:changePage(PID_Model)">Defaults</a>
+									<div style="height:5px"></div>
+									<div class="linehoriz"></div>
+									<div style="height:5px"></div>
+									<a href="javascript:changePage(PID_CPU)">CPU</a><div style="height:2px"></div>
+									<a href="javascript:changePage(PID_Chipset)">Chipset</a><div style="height:2px"></div>
+									<a href="javascript:changePage(PID_RAM)">RAM</a>
+									<div style="height:5px"></div>
+									<div class="linehoriz"></div>
+									<div style="height:5px"></div>
+									<a href="javascript:changePage(PID_ROM)">ROM</a><div style="height:2px"></div>
+									<a href="javascript:changePage(PID_Floppy)">Floppy</a><div style="height:2px"></div>
+									<a href="javascript:changePage(PID_Mount)">Mount</a>
+									<div style="height:5px"></div>
+									<div class="linehoriz"></div>
+									<div style="height:5px"></div>
+									<a href="javascript:changePage(PID_Video)">Video</a><div style="height:2px"></div>
+									<a href="javascript:changePage(PID_Audio)">Audio</a><div style="height:2px"></div>
+									<a href="javascript:changePage(PID_Ports)">Ports</a>
+								</div>
+							</td>
+							<td>
+								<div style="width:5px"></div>
+							</td>
+							<td style="width:100%">
+								<div class="page" id="cfg_page_model">
+									<table>
+										<tr>
+											<th colspan="2"><span class="label">Model</span> <a class="wiki" target="_blank" href="https://en.wikipedia.org/wiki/Amiga_models_and_variants">?</a></th>
+											<th><span class="label">CPU</span></th>
+											<th><span class="label">Chipset</span></th>
+											<th><span class="label">Kickstart</span></th>
+											<th><span class="label">Years</span></th>
+										</tr>
+										<tr><td><input type="radio" name="cfg_model" value="A1000" /></td>
+											<td>
+												<select id="cfg_model_a1000" size="1" onchange="selectModelUpdate('A1000')">
+													<option value="0">Amiga 1000</option>
+													<option value="1">Amiga 1000, 256K Chip</option>
+													<option value="2">Amiga 1000, 256K Chip, ECS-D w/o EHB</option>
+													<option value="3">Amiga 1000, Velvet-prototype</option>
+												</select>
+											</td>
+											<td>68000 <a class="wiki" target="_blank" href="https://en.wikipedia.org/wiki/Motorola_68000">?</a></td>
+											<td>OCS <a class="wiki" target="_blank" href="https://en.wikipedia.org/wiki/Original_Amiga_chipset">?</a></td>
+											<td>0.x-1.1</td>
+											<td>1985-87</td>
+										</tr>
+										<tr><td><input type="radio" name="cfg_model" value="A500" /></td>
+											<td>
+												<select id="cfg_model_a500" size="1" onchange="selectModelUpdate('A500')">
+													<option value="0">Amiga 500</option>
+													<option value="1">Amiga 500, ECS Agnus</option>
+													<option value="2">Amiga 500, ECS Agnus, 1M Chip</option>
+												</select>
+											</td>
+											<td>68000</td>
+											<td>OCS/ECS Agnus</td>
+											<td>1.2-1.3</td>
+											<td>1987-91</td>
+										</tr>
+										<tr><td><input type="radio" name="cfg_model" value="A2000" /></td>
+											<td>Amiga 2000 <span class="info">(default)</span></td>
+											<td>68000</td>
+											<td>ECS Agnus</td>
+											<td>1.2-2.04</td>
+											<td>1987-92</td>
+										</tr>
+										<tr><td><input type="radio" name="cfg_model" value="A500P" /></td>
+											<td>
+												<select id="cfg_model_a500p" size="1" onchange="selectModelUpdate('A500P')">
+													<option value="0">Amiga 500+</option>
+													<option value="1">Amiga 500+, 2M Chip</option>
+													<option value="2">Amiga 500+, 2M Chip, 4M Fast</option>
+												</select>
+											</td>
+											<td>68000</td>
+											<td>ECS <a class="wiki" target="_blank" href="https://en.wikipedia.org/wiki/Enhanced_Chip_Set">?</a></td>
+											<td>2.04</td>
+											<td>1991-92</td>
+										</tr>
+										<tr><td><input type="radio" name="cfg_model" value="A600" /></td>
+											<td>
+												<select id="cfg_model_a600" size="1" onchange="selectModelUpdate('A600')">
+													<option value="0">Amiga 600</option>
+													<option value="1">Amiga 600, 2M Chip, RTC</option>
+													<option value="2">Amiga 600, 2M Chip, 4M Fast, RTC</option>
+												</select>
+											</td>
+											<td>68000</td>
+											<td>ECS</td>
+											<td>2.05</td>
+											<td>1992</td>
+										</tr>
+										<tr><td><input type="radio" name="cfg_model" value="A1200" /></td>
+											<td>
+												<select id="cfg_model_a1200" size="1" onchange="selectModelUpdate('A1200')">
+													<option value="0">Amiga 1200</option>
+													<option value="1">Amiga 1200, 4M Fast, RTC</option>
+												</select>
+											</td>
+											<td>68020 <a class="wiki" target="_blank" href="https://en.wikipedia.org/wiki/Motorola_68020">?</a></td>
+											<td>AGA <a class="wiki" target="_blank" href="https://en.wikipedia.org/wiki/Advanced_Graphics_Architecture">?</a></td>
+											<td>3.0-3.1</td>
+											<td>1992-96</td>
+										</tr>
+										<tr><td><input type="radio" name="cfg_model" value="A3000" /></td>
+											<td>Amiga 3000 <span class="info">(no FPU and SCSI)</span></td>
+											<td>68030 <a class="wiki" target="_blank" href="https://en.wikipedia.org/wiki/Motorola_68030">?</a></td>
+											<td>ECS</td>
+											<td>1.3-2.04</td>
+											<td>1990-92</td>
+										</tr>
+										<tr><td><input type="radio" name="cfg_model" value="A4000" /></td>
+											<td>Amiga 4000/030 <span class="info">(no FPU)</span></td>
+											<td>68030</td>
+											<td>AGA</td>
+											<td>3.0</td>
+											<td>1992-94</td>
+										</tr>
+										<!--<tr><td><input type="radio" name="cfg_model" value="A4000T" /></td>
+											<td>Amiga 4000T <span class="info">(2,3)</span></td>
+											<td>68040</td>
+											<td>AGA</td>
+											<td>3.1</td>
+											<td>1990-92</td>
+										</tr>-->
+										<!--<tr><td><input type="radio" name="cfg_model" value="CDTV" /></td>
+											<td>
+												<select id="cfg_model_cdtv" size="1" onchange="selectModelUpdate('CDTV')">
+													<option value="0">CDTV</option>
+													<option value="1">CDTV-CR</option>
+												</select>
+											</td>
+											<td>68000</td>
+											<td>ECS</td>
+											<td>1.3</td>
+											<td>1991-92</td>
+										</tr>-->
+										<!--<tr><td><input type="radio" name="cfg_model" value="CD32" /></td>
+											<td>CD32</td>
+											<td>68020</td>
+											<td>AGA</td>
+											<td>3.0-3.1</td>
+											<td>1994-1996</td>
+										</tr>-->
+									</table>
+									<div style="height:5px"></div>
+									<button class="button" id="cfg_model_select" onclick="selectModel()">Set</button>
+								</div>
+								<div class="page" id="cfg_page_cpu">
+									<table style="border-collapse:collapse">
+										<tr>
+											<td class="arm"><span class="label">Model</span></td>
+											<td></td>
+											<td class="arm"><span class="label">Speed</span></td>
+											<td></td>
+										</tr>
+										<tr>
+											<td class="arm"><input type="radio" name="cfg_cpu_model" value="68000" /></td>
+											<td>68000 <span class="info">(fake prefetching)</span></td>
+											<td class="arm"><input type="radio" name="cfg_cpu_speed" value="0" /></td>
+											<td>Original</td>
+										</tr>
+										<tr>
+											<td class="arm"><input type="radio" name="cfg_cpu_model" value="68010" /></td>
+											<td>68010 <span class="info">(fake prefetching)</span></td>
+											<td class="arm"><input type="radio" name="cfg_cpu_speed" value="-1" /></td>
+											<td>Maximum</td>
+										</tr>
+										<tr>
+											<td class="arm"><input type="radio" name="cfg_cpu_model" value="68020" /></td>
+											<td>68020</td>
+											<td colspan="2"></td>
+										</tr>
+										<tr>
+											<td class="arm"><input type="radio" name="cfg_cpu_model" value="68030" /></td>
+											<td>68030 <span class="info">(fake MMU)</span></td>
+											<td colspan="2"></td>
+										</tr>
+										<tr><td colspan="4"><div style="height:10px"></div></td></tr>
+										<tr>
+											<td class="arm"><span class="label">Options</span></td>
+											<td colspan="3"></td>
+										</tr>
+										<tr>
+											<td class="arm"><input id="cfg_cpu_compatible" type="checkbox" /></td>
+											<td colspan="3">Compatible <span class="info">(enable prefetching and caches, slower but more compatible)</span></td>
+										</tr>
+										<tr>
+											<td class="arm"><input id="cfg_cpu_address_space_32" type="checkbox" /></td>
+											<td colspan="3">32bit address-space <span class="info">(required for Zorro3-memory or A3000/A4000 roms)</span></td>
+										</tr>
+									</table>
+								</div>
+								<div class="page" id="cfg_page_chipset">
+									<table style="border-collapse:collapse">
+										<tr>
+											<td class="arm"><span class="label">Type</span></td>
+											<td></td>
+											<td class="arm"><span class="label">Region</span></td>
+											<td></td>
+										</tr>
+										<tr>
+											<td class="arm"><input type="radio" name="cfg_chipset_mask" value="1" /></td>
+											<td>Original Chip Set (OCS)</td>
+											<td class="arm"><input type="radio" name="cfg_chipset_ntsc" value="0" /></td>
+											<td>PAL <span class="info">(50 Hz)</span></td>
+										</tr>
+										<tr>
+											<td class="arm"><input type="radio" name="cfg_chipset_mask" value="2" /></td>
+											<td>
+												<select id="cfg_chipset_mask_ecs" size="1">
+													<option value="1">Enhanced Chip Set (ECS Agnus only)</option>
+													<option value="2">Enhanced Chip Set (ECS Denise only)</option>
+													<option value="3">Enhanced Chip Set (ECS)</option>
+												</select>
+											</td>
+											<td class="arm"><input type="radio" name="cfg_chipset_ntsc" value="1" /></td>
+											<td>NTSC <span class="info">(60 Hz)</span></td>
+										</tr>
+										<tr>
+											<td class="arm"><input type="radio" name="cfg_chipset_mask" value="3" /></td>
+											<td>Advanced Graphics Architecture (AGA)</td>
+											<td colspan="2"></td>
+										</tr>
+										<tr><td colspan="4"><div style="height:10px"></div></td></tr>
+										<tr>
+											<td class="arm"><span class="label">Collisions</span></td>
+											<td></td>
+											<td class="arm"><span class="label">Blitter</span> <a class="wiki" target="_blank" href="https://en.wikipedia.org/wiki/Blitter">?</a></td>
+											<td></td>
+										</tr>
+										<tr>
+											<td class="arm">Mode</td>
+											<td>
+												<select id="cfg_chipset_cl" size="1">
+													<option value="0">Disabled</option>
+													<option value="1">Sprites only</option>
+													<option value="2">Sprites &amp; Playfield (recommended)</option>
+													<option value="3">Full</option>
+												</select>
+											</td>
+											<td class="arm"><input type="radio" name="cfg_blitter_immediate" value="0" onchange="immediateUpdate(1)" /></td>
+											<td>Immediate</td>
+										</tr>
+										<tr>
+											<td colspan="2"></td>
+											<td class="arm"><input type="radio" name="cfg_blitter_immediate" value="1" onchange="immediateUpdate(0)" /></td>
+											<td>Waiting
+												<select id="cfg_blitter_waiting" size="1">
+													<option value="0">Never</option>
+													<option value="1">Auto</option>
+													<option value="2">No idle</option>
+													<option value="3">Always</option>
+												</select>
+											</td>
+										</tr>
+										<tr>
+											<td class="arm"><span class="label">Features</span></td>
+											<td colspan="3"></td>
+										</tr>
+										<tr>
+											<td class="arm">Model</td>
+											<td colspan="3">
+												<select id="cfg_chipset_features" size="1" onchange="featuresUpdate()">
+													<option value="generic">Generic</option>
+													<option value="A500">A500</option>
+													<option value="A500P">A500+</option>
+													<option value="A600">A600</option>
+													<option value="A1000">A1000</option>
+													<option value="A1000V">A1000 Velvet</option>
+													<option value="A1200">A1200</option>
+													<option value="A2000">A2000</option>
+													<option value="A3000">A3000</option>
+													<option value="A4000">A4000</option>
+													<!--<option value="A4000T">A4000T</option>
+													<option value="CDTV">CDTV</option>
+													<option value="CDTVCR">CDTVCR</option>
+													<option value="CD32">CD32</option>-->
+													<option value="manual">Manual</option>
+												</select>
+											</td>
+										</tr>
+									</table>
+									<div id="cfg_chipset_features_grp">
+										<div style="height:10px"></div>
+										<table style="border-collapse:collapse">
+											<tr>
+												<td class="arm"><span class="label">Gayle</span></td>
+												<td><a class="wiki" target="_blank" href="https://en.wikipedia.org/wiki/Amiga_custom_chips#Gayle">?</a></td>
+												<td class="arm"><span class="label">RTC</span></td>
+												<td><a class="wiki" target="_blank" href="https://en.wikipedia.org/wiki/Real-time_clock">?</a></td>
+											</tr>
+											<tr>
+												<td class="arm">Onboard IDE</td>
+												<td>
+													<select id="cfg_chipset_ide" size="1">
+														<option value="0">Disabled</option>
+														<option value="1">A600/A1200</option>
+														<option value="2">A4000(T)</option>
+													</select>
+												</td>
+												<td class="arm">Type</td>
+												<td>
+													<select id="cfg_chipset_rtc_type" size="1">
+														<option value="0">None</option>
+														<option value="1">MSM6242B</option>
+														<option value="2">RF5C01A</option>
+														<option value="3">MSM6242B (A2000)</option>
+													</select>
+												</td>
+											</tr>
+											<tr>
+												<td class="arm"><input id="cfg_chipset_pcmcia" type="checkbox" /></td>
+												<td>PCMCIA slot <span class="info">(A600/A1200)</span></td>
+												<td colspan="2"></td>
+											</tr>
+											<tr><td colspan="4"><div style="height:10px"></div></td></tr>
+											<tr>
+												<td class="arm"><span class="label">CIA</span></td>
+												<td><a class="wiki" target="_blank" href="https://en.wikipedia.org/wiki/Amiga_custom_chips#CIA">?</a></td>
+												<td class="arm"><span class="label">Misc</span></td>
+												<td></td>
+											</tr>
+											<tr>
+												<td class="arm">TOD source</td>
+												<td>
+													<select id="cfg_chipset_cia_tod" size="1">
+														<option value="0">VerticalSync</option>
+														<option value="1">PowerSupply 50Hz</option>
+														<option value="2">PowerSupply 60Hz</option>
+													</select>
+												</td>
+												<td class="arm"><input id="cfg_chipset_agnus_dip" type="checkbox" /></td>
+												<td>A1000 Agnus (8361/8367)</td>
+											</tr>
+											<tr>
+												<td class="arm"><input id="cfg_chipset_cia_todbug" type="checkbox" /></td>
+												<td>TOD bug</td>
+												<td class="arm"><input id="cfg_rom_mirror_a8" type="checkbox" /></td>
+												<td>Mirror ROM at $A80000</td>
+											</tr>
+											<tr>
+												<td class="arm"><input id="cfg_chipset_cia_overlay" type="checkbox" /></td>
+												<td>Overlay ROM</td>
+												<td class="arm"><input id="cfg_rom_mirror_e0" type="checkbox" /></td>
+												<td>Mirror ROM at $E00000</td>
+											</tr>
+											<tr>
+												<td class="arm"><input id="cfg_chipset_cia_type6526" type="checkbox" /></td>
+												<td>A1000 Velvet-CIA (6526)</td>
+												<td class="arm"><input id="cfg_chipset_z3autoconfig" type="checkbox" /></td>
+												<td>ZorroIII <span class="info">(A3000/A4000)</span></td>
+											</tr>
+										</table>
+									</div>
+								</div>
+								<div class="page" id="cfg_page_ram">
+									<table>
+										<tr>
+											<td class="arm"><span class="label">Onboard</span></td>
+											<td></td>
+											<td class="arm"><span class="label">RAMSEY</span></td>
+											<td>
+												<span class="info">(A3000/A4000)</span>
+												<a class="wiki" target="_blank" href="https://en.wikipedia.org/wiki/Amiga_custom_chips#Ramsey_.26_Super_DMAC">?</a>
+											</td>
+										</tr>
+										<tr>
+											<td class="arm">Chip</td>
+											<td>
+												<select id="cfg_mem_chip" size="1">
+													<option value="256">256K</option>
+													<option value="512">512K</option>
+													<option value="1024">1M (1024K)</option>
+													<option value="2048">2M</option>
+													<option value="4096">4M</option>
+													<option value="8192">8M (8192K)</option>
+												</select>
+											</td>
+											<td class="arm">Onboard Fast</td>
+											<td>
+												<select id="cfg_mem_ramsey_low" size="1">
+													<option value="0" >None</option>
+													<option value="1024">1M (1024K)</option>
+													<option value="2048">2M</option>
+													<option value="4096">4M</option>
+													<option value="8192">8M</option>
+													<option value="16384">16M</option>
+													<option value="32768">32M</option>
+													<option value="65536">64M</option>
+												</select> <span class="info">(Low)</span>
+											</td>
+										</tr>
+										<tr>
+											<td class="arm">Slow</td>
+											<td>
+												<select id="cfg_mem_slow" size="1">
+													<option value="0" >None</option>
+													<option value="256">256K</option>
+													<option value="512">512K</option>
+													<option value="1024">1M (1024K)</option>
+													<option value="1536">1.5M (1536K)</option>
+												</select> <span class="info">(Bogo)</span>
+											</td>
+											<td class="arm">CPU-board Fast</td>
+											<td>
+												<select id="cfg_mem_ramsey_high" size="1">
+													<option value="0" >None</option>
+													<option value="1024">1M (1024K)</option>
+													<option value="2048">2M</option>
+													<option value="4096">4M</option>
+													<option value="8192">8M</option>
+													<option value="16384">16M</option>
+													<option value="32768">32M</option>
+													<option value="65536">64M</option>
+													<option value="131072">128M</option>
+												</select> <span class="info">(High)</span>
+											</td>
+										</tr>
+										<tr><td colspan="4"><div style="height:10px"></div></td></tr>
+										<tr>
+											<td class="arm"><span class="label">ZorroII</span></td>
+											<td><a class="wiki" target="_blank" href="https://en.wikipedia.org/wiki/Amiga_Zorro_II">?</a></td>
+											<td class="arm"><span class="label">ZorroIII</span></td>
+											<td>
+												<span class="info">(A3000/A4000)</span>
+												<a class="wiki" target="_blank" href="https://en.wikipedia.org/wiki/Amiga_Zorro_III">?</a>
+											</td>
+										</tr>
+										<tr>
+											<td class="arm">Fast</td>
+											<td>
+												<select id="cfg_mem_z2fast" size="1">
+													<option value="0" >None</option>
+													<option value="512">512K</option>
+													<option value="1024">1M</option>
+													<option value="2048">2M</option>
+													<option value="4096">4M</option>
+													<option value="8192">8M</option>
+												</select>
+											</td>
+											<td class="arm">Fast</td>
+											<td>
+												<select id="cfg_mem_z3fast" size="1">
+													<option value="0" >None</option>
+													<option value="1024">1M (1024K)</option>
+													<option value="2048">2M</option>
+													<option value="4096">4M</option>
+													<option value="8192">8M</option>
+													<option value="16384">16M</option>
+													<option value="32768">32M</option>
+													<option value="65536">64M</option>
+													<option value="131072">128M</option>
+													<option value="262144">256M</option>
+													<option value="524288">512M</option>
+													<!--<option value="786432">768M</option>-->
+													<option value="1048576">1G (1024M)</option>
+													<!--<option value="1572864">1.5G (1536M)</option>-->
+												</select>
+											</td>
+										</tr>
+										<tr>
+											<td class="arm"><input id="cfg_mem_z2fastautoconfig" type="checkbox" /></td>
+											<td>AutoConfig&trade; <a class="wiki" target="_blank" href="https://en.wikipedia.org/wiki/Autoconfig">?</a></td>
+											<td class="arm">Mapping</td>
+											<td>
+												<select id="cfg_mem_z3mapping" size="1">
+													<option value="0">Auto</option>
+													<option value="1">Own ($10000000)</option>
+													<option value="2">Real ($40000000)</option>
+												</select>
+											</td>
+										</tr>
+									</table>
+								</div>
+								<div class="page" id="cfg_page_rom">
+									<input id="cfg_rom_use_aros" type="checkbox" onchange="romUpdate()" />Use the AROS kickstart-replacement
+									<div id="cfg_rom_grp">
+										<table style="border-collapse:collapse">
+											<tr><td colspan="2"><div style="height:10px"></div></td></tr>
+											<tr>
+												<td class="arm">Kickstart</td>
+												<td style="width:100%">
+													<table>
+														<tr>
+															<td>
+																<button class="button" onclick="document.getElementById('cfg_rom_file').click()">Select</button>
+																<button class="button" id="cfg_rom_remove" onclick="romRemove()">Remove</button>
+																<button class="button" id="cfg_rom_info" onclick="romOpenInfo()">Info</button>
+																<input id="cfg_rom_file" type="file" style="position:absolute;left:-10000px;top:-10000px;" onchange="romSelect()" />
+															</td>
+															<td style="width:100%"></td>
+															<td>
+																<input id="cfg_rom_kickshifter" type="checkbox" />Patch for 'ShapeShifter'
+																<a class="wiki" target="_blank" href="http://shapeshifter.cebix.net/">?</a>
+															</td>
+														</tr>
+														<tr>
+															<td colspan="3" class="text"><span id="cfg_rom_name" class="red">&lt;unset&gt; (required)</span></td>
+														</tr>
+													</table>
+												</td>
+											</tr>
+											<tr>
+												<td class="arm">Extended</td>
+												<td>
+													<table>
+														<tr>
+															<td>
+																<button class="button" onclick="document.getElementById('cfg_ext_file').click()">Select</button>
+																<button class="button" id="cfg_ext_remove" onclick="extRemove()">Remove</button>
+																<button class="button" id="cfg_ext_info" onclick="extOpenInfo()">Info</button>
+																<input id="cfg_ext_file" type="file" style="position:absolute;left:-10000px;top:-10000px;" onchange="extSelect()" />
+															</td>
+															<td style="width:100%"></td>
+														</tr>
+														<tr>
+															<td colspan="2" class="text"><span id="cfg_ext_name" class="gray">&lt;unset&gt;</span></td>
+														</tr>
+													</table>
+												</td>
+											</tr>
+											<tr>
+												<td class="arm">Keyfile<br /><span class="info">(Cloanto)</span></td>
+												<td>
+													<table>
+														<tr>
+															<td>
+																<button class="button" onclick="document.getElementById('cfg_key_file').click()">Select</button>
+																<button class="button" id="cfg_key_remove" onclick="keyRemove()">Remove</button>
+																<button class="button" id="cfg_key_info" onclick="keyOpenInfo()">Info</button>
+																<input id="cfg_key_file" type="file" style="position:absolute;left:-10000px;top:-10000px;" onchange="keySelect()" />
+															</td>
+															<td style="width:100%"></td>
+														</tr>
+														<tr>
+															<td colspan="2" class="text"><span id="cfg_key_name" class="gray">&lt;unset&gt;</span></td>
+														</tr>
+													</table>
+												</td>
+											</tr>
+											<tr><td colspan="2"><div style="height:10px"></div></td></tr>
+											<tr>
+												<td class="arm">Macintosh<br /><span class="info">(AMAX)</span></td>
+												<td>
+													<table>
+														<tr>
+															<td>
+																<button class="button" onclick="document.getElementById('cfg_amax_file').click()">Select</button>
+																<button class="button" id="cfg_amax_remove" onclick="amaxRemove()">Remove</button>
+																<button class="button" id="cfg_amax_info" onclick="amaxOpenInfo()">Info</button>
+																<input id="cfg_amax_file" type="file" style="position:absolute;left:-10000px;top:-10000px;" onchange="amaxSelect()" />
+															</td>
+															<td style="width:100%"></td>
+														</tr>
+														<tr>
+															<td colspan="2" class="text"><span id="cfg_amax_name" class="gray">&lt;unset&gt;</span></td>
+														</tr>
+													</table>
+												</td>
+											</tr>
+										</table>
+									</div>
+								</div>
+								<div class="page" id="cfg_page_rom_info">
+									<table>
+										<!--<tr>
+											<td class="arm">Name</td>
+											<td class="text" colspan="3"><span id="cfg_rom_info_name"></td>
+										</tr>
+										<tr><td colspan="4"><div style="height:10px"></div></td></tr>-->
+										<tr>
+											<td class="arm"><span class="label">Image</span></td>
+											<td></td>
+											<td class="arm"><span class="label">File</span></td>
+											<td></td>
+										</tr>
+										<tr>
+											<td class="arm">Type</td>
+											<td class="text"><span id="cfg_rom_info_type"></span></td>
+											<td class="arm">Size</td>
+											<td class="text"><span id="cfg_rom_info_size"></span></td>
+										</tr>
+										<tr>
+											<td class="arm">Version</td>
+											<td class="text"><span id="cfg_rom_info_version"></span></td>
+											<td class="arm">CRC-32</td>
+											<td class="text"><span id="cfg_rom_info_crc32"></span></td>
+										</tr>
+										<tr>
+											<td class="arm">Encrytion</td>
+											<td class="text"><span id="cfg_rom_info_encrytion"></span></td>
+											<td class="arm">Checksum</td>
+											<td class="text"><span id="cfg_rom_info_checksum"></span></td>
+										</tr>
+										<tr><td colspan="4"><div style="height:10px"></div></td></tr>
+										<tr>
+											<td class="arm"><span class="label">System</span></td>
+											<td colspan="3"></td>
+										</tr>
+										<tr>
+											<td class="arm">Models</td>
+											<td class="text"><span id="cfg_rom_info_models"></span></td>
+											<td class="arm">CPN</td>
+											<td class="text"><span id="cfg_rom_info_partnumber"></span></td>
+										</tr>
+										<tr>
+											<td class="arm">CPUs</td>
+											<td class="text"><span id="cfg_rom_info_cpu"></span></td>
+											<td colspan="2"></td>
+										</tr>
+									</table>
+									<div style="height:10px"></div>
+									<div class="acm">
+										<button class="sbutton" onclick="closeRomInfo()">Close</button>
+									</div>
+								</div>
+								<div class="page" id="cfg_page_floppy">
+									<table style="border-collapse:collapse">
+										<tr><td colspan="2"><span class="label">Disk Floppies</span></td></tr>
+										<tr>
+											<td><input id="cfg_df0_enabled" type="checkbox" onchange="floppyEnable(0)" />DF0</td>
+											<td style="width:100%">
+												<table id="cfg_df0_grp">
+													<tr>
+														<td>
+															<button class="button" onclick="document.getElementById('cfg_df0_file').click()">Insert</button>
+															<button class="button" id="cfg_df0_eject" onclick="floppyEject(0)">Eject</button>
+															<button class="button" id="cfg_df0_info" onclick="floppyOpenInfo(0)">Info</button>
+															<input id="cfg_df0_file" type="file" style="position:absolute;left:-10000px;top:-10000px;" onchange="floppyInsert(0)" />
+														</td>
+														<td style="width:100%"></td>
+														<td>
+															<select id="cfg_df0_type" size="1">
+																<option value="1">3.5&quot; DD</option>
+																<option value="2">3.5&quot; HD</option>
+																<option value="3">3.5&quot; DD ESCOM</option>
+																<option value="4">3.5&quot; DD PC only</option>
+																<option value="5">3.5&quot; HD PC only</option>
+																<option value="6">5.25&quot; SD</option>
+															</select>
+															<input id="cfg_df0_wp" type="checkbox" />RO
+														</td>
+													</tr>
+													<tr>
+														<td colspan="3" class="text"><span id="cfg_df0_name" class="gray">&lt;empty&gt;</span></td>
+													</tr>
+												</table>
+											</td>
+										</tr>
+										<tr>
+											<td><input id="cfg_df1_enabled" type="checkbox" onchange="floppyEnable(1)" />DF1</td>
+											<td>
+												<table id="cfg_df1_grp">
+													<tr>
+														<td>
+															<button class="button" onclick="document.getElementById('cfg_df1_file').click()">Insert</button>
+															<button class="button" id="cfg_df1_eject" onclick="floppyEject(1)">Eject</button>
+															<button class="button" id="cfg_df1_info" onclick="floppyOpenInfo(1)">Info</button>
+															<input id="cfg_df1_file" type="file" style="position:absolute;left:-10000px;top:-10000px;" onchange="floppyInsert(1)" />
+														</td>
+														<td style="width:100%"></td>
+														<td>
+															<select id="cfg_df1_type" size="1">
+																<option value="1">3.5&quot; DD</option>
+																<option value="2">3.5&quot; HD</option>
+																<option value="3">3.5&quot; DD ESCOM</option>
+																<option value="4">3.5&quot; DD PC only</option>
+																<option value="5">3.5&quot; HD PC only</option>
+																<option value="6">5.25&quot; SD</option>
+															</select>
+															<input id="cfg_df1_wp" type="checkbox" />RO
+														</td>
+													</tr>
+													<tr>
+														<td colspan="3" class="text"><span id="cfg_df1_name" class="gray">&lt;empty&gt;</span></td>
+													</tr>
+												</table>
+											</td>
+										</tr>
+										<tr>
+											<td><input id="cfg_df2_enabled" type="checkbox" onchange="floppyEnable(2)" />DF2</td>
+											<td>
+												<table id="cfg_df2_grp">
+													<tr>
+														<td>
+															<button class="button" onclick="document.getElementById('cfg_df2_file').click()">Insert</button>
+															<button class="button" id="cfg_df2_eject" onclick="floppyEject(2)">Eject</button>
+															<button class="button" id="cfg_df2_info" onclick="floppyOpenInfo(2)">Info</button>
+															<input id="cfg_df2_file" type="file" style="position:absolute;left:-10000px;top:-10000px;" onchange="floppyInsert(2)" />
+														</td>
+														<td style="width:100%"></td>
+														<td>
+															<select id="cfg_df2_type" size="1">
+																<option value="1">3.5&quot; DD</option>
+																<option value="2">3.5&quot; HD</option>
+																<option value="3">3.5&quot; DD ESCOM</option>
+																<option value="4">3.5&quot; DD PC only</option>
+																<option value="5">3.5&quot; HD PC only</option>
+																<option value="6">5.25&quot; SD</option>
+															</select>
+															<input id="cfg_df2_wp" type="checkbox" />RO
+														</td>
+													</tr>
+													<tr>
+														<td colspan="3" class="text"><span id="cfg_df2_name" class="gray">&lt;empty&gt;</span></td>
+													</tr>
+												</table>
+											</td>
+										</tr>
+										<tr>
+											<td><input id="cfg_df3_enabled" type="checkbox" onchange="floppyEnable(3)" />DF3</td>
+											<td>
+												<table id="cfg_df3_grp">
+													<tr>
+														<td>
+															<button class="button" onclick="document.getElementById('cfg_df3_file').click()">Insert</button>
+															<button class="button" id="cfg_df3_eject" onclick="floppyEject(3)">Eject</button>
+															<button class="button" id="cfg_df3_info" onclick="floppyOpenInfo(3)">Info</button>
+															<input id="cfg_df3_file" type="file" style="position:absolute;left:-10000px;top:-10000px;" onchange="floppyInsert(3)" />
+														</td>
+														<td style="width:100%"></td>
+														<td>
+															<select id="cfg_df3_type" size="1">
+																<option value="1">3.5&quot; DD</option>
+																<option value="2">3.5&quot; HD</option>
+																<option value="3">3.5&quot; DD ESCOM</option>
+																<option value="4">3.5&quot; DD PC only</option>
+																<option value="5">3.5&quot; HD PC only</option>
+																<option value="6">5.25&quot; SD</option>
+															</select>
+															<input id="cfg_df3_wp" type="checkbox" />RO
+														</td>
+													</tr>
+													<tr>
+														<td colspan="3" class="text"><span id="cfg_df3_name" class="gray">&lt;empty&gt;</span></td>
+													</tr>
+												</table>
+											</td>
+										</tr>
+									</table>
+									<div style="height:10px"></div>
+									<table>
+										<tr><td colspan="2"><span class="label">Options</span></td></tr>
+										<tr>
+											<td class="arm">Speed</td>
+											<td style="width:100%">
+												<select id="cfg_floppy_speed" size="1">
+													<option value="0">Turbo</option>
+													<option value="100">Original</option>
+													<option value="200">2x</option>
+													<option value="500">5x</option>
+													<option value="1000">10x</option>
+												</select>
+												<span class="info">('Turbo' mode is fastest, but not always compatible)</span>
+											</td>
+										</tr>
+										<tr>
+											<td class="arm"><input id="cfg_floppy_autoext2" type="checkbox" /></td>
+											<td>Auto convert to ADF-EXT2</td>
+										</tr>
+									</table>
+									<div style="height:10px"></div>
+									<div class="info">Note: Supported types are <b>uncompressed</b> ADF, DMS, IMG, EXE and SCP files.</div>
+									<div style="height:10px"></div>
+									<div class="linehoriz"></div>
+									<div style="height:5px"></div>
+									<div>
+										<span>Insert an entry from the database:</span>
+										<div style="height:5px"></div>
+										<table style="width:100%">
+											<tr>
+												<td>
+													<select id="cfg_floppy_select_game" size="1" onchange="floppySelect(1)">
+														<option value="0" selected="selected" style="display:none;">Game</option>
+													</select>
+												</td>
+												<td>
+													<select id="cfg_floppy_select_demo" size="1" onchange="floppySelect(2)">
+														<option value="0" selected="selected" style="display:none;">Demo</option>
+													</select>
+												</td>
+												<td>
+													<select id="cfg_floppy_select_demo_aga" size="1" onchange="floppySelect(3)">
+														<option value="0" selected="selected" style="display:none;">Demo (AGA)</option>
+													</select>
+												</td>
+												<td>
+													<select id="cfg_floppy_select_tool" size="1" onchange="floppySelect(4)">
+														<option value="0" selected="selected" style="display:none;">Tool</option>
+													</select>
+												</td>
+											</tr>
+										</table>
+									</div>
+									<div style="height:5px"></div>
+									<div class="linehoriz"></div>
+									<div style="height:5px"></div>
+									<div>
+										<span>Create a standard or custom <span class="info">(EXT2)</span> disk-image:</span>
+										<div style="height:5px"></div>
+										<select id="fc_unit" size="1">
+											<option value="0">DF0</option>
+											<option value="1">DF1</option>
+											<option value="2">DF2</option>
+											<option value="3">DF3</option>
+										</select>
+										<select id="fc_type" size="1" onchange="floppyUpdate()">
+											<option value="1">3.5&quot; DD (880K)</option>
+											<option value="2">3.5&quot; HD (1760K)</option>
+											<option value="3">3.5&quot; PC-DD (720K)</option>
+											<option value="4">3.5&quot; PC-HD (1440K)</option>
+											<option value="5">5.25&quot; SD (440K)</option>
+										</select>
+										Label
+										<input id="fc_label" type="text" style="width:60px" />
+										<input id="fc_ffs" type="checkbox" />FFS
+										<input id="fc_bootable" type="checkbox" />Bootable
+										<button class="button" onclick="floppyCreate(1)">Standard</button>
+										<button class="button" onclick="floppyCreate(2)">Custom</button>
+									</div>
+								</div>
+								<div class="page" id="cfg_page_floppy_info">
+									<table>
+										<tr>
+											<td class="arm"><span class="label">Disk</span></td>
+											<td></td>
+											<td class="arm"><span class="label">File</span></td>
+											<td></td>
+										</tr>
+										<tr>
+											<td class="arm">Label</td>
+											<td class="text"><span id="cfg_floppy_info_label"></span></td>
+											<td class="arm">Size</td>
+											<td class="text"><span id="cfg_floppy_info_size"></span></td>
+										</tr>
+										<tr>
+											<td class="arm">Type</td>
+											<td class="text"><span id="cfg_floppy_info_disktype"></span></td>
+											<td class="arm">CRC-32</td>
+											<td class="text"><span id="cfg_floppy_info_crc32"></span></td>
+										</tr>
+										<tr>
+											<td colspan="4"><div style="height:10px"></div></td>
+										</tr>
+										<tr>
+											<td colspan="4"><span class="label">Bootblock</span></td>
+										</tr>
+										<tr>
+											<td class="arm">Type</td>
+											<td class="text"><span id="cfg_floppy_info_boottype"></span></td>
+											<td class="arm">Checksum</td>
+											<td class="text"><span id="cfg_floppy_info_checksum"></span></td>
+										</tr>
+										<tr>
+											<td class="art">Data</td>
+											<td colspan="3"><textarea rows="8" cols="77" readonly="readonly" id="cfg_floppy_info_bootblock"></textarea></td>
+										</tr>
+									</table>
+									<div style="height:10px"></div>
+									<div class="acm">
+										<button class="button" onclick="floppyCloseInfo()">Close</button>
+									</div>
+								</div>
+								<div class="page" id="cfg_page_mount">
+									<table style="border-collapse:collapse">
+										<tr><td colspan="2"><span class="label">Onboard IDE</span> <span class="info">(A600/A1200/A4000)</span></td></tr>
+										<tr>
+											<td><input id="cfg_mount_0_enabled" type="checkbox" onchange="mountEnable(0)" />IDE0</td>
+											<td style="width:100%">
+												<table id="cfg_mount_0_grp">
+													<tr>
+														<td>
+															<button class="button" onclick="document.getElementById('cfg_mount_0_file').click()">Select</button>
+															<button class="button" id="cfg_mount_0_remove" onclick="mountRemove(0)">Remove</button>
+															<button class="button" id="cfg_mount_0_setup" onclick="mountOpenSetup(0)">Setup</button>
+															<input id="cfg_mount_0_file" type="file" style="position:absolute;left:-10000px;top:-10000px;" onchange="mountSelect(0)" />
+														</td>
+														<td class="arm" style="width:100%"></td>
+														<td>
+															Media
+															<select id="cfg_mount_0_controller_media" size="1">
+																<option value="0">HD</option>
+																<option value="1">CF</option>
+															</select>
+															ATA
+															<select id="cfg_mount_0_controller_level" size="1">
+																<option value="0">1</option>
+																<option value="1">2+</option>
+																<option value="2">2+ Strict</option>
+															</select>
+															<input id="cfg_mount_0_readonly" type="checkbox" />RO
+														</td>
+													</tr>
+													<tr>
+														<td colspan="3" class="text"><span id="cfg_mount_0_name" class="gray">&lt;empty&gt;</span></td>
+													</tr>
+												</table>
+											</td>
+										</tr>
+										<tr>
+											<td><input id="cfg_mount_1_enabled" type="checkbox" onchange="mountEnable(1)" />IDE1</td>
+											<td>
+												<table id="cfg_mount_1_grp">
+													<tr>
+														<td>
+															<button class="button" onclick="document.getElementById('cfg_mount_1_file').click()">Select</button>
+															<button class="button" id="cfg_mount_1_remove" onclick="mountRemove(1)">Remove</button>
+															<button class="button" id="cfg_mount_1_setup" onclick="mountOpenSetup(1)">Setup</button>
+															<input id="cfg_mount_1_file" type="file" style="position:absolute;left:-10000px;top:-10000px;" onchange="mountSelect(1)" />
+														</td>
+														<td class="arm" style="width:100%"></td>
+														<td>
+															Media
+															<select id="cfg_mount_1_controller_media" size="1">
+																<option value="0">HD</option>
+																<option value="1">CF</option>
+															</select>
+															ATA
+															<select id="cfg_mount_1_controller_level" size="1">
+																<option value="0">1</option>
+																<option value="1">2+</option>
+																<option value="2">2+ Strict</option>
+															</select>
+															<input id="cfg_mount_1_readonly" type="checkbox" />RO
+														</td>
+													</tr>
+													<tr>
+														<td colspan="3" class="text"><span id="cfg_mount_1_name" class="gray">&lt;empty&gt;</span></td>
+													</tr>
+												</table>
+											</td>
+										</tr>
+										<tr>
+											<td><input id="cfg_mount_2_enabled" type="checkbox" onchange="mountEnable(2)" />IDE2</td>
+											<td>
+												<table id="cfg_mount_2_grp">
+													<tr>
+														<td>
+															<button class="button" onclick="document.getElementById('cfg_mount_2_file').click()">Select</button>
+															<button class="button" id="cfg_mount_2_remove" onclick="mountRemove(2)">Remove</button>
+															<button class="button" id="cfg_mount_2_setup" onclick="mountOpenSetup(2)">Setup</button>
+															<input id="cfg_mount_2_file" type="file" style="position:absolute;left:-10000px;top:-10000px;" onchange="mountSelect(2)" />
+														</td>
+														<td class="arm" style="width:100%"></td>
+														<td>
+															Media
+															<select id="cfg_mount_2_controller_media" size="1">
+																<option value="0">HD</option>
+																<option value="1">CF</option>
+															</select>
+															ATA
+															<select id="cfg_mount_2_controller_level" size="1">
+																<option value="0">1</option>
+																<option value="1">2+</option>
+																<option value="2">2+ Strict</option>
+															</select>
+															<input id="cfg_mount_2_readonly" type="checkbox" />RO
+														</td>
+													</tr>
+													<tr>
+														<td colspan="3" class="text"><span id="cfg_mount_2_name" class="gray">&lt;empty&gt;</span></td>
+													</tr>
+												</table>
+											</td>
+										</tr>
+										<tr>
+											<td><input id="cfg_mount_3_enabled" type="checkbox" onchange="mountEnable(3)" />IDE3</td>
+											<td>
+												<table id="cfg_mount_3_grp">
+													<tr>
+														<td>
+															<button class="button" onclick="document.getElementById('cfg_mount_3_file').click()">Select</button>
+															<button class="button" id="cfg_mount_3_remove" onclick="mountRemove(3)">Remove</button>
+															<button class="button" id="cfg_mount_3_setup" onclick="mountOpenSetup(3)">Setup</button>
+															<input id="cfg_mount_3_file" type="file" style="position:absolute;left:-10000px;top:-10000px;" onchange="mountSelect(3)" />
+														</td>
+														<td class="arm" style="width:100%"></td>
+														<td>
+															Media
+															<select id="cfg_mount_3_controller_media" size="1">
+																<option value="0">HD</option>
+																<option value="1">CF</option>
+															</select>
+															ATA
+															<select id="cfg_mount_3_controller_level" size="1">
+																<option value="0">1</option>
+																<option value="1">2+</option>
+																<option value="2">2+ Strict</option>
+															</select>
+															<input id="cfg_mount_3_readonly" type="checkbox" />RO
+														</td>
+													</tr>
+													<tr>
+														<td colspan="3" class="text"><span id="cfg_mount_3_name" class="gray">&lt;empty&gt;</span></td>
+													</tr>
+												</table>
+											</td>
+										</tr>
+										<tr><td colspan="2"><div style="height:10px"></div></td></tr>
+										<tr><td colspan="2"><span class="label">PCMCIA slot</span> <span class="info">(A600/A1200)</span></td></tr>
+										<tr>
+											<td><input id="cfg_mount_4_enabled" type="checkbox" onchange="mountEnable(4)" />SRAM</td>
+											<td>
+												<table id="cfg_mount_4_grp">
+													<tr>
+														<td>
+															<button class="button" onclick="document.getElementById('cfg_mount_4_file').click()">Select</button>
+															<button class="button" id="cfg_mount_4_remove" onclick="mountRemove(4)">Remove</button>
+															<input id="cfg_mount_4_file" type="file" style="position:absolute;left:-10000px;top:-10000px;" onchange="mountSelect(4)" />
+														</td>
+														<td class="arm" style="width:100%"></td>
+														<td>
+															<input id="cfg_mount_4_readonly" type="checkbox" />RO
+														</td>
+													</tr>
+													<tr>
+														<td colspan="3" class="text"><span id="cfg_mount_4_name" class="gray">&lt;empty&gt;</span></td>
+													</tr>
+												</table>
+											</td>
+										</tr>
+										<tr>
+											<td><input id="cfg_mount_5_enabled" type="checkbox" onchange="mountEnable(5)" />HD</td>
+											<td>
+												<table id="cfg_mount_5_grp">
+													<tr>
+														<td>
+															<button class="button" onclick="document.getElementById('cfg_mount_5_file').click()">Select</button>
+															<button class="button" id="cfg_mount_5_remove" onclick="mountRemove(5)">Remove</button>
+															<input id="cfg_mount_5_file" type="file" style="position:absolute;left:-10000px;top:-10000px;" onchange="mountSelect(5)" />
+														</td>
+														<td class="arm" style="width:100%"></td>
+														<!--<td>
+															<input id="cfg_mount_5_readonly" type="checkbox" /><span class="label">RO</span>
+														</td>-->
+													</tr>
+													<tr>
+														<td colspan="2" class="text"><span id="cfg_mount_5_name" class="gray">&lt;empty&gt;</span></td>
+													</tr>
+												</table>
+											</td>
+										</tr>
+									</table>
+									<div style="height:10px"></div>
+									<div class="info">Note: Supported types are <b>uncompressed</b> HDF and VHD files.</div>
+								</div>
+								<div class="page" id="cfg_page_mount_setup">
+									<table>
+										<tr>
+											<td class="arm"><span class="label">Drive</span></td>
+											<td></td>
+											<td class="arm"><span class="label">Partition</span></td>
+											<td></td>
+										</tr>
+										<tr>
+											<td class="arm">Surfaces</td>
+											<td><input type="text" maxlength="10" id="cfg_mount_surfaces" onkeypress="return isDecKey(event)" /></td>
+											<td class="arm">Name</td>
+											<td><input type="text" maxlength="31" id="cfg_mount_devname" /></td>
+										</tr>
+										<tr>
+											<td class="arm">Sectors</td>
+											<td><input type="text" maxlength="10" id="cfg_mount_sectors" onkeypress="return isDecKey(event)" /></td>
+											<td class="arm">Reserved</td>
+											<td><input type="text" maxlength="10" id="cfg_mount_reserved" onkeypress="return isDecKey(event)" /></td>
+										</tr>
+										<tr>
+											<td class="arm">Blocksize</td>
+											<td><input type="text" maxlength="10" id="cfg_mount_blocksize" onkeypress="return isDecKey(event)" /></td>
+											<td class="arm">Bootpri</td>
+											<td><input type="text" maxlength="4" id="cfg_mount_bootpri" onkeypress="return isDecKey(event, true)" /></td>
+										</tr>
+										<!--<tr>
+											<td class="arm">Cylinders</td>
+											<td colspan="3"><input type="text" id="cfg_mount_highcyl" disabled="disabled" /></td>
+										</tr>-->
+									</table>
+									<div style="height:10px"></div>
+									<div class="acm">
+										<button class="button" onclick="mountCloseSetup(1)">Use</button>
+										<button class="button" onclick="mountCloseSetup(0)">Abort</button>
+									</div>
+								</div>
+								<div class="page" id="cfg_page_video">
+									<input id="cfg_video_enabled" type="checkbox" onchange="videoUpdate()" />Enabled
+									<div id="cfg_video_grp">
+										<div style="height:10px"></div>
+										<table>
+											<tr>
+												<td class="arm"><span class="label">Driver</span></td>
+												<td colspan="3"></td>
+											</tr>
+											<tr>
+												<td class="arm">Mode</td>
+												<td colspan="3">
+													<select id="cfg_video_api" size="1" onchange="videoUpdateAPI()">
+														<option value="1">WebGL</option>
+														<option value="0">Canvas</option>
+													</select>
+													<select id="cfg_video_color_mode" size="1" onchange="videoUpdateCM()">
+														<option value="2">16 bits per pixel (R5G6B5)</option>
+														<option value="5">32 bits per pixel (RGBA)</option>
+													</select>
+												</td>
+											</tr>
+											<tr>
+												<td class="arm"><input id="cfg_video_antialias" type="checkbox" /></td>
+												<td class="alm" colspan="3">Antialias <span class="info">(WebGL only)</span></td>
+											</tr>
+											<tr><td colspan="4"><div style="height:5px"></div></td></tr>
+											<tr>
+												<td class="arm"><span class="label">Resolution</span></td>
+												<td></td>
+												<td class="arm"><span class="label">Centering</span></td>
+												<td></td>
+											</tr>
+											<tr>
+												<td class="arm">Horizontal</td>
+												<td class="alm">
+													<select id="cfg_video_resolution" size="1">
+														<option value="0">Lores (320 pixels)</option>
+														<option value="1">Hires (640 pixels)</option>
+														<option value="2">SuperHires (1280 pixels)</option>
+													</select>
+												</td>
+												<td class="arm"><input id="cfg_video_xcenter" type="checkbox" /></td>
+												<td class="alm">Horizontal</td>
+											</tr>
+											<tr>
+												<td class="arm">Vertical</td>
+												<td class="alm">
+													<select id="cfg_video_linemode" size="1" onchange="videoUpdateLineMode()">
+														<option value="0">Single (256 PAL/200 NTSC lines)</option>
+														<option value="1">Double (512 PAL/400 NTSC lines)</option>
+														<option value="2">Scanlines (256-&gt;512/200-&gt;400 lines)</option>
+													</select>
+												</td>
+												<td class="arm"><input id="cfg_video_ycenter" type="checkbox" /></td>
+												<td class="alm">Vertical</td>
+											</tr>
+											<tr>
+												<td class="arm">Interlace</td>
+												<td class="alm" colspan="3">
+													<select id="cfg_video_interlace" size="1">
+														<option value="0">Frames</option>
+														<option value="1">Fields</option>
+														<option value="2">Fields &plus;</option>
+													</select>
+												</td>
+											</tr>
+											<tr><td colspan="4"><div style="height:5px"></div></td></tr>
+											<tr>
+												<td class="arm"><span class="label">Colors</span></td>
+												<td></td>
+												<td class="arm"><span class="label">Alpha</span></td>
+												<td><span class="info">(RGBA-modes only)</span></td>
+											</tr>
+											<tr>
+												<td class="arm">Brightness</td>
+												<td class="alm"><input id="cfg_video_brightness" type="text" maxlength="5" onkeypress="return isDecKey(event, true)" /> <span class="info">(-1000 to 1000)</span></td>
+												<td class="arm">Background</td>
+												<td class="alm"><input id="cfg_video_background" type="text" maxlength="6" onkeypress="return isHexKey(event)" />
+													<span class="info">(#rrggbb)</span> <a class="wiki" target="_blank" href="http://www.rapidtables.com/web/color/RGB_Color.htm">?</a>
+												</td>
+											</tr>
+											<tr>
+												<td class="arm">Contrast</td>
+												<td class="alm"><input id="cfg_video_contrast" type="text" maxlength="5" onkeypress="return isDecKey(event, true)" /> <span class="info">(-1000 to 1000)</span></td>
+												<td class="arm">Blend</td>
+												<td class="alm"><input id="cfg_video_alpha" type="text" maxlength="3" onkeypress="return isDecKey(event, false)" /> <span class="info">(0 to 255)</span></td>
+											</tr>
+											<tr>
+												<td class="arm">Gamma</td>
+												<td class="alm"><input id="cfg_video_gamma" type="text" maxlength="5" onkeypress="return isDecKey(event, true)" /> <span class="info">(-1000 to 1000)</span></td>
+												<td colspan="2"></td>
+											</tr>
+											<tr>
+												<td class="arm"><input id="cfg_video_blackerthanblack" type="checkbox" /></td>
+												<td class="alm">Blacker than black</td>
+												<td colspan="2"></td>
+											</tr>
+											<tr><td colspan="4"><div style="height:5px"></div></td></tr>
+											<tr>
+												<td class="arm"><span class="label">Misc</span></td>
+												<td></td>
+												<td class="arm"><span class="label">Debug</span></td>
+												<td></td>
+											</tr>
+											<tr>
+												<td class="arm"><input id="cfg_video_skip" type="checkbox" /></td>
+												<td class="alm">Frameskip</td>
+												<td class="arm"><input id="cfg_video_refreshindicator" type="checkbox" /></td>
+												<td class="alm">Refresh-indicator</td>
+											</tr>
+											<!--<tr>
+												<td>
+													<input type="radio" name="cfg_video_fs" value="0" />Normal<br />
+													<input type="radio" name="cfg_video_fs" value="1" />Fullscreen<br>
+													<input type="radio" name="cfg_video_fs" value="2" />Fullwindow
+												</td>
+												<td class="arm"><span class="label">Size</span></td>
+												<td colspan="3">
+													<input id="cfg_video_win_width" type="text" maxlength="4" onkeypress="return isDecKey(event)" />
+													x
+													<input id="cfg_video_win_height" type="text" maxlength="4" onkeypress="return isDecKey(event)" />
+													pixels<br />
+													<input id="cfg_video_fs_width" type="text" maxlength="4" onkeypress="return isDecKey(event)" />
+													x
+													<input id="cfg_video_fs_height" type="text" maxlength="4" onkeypress="return isDecKey(event)" />
+													pixels
+												</td>
+											</tr>-->
+										</table>
+										<div id="cfg_video_error_webgl" style="display:none">
+											<div style="height:10px"></div>
+											<span class="warn">Note: Driver is forced to 'Canvas' because 'WebGL' is not supported by this browser.</span>
+										</div>
+									</div>
+									<div id="cfg_video_error_canvas" style="display:none">
+										<div style="height:10px"></div>
+										<span class="warn">Note: Video is disabled because 'Canvas'/'WebGL' is not supported by this browser.</span>
+									</div>
+								</div>
+								<div class="page" id="cfg_page_audio">
+									<input id="cfg_audio_enabled" type="checkbox" onchange="audioUpdate()" />Enabled
+									<div id="cfg_audio_grp">
+										<div style="height:10px"></div>
+										<table>
+											<tr>
+												<td class="arm"><span class="label">Driver</span></td>
+												<td colspan="3"></td>
+											</tr>
+											<tr>
+												<td class="art">Buffer</td>
+												<td colspan="3">
+													<select id="cfg_audio_buffer_frames" size="1">
+														<option value="1024">1024 (least delay, but lowest quality)</option>
+														<option value="2048">2048</option>
+														<option value="4096">4096</option>
+														<option value="8192">8192 (highest quality, but most delay)</option>
+													</select>frames<br />
+													<span class="info">(you may experiment with this value)</span>
+												</td>
+											</tr>
+											<tr><td colspan="4"><div style="height:5px"></div></td></tr>
+											<tr>
+												<td class="arm"><span class="label">Basic</span></td>
+												<td></td>
+												<td class="arm"><span class="label">Lowpass filter</span></td>
+												<td></td>
+											</tr>
+											<tr>
+												<td class="arm">Mode</td>
+												<td>
+													<select id="cfg_audio_mode" size="1">
+														<option value="1">Off (emulated)</option>
+														<option value="2">On</option>
+														<option value="3">On (best)</option>
+													</select>
+												</td>
+												<td class="arm">Mode</td>
+												<td>
+													<select id="cfg_audio_filter" size="1" onchange="filterUpdate()">
+														<option value="0">Always off</option>
+														<option value="1">Emulated</option>
+														<option value="2">Always on</option>
+													</select>
+												</td>
+											</tr>
+											<tr>
+												<td class="arm">Frequency</td>
+												<td>
+													<select id="cfg_audio_freq" size="1">
+														<option value="0">Auto (rate of sound-card)</option>
+														<option value="11025">11025 Hz</option>
+														<option value="22050">22050 Hz</option>
+														<option value="44100">44100 Hz</option>
+														<option value="48000">48000 Hz</option>
+													</select>
+												</td>
+												<td class="arm">Model</td>
+												<td>
+													<select id="cfg_audio_filtertype" size="1">
+														<option value="0">A500</option>
+														<option value="1">A1200</option>
+													</select>
+												</td>
+											</tr>
+											<tr>
+												<td class="arm">Channels</td>
+												<td colspan="3">
+													<select id="cfg_audio_channels" size="1" onchange="channelsUpdate()">
+														<option value="1">Mono</option>
+														<option value="2">Stereo</option>
+													</select>
+												</td>
+											</tr>
+											<tr><td colspan="4"><div style="height:5px"></div></td></tr>
+											<tr>
+												<td class="arm"><span class="label">Stereo mixing</span></td>
+												<td></td>
+												<td class="arm"><span class="label">Interpolation</span></td>
+												<td></td>
+											</tr>
+											<tr>
+												<td class="arm">Separation</td>
+												<td>
+													<select id="cfg_audio_separation" size="1">
+														<option value="10">Total</option>
+														<option value="9">90%</option>
+														<option value="8">80%</option>
+														<option value="7">70%</option>
+														<option value="6">60%</option>
+														<option value="5">50%</option>
+														<option value="4">40%</option>
+														<option value="3">30%</option>
+														<option value="2">20%</option>
+														<option value="1">10%</option>
+														<option value="0">None</option>
+													</select>
+												</td>
+												<td class="arm">Type</td>
+												<td>
+													<select id="cfg_audio_interpolation" size="1">
+														<option value="0">Disabled</option>
+														<option value="1">Anti</option>
+														<option value="2">RH</option>
+														<option value="3">Crux</option>
+													</select>
+												</td>
+											</tr>
+											<tr>
+												<td class="arm">Delay</td>
+												<td colspan="3">
+													<select id="cfg_audio_delay" size="1">
+														<option value="0">None</option>
+														<option value="1">2</option>
+														<option value="2">4</option>
+														<option value="3">8</option>
+														<option value="4">16</option>
+														<option value="5">32</option>
+														<option value="6">64</option>
+														<option value="7">128</option>
+														<option value="8">256</option>
+														<option value="9">512</option>
+													</select>
+												</td>
+											</tr>
+										</table>
+										<div id="cfg_audio_error" style="display:none">
+											<div style="height:10px"></div>
+											<span class="warn">Note: Mode is forced to 'Off (emulated)' because 'WebAudio' is not supported by this browser.</span>
+										</div>
+									</div>
+								</div>
+								<div class="page" id="cfg_page_ports">
+									<table>
+										<tr>
+											<td class="arm">Mouse</td>
+											<td>
+												<select id="cfg_ports_0" size="1" onchange="portUpdate(0)">
+													<option value="0">Disabled</option>
+													<option value="1">Mouse</option>
+													<option value="2">Joystick</option>
+												</select>
+											</td>
+											<td>
+												<div id="cfg_ports_0_grp">
+													Move
+													<select id="cfg_ports_0_move" size="1">
+														<option value="1">Arrows</option>
+														<option value="2">Numpad</option>
+														<option value="3">WASD</option>
+													</select>
+													Fire 1
+													<select id="cfg_ports_0_fire_1" size="1">
+														<option value="0">None</option>
+														<option value="16">Shift</option>
+														<option value="17">Ctrl</option>
+														<option value="13">Enter</option>
+														<option value="32">Space</option>
+														<option value="8">Backspace</option>
+														<option value="96">Numpad 0</option>
+														<option value="106">Numpad *</option>
+														<option value="107">Numpad </option>
+														<option value="109">Numpad -</option>
+														<option value="110">Numpad .</option>
+														<option value="111">Numpad /</option>
+														<option value="46">Delete</option>
+														<option value="45">Insert</option>
+														<option value="34">Page down</option>
+														<option value="33">Page up</option>
+														<option value="35">End</option>
+														<option value="36">Home</option>
+														<option value="19">Pause</option>
+														<option value="144">Num lock</option>
+														<option value="145">Scroll lock</option>
+														<option value="49">1</option>
+														<option value="50">2</option>
+													</select>
+													Fire 2
+													<select id="cfg_ports_0_fire_2" size="1">
+														<option value="0">None</option>
+														<option value="16">Shift</option>
+														<option value="17">Ctrl</option>
+														<option value="13">Enter</option>
+														<option value="32">Space</option>
+														<option value="8">Backspace</option>
+														<option value="96">Numpad 0</option>
+														<option value="106">Numpad *</option>
+														<option value="107">Numpad </option>
+														<option value="109">Numpad -</option>
+														<option value="110">Numpad .</option>
+														<option value="111">Numpad /</option>
+														<option value="46">Delete</option>
+														<option value="45">Insert</option>
+														<option value="34">Page down</option>
+														<option value="33">Page up</option>
+														<option value="35">End</option>
+														<option value="36">Home</option>
+														<option value="19">Pause</option>
+														<option value="144">Num lock</option>
+														<option value="145">Scroll lock</option>
+														<option value="49">1</option>
+														<option value="50">2</option>
+													</select>
+												</div>
+											</td>
+											<td style="width:100%"></td>
+										</tr>
+										<tr>
+											<td class="arm">Game</td>
+											<td>
+												<select id="cfg_ports_1" size="1" onchange="portUpdate(1)">
+													<option value="0">Disabled</option>
+													<option value="3">Joystick</option>
+												</select>
+											</td>
+											<td>
+												<div id="cfg_ports_1_grp">
+													Move
+													<select id="cfg_ports_1_move" size="1">
+														<option value="1">Arrows</option>
+														<option value="2">Numpad</option>
+														<option value="3">WASD</option>
+													</select>
+													Fire 1
+													<select id="cfg_ports_1_fire_1" size="1">
+														<option value="0">None</option>
+														<option value="16">Shift</option>
+														<option value="17">Ctrl</option>
+														<option value="13">Enter</option>
+														<option value="32">Space</option>
+														<option value="8">Backspace</option>
+														<option value="96">Numpad 0</option>
+														<option value="106">Numpad *</option>
+														<option value="107">Numpad </option>
+														<option value="109">Numpad -</option>
+														<option value="110">Numpad .</option>
+														<option value="111">Numpad /</option>
+														<option value="46">Delete</option>
+														<option value="45">Insert</option>
+														<option value="34">Page down</option>
+														<option value="33">Page up</option>
+														<option value="35">End</option>
+														<option value="36">Home</option>
+														<option value="19">Pause</option>
+														<option value="144">Num lock</option>
+														<option value="145">Scroll lock</option>
+														<option value="49">1</option>
+														<option value="50">2</option>
+													</select>
+													Fire 2
+													<select id="cfg_ports_1_fire_2" size="1">
+														<option value="0">None</option>
+														<option value="16">Shift</option>
+														<option value="17">Ctrl</option>
+														<option value="13">Enter</option>
+														<option value="32">Space</option>
+														<option value="8">Backspace</option>
+														<option value="96">Numpad 0</option>
+														<option value="106">Numpad *</option>
+														<option value="107">Numpad </option>
+														<option value="109">Numpad -</option>
+														<option value="110">Numpad .</option>
+														<option value="111">Numpad /</option>
+														<option value="46">Delete</option>
+														<option value="45">Insert</option>
+														<option value="34">Page down</option>
+														<option value="33">Page up</option>
+														<option value="35">End</option>
+														<option value="36">Home</option>
+														<option value="19">Pause</option>
+														<option value="144">Num lock</option>
+														<option value="145">Scroll lock</option>
+														<option value="49">1</option>
+														<option value="50">2</option>
+													</select>
+												</div>
+											</td>
+											<td style="width:100%"></td>
+										</tr>
+										<tr><td colspan="4"><div style="height:10px"></div></td></tr>
+										<tr>
+											<td class="arm"><span class="label">Keyboard</span></td>
+											<td colspan="3"></td>
+										</tr>
+										<tr>
+											<td class="arm"><input id="cfg_keyborad_enabled" type="checkbox" /></td>
+											<td class="alm" colspan="3">Enabled <span class="info">(joystick-emulation does always work)</span></td>
+										</tr>
+										<tr><td colspan="4"><div style="height:10px"></div></td></tr>
+										<tr>
+											<td class="arm"><span class="label">Serial</span></td>
+											<td colspan="3"></td>
+										</tr>
+										<tr>
+											<td class="arm"><input id="cfg_serial_enabled" type="checkbox" /></td>
+											<td class="alm" colspan="3">Enabled <span class="info">(output to developer-console)</span></td>
+										</tr>
+									</table>
+								</div>
+							</td>
+						</tr>
+					</table>
+					<div style="height:10px"></div>
+					<div class="acm">
+						<button class="sbutton" id="cfg_start" onclick="advandedStart()">Start</button>
+					</div>
+				</div>
+			</div>
+			<div style="height:5px"></div>
 			<div id="foot" class="foot" style="line-height:14px">
-				<span class="gray">2012-2015 Rupert Hausberger</span> | 
-				<span class="gray">ver 0.8.3</span> | 
-				<a target="_blank" href="https://github.com/naTmeg/ScriptedAmigaEmulator">Source-code</a> | 
-				<a target="_blank" href="readme.htm">Description</a>
-			</div>		
+				<span class="gray">2012-2016 Rupert Hausberger</span> |
+				<a target="_blank" href="readme.htm">Description</a> |
+				<a target="_blank" href="disass.htm">Disassembler</a> |
+				<a target="_blank" href="https://github.com/naTmeg/ScriptedAmigaEmulator">Source-code</a>
+			</div>
 		</div>
-	
 		<div id="emul">
-			<div id="status">
-				<table>
-					<tr>		
-						<td><button class="dbutton" onclick="stop()">Stop</button></td>
-						<!--<td><button class="dbutton" onclick="reset()">Reset</button></td>-->
-						<td><button class="dbutton" onclick="pause(1)" id="status_pr">Pause</button></td>
-						<td><button id="dskchg_grp" class="dbutton" onclick="dskchgOpen()">Disk</button></td>
-						<!--<td><button class="dbutton" onclick="toggleFullScreen()">fullscreen</button></td>-->					
-						<td class="arm" style="width:32px"><span id="led_pwr">pwr</span></td>
-						<td class="arm" style="width:32px"><span id="led_df0">df0</span></td>
-						<td class="arm" style="width:32px"><span id="led_df1">df1</span></td>
-						<td class="arm" style="width:32px"><span id="led_df2">df2</span></td>
-						<td class="arm" style="width:32px"><span id="led_df3">df3</span></td>
-						<td class="arm" style="width:32px"><span id="led_fps">fps</span></td>	
-						<td class="arm" style="width:32px"><span id="led_cpu">cpu</span></td>	
-					</tr>				
-				</table>		
-			</div>	
-			<div id="dskchg_simple">
+			<table id="controls_status">
+				<tr>
+					<td>
+						<div id="controls">
+							<table>
+								<tr>
+									<td><button onclick="reset()">Reset</button></td>
+									<td><button onclick="stop()">Stop</button></td>
+									<td><button onclick="pause(1)" id="controls_pr">Pause</button></td>
+									<td id="controls_disk"><button onclick="dskchgOpen()">Disk</button></td>
+									<!--<td><button onclick="toggleFullScreen()">FS</button></td>-->
+								</tr>
+							</table>
+						</div>
+					</td>
+					<td>
+						<div id="status">
+							<div style="height:3px"></div>
+							<table>
+								<tr>
+									<td class="acm" style="width:32px"><span id="status_led_power">PWR</span></td>
+									<td class="acm" style="width:16px"><span id="status_led_hd">HD</span></td>
+									<td class="arm" style="width:16px"><span id="status_led_df0"></span></td>
+									<td class="arm" style="width:16px"><span id="status_led_df1"></span></td>
+									<td class="arm" style="width:16px"><span id="status_led_df2"></span></td>
+									<td class="arm" style="width:16px"><span id="status_led_df3"></span></td>
+									<td class="arm" style="width:32px"><span id="status_led_fps"></span></td>
+									<td class="arm" style="width:32px"><span id="status_led_cpu"></span></td>
+								</tr>
+							</table>
+						</div>
+					</td>
+				</tr>
+			</table>
+			<div id="dskchg_database">
 				<table>
 					<tr>
 						<td>
-							<select id="cfg_dskchg_select" size="1" onchange="dskchgSelect()">
+							<select id="dskchg_select" size="1" onchange="dskchgSelect()">
 								<option value="">- select -</option>
-							</select>	
+							</select>
 						</td>
-						<td><button class="dbutton" onclick="dskchgClose()">Abort</button></td>										
+						<td><button onclick="dskchgClose()">Abort</button></td>
 					</tr>
 				</table>
 			</div>
-			<div id="dskchg">
+			<div id="dskchg_advanced">
 				<table>
 					<tr>
 						<td>
-							<select id="cfg_dskchg_unit" size="1">
+							<select id="dskchg_unit" size="1">
 								<option value="0">DF0</option>
 								<option value="1">DF1</option>
 								<option value="2">DF2</option>
 								<option value="3">DF3</option>
-							</select>	
+							</select>
 						</td>
-						<td><input id="cfg_dskchg_file" type="file" style="position:absolute;left:-10000px;top:-10000px;" onchange="dskchgInsert()" /></td>
-						<td><button class="dbutton" onclick="document.getElementById('cfg_dskchg_file').click()">Insert</button></td>
-						<td><button class="dbutton" onclick="dskchgEject()">Eject</button></td>										
-						<td><button class="dbutton" onclick="dskchgClose()">Abort</button></td>										
+						<td><input id="dskchg_file" type="file" style="position:absolute;left:-10000px;top:-10000px;" onchange="dskchgInsert()" /></td>
+						<td><button onclick="document.getElementById('dskchg_file').click()">Insert</button></td>
+						<td><button onclick="dskchgEject()">Eject</button></td>
+						<td><button onclick="dskchgClose()">Abort</button></td>
 					</tr>
 				</table>
 			</div>
-			<div style="height:10px"></div> 
-			<div id="myVideo"></div> 			
+			<div style="height:10px"></div>
+			<div id="myVideo"></div>
 		</div>
-				
 	</body>
 </html>
-

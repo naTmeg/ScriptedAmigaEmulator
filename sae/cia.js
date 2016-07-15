@@ -1,63 +1,68 @@
-/**************************************************************************
-* SAE - Scripted Amiga Emulator
-*
-* 2012-2015 Rupert Hausberger
-*
-* https://github.com/naTmeg/ScriptedAmigaEmulator
-*
-***************************************************************************
-* Notes: Ported from WinUAE 2.5.0
-* 
-**************************************************************************/
+/*-------------------------------------------------------------------------
+| SAE - Scripted Amiga Emulator
+| https://github.com/naTmeg/ScriptedAmigaEmulator
+|
+| Copyright (C) 2012-2016 Rupert Hausberger
+|
+| This program is free software; you can redistribute it and/or
+| modify it under the terms of the GNU General Public License
+| as published by the Free Software Foundation; either version 2
+| of the License, or (at your option) any later version.
+|
+| This program is distributed in the hope that it will be useful,
+| but WITHOUT ANY WARRANTY; without even the implied warranty of
+| MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+| GNU General Public License for more details.
+|
+| Note: ported from WinUAE 3.2.x
+-------------------------------------------------------------------------*/
+/* global variables */
 
-/*const CIAA_DEBUG_R = 0;
-const CIAA_DEBUG_W = 0;
-const CIAB_DEBUG_R = 0;
-const CIAB_DEBUG_W = 0;
-const DONGLE_DEBUG = 0;
-const KB_DEBUG = 0;
-const CLOCK_DEBUG = 0;*/
+var SAEV_CIA_bank = null;
 
-const TOD_HACK = 1;
+/*---------------------------------*/
 
-/* e-clock is 10 CPU cycles, 4 cycles high, 6 low data transfer happens during 4 high cycles */
-const ECLOCK_DATA_CYCLE = 4;
-const ECLOCK_WAIT_CYCLE = 6;
+function SAEO_CIA() {
+	const TOD_HACK = true;
 
-const DIV10 = ((ECLOCK_DATA_CYCLE + ECLOCK_WAIT_CYCLE) * CYCLE_UNIT / 2); /* Yes, a bad identifier. */
-const CIASTARTCYCLESHI = 3;
-const CIASTARTCYCLESCRA = 2;
+	/* e-clock is 10 CPU cycles, 4 cycles high, 6 low data transfer happens during 4 high cycles */
+	const ECLOCK_DATA_CYCLE = 4;
+	const ECLOCK_WAIT_CYCLE = 6;
 
-//console.log('DIV10', CYCLE_UNIT, DIV10);
+	const DIV10 = (ECLOCK_DATA_CYCLE + ECLOCK_WAIT_CYCLE) * SAEC_Events_CYCLE_UNIT >> 1; /* Yes, a bad identifier. */
+	const CIASTARTCYCLESHI = 3;
+	const CIASTARTCYCLESCRA = 2;
 
-function CIA() {
-	var ciaaicr = 0, ciaaimask = 0, ciabicr = 0, ciabimask = 0;
-	var ciaacra = 0, ciaacrb = 0, ciabcra = 0, ciabcrb = 0;
-	var ciaastarta = 0, ciaastartb = 0, ciabstarta = 0, ciabstartb = 0;
-	var ciaaicr_reg = 0, ciabicr_reg = 0;
+	var ciaaicr = 0, ciaaimask = 0, ciabicr = 0, ciabimask = 0; //uint
+	var ciaacra = 0, ciaacrb = 0, ciabcra = 0, ciabcrb = 0; //uint
+	var ciaastarta = 0, ciaastartb = 0, ciabstarta = 0, ciabstartb = 0; //uint
 
-	var ciaata = 0, ciaatb = 0, ciabta = 0, ciabtb = 0;
-	var ciaata_passed = 0, ciaatb_passed = 0, ciabta_passed = 0, ciabtb_passed = 0;
+	/* Values of the CIA timers.  */
+	var ciaata = 0, ciaatb = 0, ciabta = 0, ciabtb = 0; //ulong
+	/* Computed by compute_passed_time.  */
+	var ciaata_passed = 0, ciaatb_passed = 0, ciabta_passed = 0, ciabtb_passed = 0; //ulong
 
-	var ciaatod = 0, ciabtod = 0, ciaatol = 0, ciabtol = 0, ciaaalarm = 0, ciabalarm = 0;
-	var ciaatlatch = 0, ciabtlatch = 0;
-	var oldled = false;//, oldovl = false, oldcd32mute = false;
-	var led = false;
-	var led_old_brightness = 0;
-	var led_cycles_on = 0, led_cycles_off = 0, led_cycle = 0;
+	var ciaatod = 0, ciabtod = 0, ciaatol = 0, ciabtol = 0, ciaaalarm = 0, ciabalarm = 0; //ulong
+	var ciaatlatch = 0, ciabtlatch = 0; //int
+	var oldovl = false, oldcd32mute = false; //bool
+	var led = false; //bool
+	var led_old_brightness = 0; //int
+	var led_cycles_on = 0, led_cycles_off = 0, led_cycle = 0; //ulong
 
-	var ciaala = 0, ciaalb = 0, ciabla = 0, ciablb = 0;
-	var ciaatodon = 0, ciabtodon = 0;
-	var ciaapra = 0, ciaaprb = 0, ciaadra = 0, ciaadrb = 0, ciaasdr = 0, ciaasdr_cnt = 0;
-	var ciabpra = 0, ciabprb = 0, ciabdra = 0, ciabdrb = 0, ciabsdr = 0, ciabsdr_cnt = 0;
-	var div10 = 0;
-	//var kbstate = 0, kblostsynccnt = 0, kbcode = 0;
+	var ciabpra = 0; //uint
 
-	//var serbits = 0;
-	var warned = 10;
-	//var rtc_delayed_write = 0;
+	var ciaala = 0, ciaalb = 0, ciabla = 0, ciablb = 0; //ulong
+	var ciaatodon = 0, ciabtodon = 0; //int
+	var ciaapra = 0, ciaaprb = 0, ciaadra = 0, ciaadrb = 0, ciaasdr = 0, ciaasdr_cnt = 0; //ulong
+	var ciabprb = 0, ciabdra = 0, ciabdrb = 0, ciabsdr = 0, ciabsdr_cnt = 0; //ulong
+	var div10 = 0; //int
+	var kbstate = 0, kblostsynccnt = 0; //int
+	var kbcode = 0; //u8
 
-	/*function setclr (unsigned int *p, unsigned int val) {
+	var serbits = 0; //u8
+	var warned = 10; //int
+
+	/*static void setclr (unsigned int *p, unsigned int val) {
 		if (val & 0x80) {
 			*p |= val & 0x7F;
 		} else {
@@ -65,63 +70,59 @@ function CIA() {
 		}
 	}*/
 
-	function setclra(val) {
-		if (val & 0x80) {
-			ciaaimask |= val & 0x7F;
-		} else {
-			ciaaimask &= ~val;
-		}
+	/* delay interrupt after current CIA register access if interrupt would have triggered mid access */
+	var cia_interrupt_disabled = 0; //int
+	var cia_interrupt_delay = 0; //int
+
+	/*-----------------------------------------------------------------------*/
+
+	function ICR(data) {
+		SAER.custom.INTREQ_0(SAEC_Custom_INTF_SETCLR | data);
 	}
-	function setclrb(val) {
-		if (val & 0x80) {
-			ciabimask |= val & 0x7F;
-		} else {
-			ciabimask &= ~val;
-		}
+
+	function ICRA(data) {
+		ciaaicr |= 0x40;
+		ciaaicr |= 0x20;
+		ICR(0x0008);
+	}
+
+	function ICRB(data) {
+		ciabicr |= 0x40;
+		ciabicr |= 0x20;
+		if (SAEV_config.chipset.compatible == SAEC_Config_Chipset_Compatible_A1000V)
+			ICR(0x0008); /* Both CIAs in Velvet are connected to level 2 */
+		else
+			ICR(0x2000);
 	}
 
 	function RethinkICRA() {
-		if (ciaaicr) {
-			if (ciaaimask & ciaaicr) {
+		if (ciaaicr & ciaaimask) {
+			if (!(ciaaicr & 0x80)) {
 				ciaaicr |= 0x80;
-				AMIGA.INTREQ_0(0x8000 | 0x0008);
+				ICRA(0x0008);
 			}
-			ciaaicr_reg |= ciaaicr;
 		}
 	}
 
 	function RethinkICRB() {
-		if (ciabicr) {
-			if (ciabimask & ciabicr) {
+		if (ciabicr & ciabimask) {
+			if (!(ciabicr & 0x80)) {
 				ciabicr |= 0x80;
-				AMIGA.INTREQ_0(0x8000 | 0x2000);
+				ICRB(0);
 			}
-			ciabicr_reg |= ciabicr;
 		}
 	}
 
-	this.SetICRA = function (icr, sdr) {
-		ciaaicr |= icr;
-		ciaasdr = sdr;
-		RethinkICRA();
-	};
-
-	this.SetICRB = function (icr, sdr) {
-		ciabicr |= icr;
-		if (sdr !== null)
-			ciabsdr = sdr;
-		RethinkICRB();
-	};
-
-	this.rethink = function () {
-		RethinkICRA();
-		RethinkICRB();
-	};
+	this.rethink = function() { //rethink_cias()
+		if (ciaaicr & 0x40) ICRA(0);
+		if (ciabicr & 0x40) ICRB(0);
+	}
 
 	/* Figure out how many CIA timer cycles have passed for each timer since the last call of CIA_calctimers.  */
+
 	function compute_passed_time() {
-		var ccount = (AMIGA.events.currcycle - AMIGA.events.eventtab[EV_CIA].oldcycles + div10);
-		var ciaclocks = Math.floor(ccount / DIV10);
+		var ccount = SAEV_Events_currcycle - SAER_Events_eventtab[SAEC_Events_EV_CIA].oldcycles + div10;
+		var ciaclocks = ccount / DIV10 >>> 0;
 
 		ciaata_passed = ciaatb_passed = ciabta_passed = ciabtb_passed = 0;
 
@@ -132,7 +133,7 @@ function CIA() {
 				cc -= ciaastarta;
 			else
 				cc = 0;
-			//assert((ciaata + 1) >= cc);
+			SAEF_assert((ciaata + 1) >= cc);
 			ciaata_passed = cc;
 		}
 		if ((ciaacrb & 0x61) == 0x01) {
@@ -141,7 +142,7 @@ function CIA() {
 				cc -= ciaastartb;
 			else
 				cc = 0;
-			//assert((ciaatb + 1) >= cc);
+			SAEF_assert((ciaatb + 1) >= cc);
 			ciaatb_passed = cc;
 		}
 
@@ -152,7 +153,7 @@ function CIA() {
 				cc -= ciabstarta;
 			else
 				cc = 0;
-			//assert((ciabta + 1) >= cc);
+			SAEF_assert((ciabta + 1) >= cc);
 			ciabta_passed = cc;
 		}
 		if ((ciabcrb & 0x61) == 0x01) {
@@ -161,7 +162,7 @@ function CIA() {
 				cc -= ciabstartb;
 			else
 				cc = 0;
-			//assert((ciabtb + 1) >= cc);
+			SAEF_assert((ciabtb + 1) >= cc);
 			ciabtb_passed = cc;
 		}
 	}
@@ -169,10 +170,9 @@ function CIA() {
 	/* Called to advance all CIA timers to the current time.  This expects that
 	one of the timer values will be modified, and CIA_calctimers will be called
 	in the same cycle.  */
-
 	function CIA_update_check() {
-		var ccount = (AMIGA.events.currcycle - AMIGA.events.eventtab[EV_CIA].oldcycles + div10);
-		var ciaclocks = Math.floor(ccount / DIV10);
+		var ccount = SAEV_Events_currcycle - SAER_Events_eventtab[SAEC_Events_EV_CIA].oldcycles + div10;
+		var ciaclocks = ccount / DIV10 >>> 0;
 
 		var aovfla = 0, aovflb = 0, asp = 0, bovfla = 0, bovflb = 0, bsp = 0;
 		var icr = 0;
@@ -193,7 +193,7 @@ function CIA() {
 				}
 			}
 			if (check) {
-				//assert((ciaata + 1) >= cc);
+				SAEF_assert((ciaata + 1) >= cc);
 				if ((ciaata + 1) == cc) {
 					if ((ciaacra & 0x48) == 0x40 && ciaasdr_cnt > 0 && --ciaasdr_cnt == 0)
 						asp = 1;
@@ -219,7 +219,7 @@ function CIA() {
 				}
 			}
 			if (check) {
-				//assert((ciaatb + 1) >= cc);
+				SAEF_assert((ciaatb + 1) >= cc);
 				if ((ciaatb + 1) == cc)
 					aovflb = 1;
 				ciaatb -= cc;
@@ -240,7 +240,7 @@ function CIA() {
 				}
 			}
 			if (check) {
-				//assert((ciabta + 1) >= cc);
+				SAEF_assert((ciabta + 1) >= cc);
 				if ((ciabta + 1) == cc) {
 					if ((ciabcra & 0x48) == 0x40 && ciabsdr_cnt > 0 && --ciabsdr_cnt == 0)
 						bsp = 1;
@@ -266,7 +266,7 @@ function CIA() {
 				}
 			}
 			if (check) {
-				//assert((ciabtb + 1) >= cc);
+				SAEF_assert((ciabtb + 1) >= cc);
 				if ((ciabtb + 1) == cc)
 					bovflb = 1;
 				ciabtb -= cc;
@@ -309,13 +309,10 @@ function CIA() {
 		}
 		return icr;
 	}
-
 	function CIA_update() {
-		var icr = CIA_update_check ();
-		if (icr & 1)
-			RethinkICRA();
-		if (icr & 2)
-			RethinkICRB();
+		var icr = CIA_update_check();
+		if (icr & 1) RethinkICRA();
+		if (icr & 2) RethinkICRB();
 	}
 
 	/* Call this only after CIA_update has been called in the same cycle.  */
@@ -323,103 +320,161 @@ function CIA() {
 		var ciaatimea = -1, ciaatimeb = -1, ciabtimea = -1, ciabtimeb = -1;
 		var div10diff = DIV10 - div10;
 
-		if ((ciaacra & 0x21) == 0x01) ciaatimea = div10diff + DIV10 * (ciaata + ciaastarta);
-		if ((ciaacrb & 0x61) == 0x01) ciaatimeb = div10diff + DIV10 * (ciaatb + ciaastartb);
-		if ((ciabcra & 0x21) == 0x01) ciabtimea = div10diff + DIV10 * (ciabta + ciabstarta);
-		if ((ciabcrb & 0x61) == 0x01) ciabtimeb = div10diff + DIV10 * (ciabtb + ciabstartb);
+		SAER_Events_eventtab[SAEC_Events_EV_CIA].oldcycles = SAEV_Events_currcycle;
 
-		AMIGA.events.eventtab[EV_CIA].oldcycles = AMIGA.events.currcycle;
-		AMIGA.events.eventtab[EV_CIA].active = (ciaatimea != -1 || ciaatimeb != -1 || ciabtimea != -1 || ciabtimeb != -1);
-
-		if (AMIGA.events.eventtab[EV_CIA].active) {
-			var ciatime = CYCLE_MAX;
-			if (ciaatimea != -1) ciatime = ciaatimea;
-			if (ciaatimeb != -1 && ciaatimeb < ciatime) ciatime = ciaatimeb;
-			if (ciabtimea != -1 && ciabtimea < ciatime) ciatime = ciabtimea;
-			if (ciabtimeb != -1 && ciabtimeb < ciatime) ciatime = ciabtimeb;
-			AMIGA.events.eventtab[EV_CIA].evtime = ciatime + AMIGA.events.currcycle;
+		if ((ciaacra & 0x21) == 0x01) {
+			ciaatimea = div10diff + DIV10 * (ciaata + ciaastarta);
 		}
-		AMIGA.events.schedule();
+		/*#if 0
+		if ((ciaacrb & 0x61) == 0x41) {
+			// Timer B will not get any pulses if Timer A is off.
+			if (ciaatimea >= 0) {
+				// If Timer A is in one-shot mode, and Timer B needs more than one pulse, it will not underflow.
+				if (ciaatb == 0 || (ciaacra & 0x8) == 0) {
+					// Otherwise, we can determine the time of the underflow.
+					// This may overflow, however.  So just ignore this timer and use the fact that we"ll call CIA_handler for the A timer.
+					// ciaatimeb = ciaatimea + ciaala * DIV10 * ciaatb;
+				}
+			}
+		}
+		#endif*/
+		if ((ciaacrb & 0x61) == 0x01) {
+			ciaatimeb = div10diff + DIV10 * (ciaatb + ciaastartb);
+		}
+
+		if ((ciabcra & 0x21) == 0x01) {
+			ciabtimea = div10diff + DIV10 * (ciabta + ciabstarta);
+		}
+		/*#if 0
+		if ((ciabcrb & 0x61) == 0x41) {
+			// Timer B will not get any pulses if Timer A is off.
+			if (ciabtimea >= 0) {
+				// If Timer A is in one-shot mode, and Timer B needs more than one pulse, it will not underflow.
+				if (ciabtb == 0 || (ciabcra & 0x8) == 0) {
+					// Otherwise, we can determine the time of the underflow.
+					// ciabtimeb = ciabtimea + ciabla * DIV10 * ciabtb;
+				}
+			}
+		}
+		#endif*/
+		if ((ciabcrb & 0x61) == 0x01) {
+			ciabtimeb = div10diff + DIV10 * (ciabtb + ciabstartb);
+		}
+
+		SAER_Events_eventtab[SAEC_Events_EV_CIA].active = (ciaatimea != -1 || ciaatimeb != -1 || ciabtimea != -1 || ciabtimeb != -1);
+		if (SAER_Events_eventtab[SAEC_Events_EV_CIA].active) {
+			var ciatime = SAEC_Events_CYCLE_MAX;
+			if (ciaatimea != -1)
+				ciatime = ciaatimea;
+			if (ciaatimeb != -1 && ciaatimeb < ciatime)
+				ciatime = ciaatimeb;
+			if (ciabtimea != -1 && ciabtimea < ciatime)
+				ciatime = ciabtimea;
+			if (ciabtimeb != -1 && ciabtimeb < ciatime)
+				ciatime = ciabtimeb;
+			SAER_Events_eventtab[SAEC_Events_EV_CIA].evtime = SAEV_Events_currcycle + ciatime;
+		}
+		SAER.events.schedule();
 	}
 
-	this.handler = function () {
+	this.handler = function() { //CIA_handler()
 		CIA_update();
 		CIA_calctimers();
-	};
+	}
 
-	/*this.diskindex = function() {
+	this.diskindex = function() { //cia_diskindex()
 		ciabicr |= 0x10;
 		RethinkICRB();
 	}
-	this.parallelack = function() {
+	/*function cia_parallelack() {
 		ciaaicr |= 0x10;
 		RethinkICRA();
 	}*/
 
-	function checkalarm (tod, alarm, inc) {
+	function checkalarm(tod, alarm, inc, ab) {
 		if (tod == alarm)
-			return 1;
+			return true;
+		/*#if 0
+		if (!ab)
+			return false;
+		#endif*/
+		if (!SAEV_config.chipset.cia.todBug)
+			return false;
 		if (!inc)
-			return 0;
+			return false;
 		/* emulate buggy TODMED counter.
 		* it counts: .. 29 2A 2B 2C 2D 2E 2F 20 30 31 32 ..
-		* (2F->20->30 only takes couple of cycles but it will trigger alarm..
-		*/
+		* (2F->20->30 only takes couple of cycles but it will trigger alarm... */
 		if (tod & 0x000fff)
-			return 0;
-		if (((tod - 1) & 0xfff000) == alarm)
-			return 1;
-		return 0;
+			return false;
+
+		return (((tod - 1) >>> 0) & 0xfff000) == alarm;
 	}
 
-	function ciab_checkalarm(inc) {
-		if (checkalarm(ciabtod, ciabalarm, inc)) {
-			ciabicr |= 4;
-			RethinkICRB();
+	//function munge24(x) { return x & (SAEV_config.cpu.model == SAEC_Config_CPU_Model_68000 ? 0x00ffffff : 0xffffffff); }
+
+	function ciab_checkalarm(inc, irq) {
+		// hack: do not trigger alarm interrupt if KS code and both
+		// tod and alarm == 0. This incorrectly triggers on non-cycle exact
+		// modes. Real hardware value written to ciabtod by KS is always
+		// at least 1 or larger due to bus cycle delays when reading old value.
+		//#if 1
+		//if ((munge24(SAER.cpu.m68k_getpc2()) & 0xFFF80000) != 0xF80000) {
+		if (!SAER.cpu.pc_in_rom()) {
+			if (ciabtod == 0 && ciabalarm == 0)
+				return false;
 		}
+		//#endif
+		if (checkalarm(ciabtod, ciabalarm, inc, 1)) {
+			if (irq) {
+				ciabicr |= 4;
+				RethinkICRB();
+			}
+			return true;
+		}
+		return false;
 	}
 
 	function ciaa_checkalarm(inc) {
-		if (checkalarm(ciaatod, ciaaalarm, inc)) {
+		if (checkalarm (ciaatod, ciaaalarm, inc, 0)) {
 			ciaaicr |= 4;
 			RethinkICRA();
 		}
 	}
 
-	function gettimeofday() {
-		return Math.floor(new Date().getTime()); 
-	}
-
-//#ifdef TOD_HACK
-	var tod_hack_tv = 0, tod_hack_tod = 0, tod_hack_tod_last = 0;
-	var tod_hack_enabled = -1;
+	//#ifdef TOD_HACK
+	var tod_hack_tv = 0, tod_hack_tod = 0, tod_hack_tod_last = 0; //u64
+	var tod_hack_enabled = 0; //all int
+	var tod_hack_delay = 0;
+	var tod_diff_cnt = 0;
+	const TOD_HACK_DELAY = 50;
 	const TOD_HACK_TIME = 312 * 50 * 10;
 	function tod_hack_reset() {
-		//var tv;
-		//gettimeofday (&tv, NULL);
-		//tod_hack_tv = (uae_u64)tv.tv_sec * 1000000 + tv.tv_usec;
-		tod_hack_tv = gettimeofday();
+		var tv = {};
+		SAEF_gettimeofday(tv, null);
+		tod_hack_tv = tv.tv_sec * 1000000 + tv.tv_usec;
 		tod_hack_tod = ciaatod;
 		tod_hack_tod_last = tod_hack_tod;
+		tod_diff_cnt = 0;
 	}
-//#endif
+	//#endif
 
-	/*var heartbeat_cnt = 0;
-	function cia_heartbeat() {
+	var heartbeat_cnt = 0; //int
+	/*this.cia_heartbeat = function() {
 		heartbeat_cnt = 10;
 	}*/
 
 	var oldrate = 0;
 	function do_tod_hack(dotod) {
-		//console.log('tod',tod_hack_enabled);
-		//var tv;
-		var t;
+		//struct timeval tv;
+		//static int oldrate;
 		var rate;
-		var docount = 0;
+		var docount = false;
 
 		if (tod_hack_enabled == 0)
 			return;
-		/*if (!heartbeat_cnt) {
+		/*OWN
+		if (!heartbeat_cnt) {
 			if (tod_hack_enabled > 0)
 				tod_hack_enabled = -1;
 			return;
@@ -431,216 +486,357 @@ function CIA() {
 		if (tod_hack_enabled > 1) {
 			tod_hack_enabled--;
 			if (tod_hack_enabled == 1) {
-				BUG.info('TOD HACK enabled');
+				SAEF_log("cia.do_tod_hack() enabled");
 				tod_hack_reset();
 			}
 			return;
 		}
 
-		if (AMIGA.config.cia.tod == 0)
-			rate = Math.floor(AMIGA.playfield.vblank_hz + 0.5);
-		else if (AMIGA.config.cia.tod == 1)
+		if (SAEV_config.chipset.cia.tod == SAEC_Config_Chipset_CIA_TOD_VSync) {
+			rate = Math.floor(SAER.playfield.get_vblank_hz() + 0.5);
+			if (rate >= 59 && rate <= 61)
+				rate = 60;
+			if (rate >= 49 && rate <= 51)
+				rate = 50;
+		} else if (SAEV_config.chipset.cia.tod == SAEC_Config_Chipset_CIA_TOD_50Hz)
 			rate = 50;
 		else
 			rate = 60;
+
 		if (rate <= 0)
 			return;
-		if (rate != oldrate || ciaatod != tod_hack_tod_last) {
-			if (ciaatod != 0) BUG.info('TOD HACK reset %d,%d %d,%d', rate, oldrate, ciaatod, tod_hack_tod_last);
+		if (rate != oldrate || (ciaatod & 0xfff) != (tod_hack_tod_last & 0xfff)) {
+			SAEF_log("cia.do_tod_hack() reset");
 			tod_hack_reset();
 			oldrate = rate;
-			docount = 1;
+			docount = true;
 		}
-		if (!dotod && AMIGA.config.cia.tod == 0)
+
+		if (!dotod && SAEV_config.chipset.cia.tod == SAEC_Config_Chipset_CIA_TOD_VSync)
 			return;
 
-		/*gettimeofday (&tv, NULL); 
-		t = (uae_u64)tv.tv_sec * 1000000 + tv.tv_usec;
-		if (t - tod_hack_tv >= 1000000 / rate) {
-			tod_hack_tv += 1000000 / rate;
-			docount = 1;
-		}*/
-		t = gettimeofday();
-		if (t - tod_hack_tv >= Math.floor(1000 / rate)) {
-			tod_hack_tv += Math.floor(1000 / rate);
-			docount = 1;
+		if (tod_hack_delay > 0) {
+			tod_hack_delay--;
+			if (tod_hack_delay > 0)
+				return;
+			tod_hack_delay = TOD_HACK_DELAY;
+		}
+
+		var tv = {};
+		SAEF_gettimeofday(tv, null);
+		var t = tv.tv_sec * 1000000 + tv.tv_usec;
+		var base = 1000000 / rate >>> 0;
+		if (t - tod_hack_tv >= base) {
+			tod_hack_tv += base;
+			tod_diff_cnt += 1000000 - base * rate;
+			tod_hack_tv += (tod_diff_cnt / rate >>> 0);
+			tod_diff_cnt %= rate;
+			docount = true;
 		}
 		if (docount) {
 			ciaatod++;
 			ciaatod &= 0x00ffffff;
 			tod_hack_tod_last = ciaatod;
-			ciaa_checkalarm(0);
+			ciaa_checkalarm(false);
 		}
 	}
 
-	//this.hsync_prehandler = function() {}
+	/*var resetwarning_phase = 0, resetwarning_timer = 0; //int
 
-	this.hsync_posthandler = function (dotod) {
-		if (ciabtodon && dotod) {
-			ciabtod++;
-			ciabtod &= 0xFFFFFF;
-			ciab_checkalarm(1);
+	function sendrw() {
+		setcode(AK_RESETWARNING);
+		ciaasdr = kbcode;
+		kblostsynccnt = 8 * maxvpos * 8; // 8 frames * 8 bits.
+		ciaaicr |= 8;
+		RethinkICRA ();
+		SAEF_log("cia.sendrw() sent reset warning code (phase=%d)", resetwarning_phase);
+	}
+	int resetwarning_do (int canreset) {
+		if (resetwarning_phase || SAR.m68k.halted > 0) {
+			if (canreset) {
+				resetwarning_phase = 0;
+				resetwarning_timer = 0;
+			}
+			return 0;
 		}
-		if (AMIGA.config.cia.tod_hack && ciaatodon)
+		resetwarning_phase = 1;
+		resetwarning_timer = maxvpos_nom * 5;
+		SAEF_log("cia.resetwarning_do() triggered");
+		sendrw();
+		return 1;
+	}
+	static void resetwarning_check (void) {
+		if (resetwarning_timer > 0) {
+			resetwarning_timer--;
+			if (resetwarning_timer <= 0) {
+				SAEF_log("cia.resetwarning_check() forced reset. phase=%d", resetwarning_phase);
+				resetwarning_phase = -1;
+				kblostsynccnt = 0;
+				send_internalevent(INTERNALEVENT_KBRESET);
+				uae_reset(0, 1);
+			}
+		}
+		if (resetwarning_phase == 1) {
+			if (!kblostsynccnt) { // first AK_RESETWARNING handshake received
+				SAEF_log("cia.resetwarning_check() second phase...");
+				resetwarning_phase = 2;
+				resetwarning_timer = maxvpos_nom * 5;
+				sendrw();
+			}
+		} else if (resetwarning_phase == 2) {
+			if (ciaacra & 0x40) { // second AK_RESETWARNING handshake active
+				resetwarning_phase = 3;
+				SAEF_log("cia.resetwarning_check() reset warning SP = output");
+				/* System won"t reset until handshake signal becomes inactive or 10s has passed
+				resetwarning_timer = 10 * maxvpos_nom * SAER.playfield.get_vblank_hz();
+			}
+		} else if (resetwarning_phase == 3) {
+			if (!(ciaacra & 0x40)) { // second AK_RESETWARNING handshake disabled
+				SAEF_log("cia.resetwarning_check() reset warning end by software. reset.");
+				resetwarning_phase = -1;
+				kblostsynccnt = 0;
+				send_internalevent(INTERNALEVENT_KBRESET);
+				uae_reset (0, 1);
+			}
+		}
+	}*/
+
+	//this.hsync = function() {} //CIA_hsync_prehandler()
+
+	function setcode(keycode) {
+		kbcode = ~((keycode << 1) | (keycode >> 7)) & 0xff;
+	}
+
+	function keyreq() {
+		ciaasdr = kbcode;
+		kblostsynccnt = 8 * SAER.playfield.get_maxvpos() * 8; // 8 frames * 8 bits.
+		ciaaicr |= 8;
+		RethinkICRA();
+	}
+
+	/* All this complexity to lazy evaluate TOD increase.
+	 * Only increase it cycle-exactly if it is visible to running program:
+	 * causes interrupt or program is reading or writing TOD registers
+	 */
+
+	var ciab_tod_hoffset = 0; //int
+	var ciab_tod_event_state = 0; //int
+	// TOD increase has extra 14-16 E-clock delay
+	// Possibly TICK input pin has built-in debounce circuit
+	const TOD_INC_DELAY = 14 * (ECLOCK_DATA_CYCLE + ECLOCK_WAIT_CYCLE) >> 1;
+
+	function CIAB_tod_inc(irq) {
+		ciab_tod_event_state = 3; // done
+		if (!ciabtodon)
+			return;
+		ciabtod++;
+		ciabtod &= 0xFFFFFF;
+		ciab_checkalarm(true, irq);
+	}
+
+	function CIAB_tod_inc_event(v) {
+		if (ciab_tod_event_state != 2)
+			return;
+		CIAB_tod_inc(true);
+	}
+
+	// Someone reads or writes TOD registers, sync TOD increase
+	function CIAB_tod_check() {
+		if (ciab_tod_event_state != 1 || !ciabtodon)
+			return;
+		var hpos = SAER.events.current_hpos();
+		hpos -= ciab_tod_hoffset;
+		if (hpos >= 0 || SAEV_config.cpu.speed < 0) {
+			// Program should see the changed TOD
+			CIAB_tod_inc(true);
+			return;
+		}
+		// Not yet, add event to guarantee exact TOD inc position
+		ciab_tod_event_state = 2; // event active
+		SAER.events.event2_newevent_xx(-1, -hpos, 0, CIAB_tod_inc_event);
+	}
+
+	this.b_tod_handler = function(hoffset) { //CIAB_tod_handler()
+		if (!ciabtodon)
+			return;
+		ciab_tod_hoffset = hoffset + TOD_INC_DELAY;
+		ciab_tod_event_state = 1; // TOD inc needed
+		if (checkalarm((ciabtod + 1) & 0xffffff, ciabalarm, true, 1)) {
+			// causes interrupt on this line, add event
+			ciab_tod_event_state = 2; // event active
+			SAER.events.event2_newevent_xx (-1, ciab_tod_hoffset, 0, CIAB_tod_inc_event);
+		}
+	}
+
+	//const RAWKEY_RESETWARNING = 0x78;
+ 	const RAWKEY_INIT_POWER_UP = 0xFD;
+ 	const RAWKEY_TERM_POWER_UP = 0xFE;
+
+	function check_keyboard() {
+		if ((SAER.input.keyboard.keysAvail() || kbstate < 3) && !kblostsynccnt ) {
+			switch (kbstate) {
+				case 0:
+					kbcode = 0; //powerup resync
+					kbstate++;
+					break;
+				case 1:
+					setcode(RAWKEY_INIT_POWER_UP);
+					kbstate++;
+					break;
+				case 2:
+					setcode(RAWKEY_TERM_POWER_UP);
+					kbstate++;
+					break;
+				case 3:
+					kbcode = ~SAER.input.keyboard.nextKey() & 0xff;
+					break;
+			}
+			keyreq();
+		}
+	}
+
+	this.hsync_post = function(dotod) { //CIA_hsync_posthandler()
+		// Previous line was supposed to increase TOD but no one cared. Do it now.
+		if (ciab_tod_event_state == 1)
+			CIAB_tod_inc(false);
+		ciab_tod_event_state = 0;
+
+		if (SAEV_config.chipset.cia.todHack && ciaatodon)
 			do_tod_hack(dotod);
 
 		/*if (resetwarning_phase) {
-		 resetwarning_check ();
-		 while (keys_available ())
-		 get_next_key ();
-		 } else if ((keys_available () || kbstate < 3) && !kblostsynccnt && (hsync_counter & 15) == 0) {
-		 switch (kbstate) {
-		 case 0:
-		 kbcode = 0;
-		 kbstate++;
-		 break;
-		 case 1:
-		 setcode(AK_INIT_POWERUP);
-		 kbstate++;
-		 break;
-		 case 2:
-		 setcode(AK_TERM_POWERUP);
-		 kbstate++;
-		 break;
-		 case 3:
-		 kbcode = ~get_next_key();
-		 break;
-		 }
-		 keyreq();
-		 }*/
-		AMIGA.input.keyboard.hsync();
-	};
+			resetwarning_check();
+			while (keys_available())
+				get_next_key();
+		} else*/ {
+			if ((SAEV_Events_hsync_counter & 15) == 0)
+				check_keyboard();
+		}
+	}
 
 	function calc_led(old_led) {
-		var c = AMIGA.events.currcycle;
-		var t = Math.floor((c - led_cycle) * CYCLE_UNIT_INV);
+		var c = SAEV_Events_currcycle;
+		var t = ((c - led_cycle) * SAEC_Events_CYCLE_UNIT_INV) >>> 0;
 		if (old_led)
 			led_cycles_on += t;
 		else
 			led_cycles_off += t;
 		led_cycle = c;
 	}
-
-	var powerled_brightness = 255;
-	var powerled = true;
 	function led_vsync() {
-		var v;
-
 		calc_led(led);
+
 		if (led_cycles_on && !led_cycles_off)
-			v = 255;
+			var v = 255;
 		else if (led_cycles_off && !led_cycles_on)
-			v = 0;
+			var v = 0;
 		else if (led_cycles_off)
-			v = Math.floor(led_cycles_on * 255 / (led_cycles_on + led_cycles_off));
+			var v = ~~(led_cycles_on * 255 / (led_cycles_on + led_cycles_off));
 		else
+			var v = 255;
+
+		if (v < 0)
+			v = 0;
+		else if (v > 255)
 			v = 255;
-		if (v < 0) v = 0;
-		if (v > 255) v = 255;
 
-		/*gui_data.powerled_brightness = v;
-		if (led_old_brightness != gui_data.powerled_brightness) {
-			gui_data.powerled = gui_data.powerled_brightness > 127;
-			gui_led (LED_POWER, gui_data.powerled);
-			led_filter_audio ();
-		}
-		led_old_brightness = gui_data.powerled_brightness;*/
-
-		powerled_brightness = v;
-		if (led_old_brightness != powerled_brightness) {
-			powerled = powerled_brightness > 127;
-			AMIGA.config.hooks.power_led(powerled);
-			AMIGA.audio.filter.led_filter_on = powerled;
-		}
-		led_old_brightness = powerled_brightness;
-
-		led_cycle = AMIGA.events.currcycle;
 		led_cycles_on = 0;
 		led_cycles_off = 0;
+		SAER.gui.data.powerled_brightness = v;
+		if (led_old_brightness != SAER.gui.data.powerled_brightness) {
+			SAER.gui.data.powerled = SAER.gui.data.powerled_brightness > 127;
+			SAER.gui.led(SAEC_GUI_LED_POWER, SAER.gui.data.powerled, SAER.gui.data.powerled_brightness);
+			SAER.audio.led_filter_audio();
+		}
+		led_old_brightness = v;
+		led_cycle = SAEV_Events_currcycle;
 	}
 
-	this.vsync_prehandler = function () {
-		/*if (rtc_delayed_write < 0) {
-		 rtc_delayed_write = 50;
-		 } else if (rtc_delayed_write > 0) {
-		 rtc_delayed_write--;
-		 if (rtc_delayed_write == 0)
-		 write_battclock ();
-		 }*/
+	this.vsync = function() { //CIA_vsync_prehandler()
+		if (heartbeat_cnt > 0)
+			heartbeat_cnt--;
+		if (SAEV_RTC_delayed_write < 0)
+			SAEV_RTC_delayed_write = 50;
+		else if (SAEV_RTC_delayed_write > 0) {
+			SAEV_RTC_delayed_write--;
+			if (SAEV_RTC_delayed_write == 0)
+				SAER.rtc.write();
+		}
 		led_vsync();
 		this.handler();
-		/*if (kblostsynccnt > 0) {
-		 kblostsynccnt -= maxvpos;
-		 if (kblostsynccnt <= 0) {
-		 kblostsynccnt = 0;
-		 keyreq ();
-		 write_log (_T('lostsync\n'));
-		 }
-		 }*/
-		AMIGA.input.keyboard.vsync();
-	};
 
-	this.vsync_posthandler = function (dotod) {
-		//if (heartbeat_cnt > 0) heartbeat_cnt--;
-		if (TOD_HACK) {
-			if (AMIGA.config.cia.tod_hack && tod_hack_enabled == 1)
-				return;
+		if (kblostsynccnt > 0) {
+			kblostsynccnt -= SAER.playfield.get_maxvpos();
+			if (kblostsynccnt <= 0) {
+				kblostsynccnt = 0;
+				keyreq();
+			}
 		}
-		if (ciaatodon && dotod) {
-			ciaatod++;
-			ciaatod &= 0xFFFFFF;
-			ciaa_checkalarm(1);
-		}
-		/*if (vpos == 0) {
-		 write_log ('%d', vsync_counter);
-		 this.dump();
-		 }*/
-	};
+	}
 
-	function bfe001_change() {
+	function CIAA_tod_handler(v) {
+		ciaatod++;
+		ciaatod &= 0xFFFFFF;
+		ciaa_checkalarm(true);
+	}
+
+	this.a_tod_inc = function(cycles) { //CIAA_tod_inc()
+		//#ifdef TOD_HACK
+		if (SAEV_config.chipset.cia.todHack && tod_hack_enabled == 1)
+			return;
+		//#endif
+		if (!ciaatodon)
+			return;
+
+		SAER.events.event2_newevent_xx(-1, cycles + TOD_INC_DELAY, 0, CIAA_tod_handler);
+	}
+
+	function check_led() {
 		var v = ciaapra;
-		var led2;
 
-		v |= ~ciaadra; /* output is high when pin's direction is input */
-		led2 = (v & 2) ? 0 : 1;
+		v |= ~ciaadra; /* output is high when pin"s direction is input */
+		var led2 = (v & 2) ? 0 : 1;
 		if (led2 != led) {
 			calc_led(led);
 			led = led2;
 			led_old_brightness = -1;
 		}
-		/*if (currprefs.cs_ciaoverlay && (v & 1) != oldovl) {
+	}
+
+	function bfe001_change() {
+		var v = ciaapra;
+		check_led();
+		if (SAEV_config.chipset.cia.overlay && (v & 1) != oldovl) {
 			oldovl = v & 1;
-			if (!oldovl) {
-				map_overlay (1);
-			} else {
-				//activate_debugger ();
-				map_overlay (0);
-			}
+			if (!oldovl)
+				SAER.memory.mapOverlay(true);
+			else
+				SAER.memory.mapOverlay(false);
 		}
-		if (currprefs.cs_cd32cd && (v & 1) != oldcd32mute) {
+		/*if (currprefs.cs_cd32cd && (v & 1) != oldcd32mute) {
 			oldcd32mute = v & 1;
 			akiko_mute (oldcd32mute ? 0 : 1);
 		}*/
 	}
-	
+
 	function handle_joystick_buttons(pra, dra) {
 		var tmp = 0;
-		if (AMIGA.config.ports[0].type == SAEV_Config_Ports_Type_Mouse) {
-			if (!AMIGA.input.mouse.button[0]) tmp |= 0x40;
+		if (SAEV_config.ports[0].type == SAEC_Config_Ports_Type_Mouse) {
+			if (!SAER.input.mouse.button[0]) tmp |= 0x40;
 			if (dra & 0x40) tmp = (tmp & ~0x40) | (pra & 0x40);
-		} else if (AMIGA.config.ports[0].type == SAEV_Config_Ports_Type_Joy0) {
-			if (!AMIGA.input.joystick[0].button[0]) tmp |= 0x40;
+		} else if (SAEV_config.ports[0].type == SAEC_Config_Ports_Type_Joy0) {
+			if (!SAER.input.joystick[0].button[0]) tmp |= 0x40;
 			if (dra & 0x40) tmp = (tmp & ~0x40) | (pra & 0x40);
 		} else tmp |= 0x40;
 
-		if (AMIGA.config.ports[1].type == SAEV_Config_Ports_Type_Joy1) {
-			if (!AMIGA.input.joystick[1].button[0]) tmp |= 0x80;
+		if (SAEV_config.ports[1].type == SAEC_Config_Ports_Type_Joy1) {
+			if (!SAER.input.joystick[1].button[0]) tmp |= 0x80;
 			if (dra & 0x80) tmp = (tmp & ~0x80) | (pra & 0x80);
 		} else tmp |= 0x80;
 
 		return tmp;
 	}
-	
+
 	function handle_parport_joystick (port, pra, dra) {
 		var v;
 		switch (port) {
@@ -654,94 +850,153 @@ function CIA() {
 				return 0;
 		}
 	}
-	
+
+	function getciatod(tod) {
+		if (SAEV_config.chipset.cia.type6526) {
+			var bcdtod = 0; //u32
+			for (var i = 0; i < 4; i++) {
+				var val = tod % 10;
+				bcdtod *= 16; if (bcdtod > 0xffffffff) bcdtod -= 0x100000000;
+				bcdtod += val; if (bcdtod > 0xffffffff) bcdtod -= 0x100000000;
+				tod = tod / 10 >>> 0;
+			}
+			return bcdtod;
+		}
+		return tod;
+	}
+
+	function calc_bintod(v) { //OWN
+		var bintod = 0;
+		for (var i = 0; i < 4; i++) {
+			var val = v / 16 >>> 0;
+			bintod *= 10; if (bintod > 0xffffffff) bintod -= 0x100000000;
+			bintod += val; if (bintod > 0xffffffff) bintod -= 0x100000000;
+			v = v / 16 >>> 0;
+		}
+		return bintod;
+	}
+	//function setciatod(*tod, v) {
+	function setciatod_ciaatod(v) {
+		ciaatod = SAEV_config.chipset.cia.type6526 ? calc_bintod(v) : v;
+	}
+	function setciatod_ciaaalarm(v) {
+		ciaaalarm = SAEV_config.chipset.cia.type6526 ? calc_bintod(v) : v;
+	}
+	function setciatod_ciabtod(v) {
+		ciabtod = SAEV_config.chipset.cia.type6526 ? calc_bintod(v) : v;
+	}
+	function setciatod_ciabalarm(v) {
+		ciabalarm = SAEV_config.chipset.cia.type6526 ? calc_bintod(v) : v;
+	}
+
 	function ReadCIAA(addr) {
 		var tmp;
 		var reg = addr & 15;
 
 		compute_passed_time();
 
-		//if (CIAA_DEBUG_R) write_log (_T('R_CIAA: bfe%x01 %08X\n'), reg, M68K_GETPC);
-
 		switch (reg) {
 		case 0:
-			tmp = AMIGA.disk.status() & 0x3c;
+			/*#ifdef ACTION_REPLAY
+			action_replay_cia_access(false);
+			#endif*/
+			tmp = SAER.disk.status_ciaa() & 0x3c;
 			tmp |= handle_joystick_buttons(ciaapra, ciaadra);
 			tmp |= (ciaapra | (ciaadra ^ 3)) & 0x03;
-			//tmp = dongle_cia_read (0, reg, tmp);
-			//if (DONGLE_DEBUG && notinrom()) write_log (_T('BFE001 R %02X %s\n'), tmp, debuginfo(0));
+			//tmp = dongle_cia_read(0, reg, tmp);
 			return tmp;
 		case 1:
-/*#ifdef PARALLEL_PORT
+			/*#ifdef PARALLEL_PORT
 			if (isprinter () > 0) {
 				tmp = ciaaprb;
 			} else if (isprinter () < 0) {
 				uae_u8 v;
 				parallel_direct_read_data (&v);
 				tmp = v;
+			#ifdef ARCADIA
+			} else if (arcadia_bios) {
+				tmp = arcadia_parport (0, ciaaprb, ciaadrb);
+			#endif
 			} else if (currprefs.win32_samplersoundcard >= 0) {
 				tmp = sampler_getsample ((ciabpra & 4) ? 1 : 0);
-			} else
-#endif*/
-			{
+			#endif
+			}*/ {
 				tmp = handle_parport_joystick(0, ciaaprb, ciaadrb);
-				//tmp = dongle_cia_read (1, reg, tmp);
-				//if (DONGLE_DEBUG && notinrom()) write_log (_T('BFE101 R %02X %s\n'), tmp, debuginfo(0));
+				//tmp = dongle_cia_read(1, reg, tmp);
 			}
 			if (ciaacrb & 2) {
 				var pb7 = 0;
 				if (ciaacrb & 4)
 					pb7 = ciaacrb & 1;
 				tmp &= ~0x80;
-				tmp |= pb7 ? 0x80 : 0;
+				tmp |= pb7 ? 0x80 : 00;
 			}
 			if (ciaacra & 2) {
 				var pb6 = 0;
 				if (ciaacra & 4)
 					pb6 = ciaacra & 1;
 				tmp &= ~0x40;
-				tmp |= pb6 ? 0x40 : 0;
+				tmp |= pb6 ? 0x40 : 00;
 			}
 			return tmp;
 		case 2:
-			//if (DONGLE_DEBUG && notinrom()) write_log (_T('BFE201 R %02X %s\n'), ciaadra, debuginfo(0));
 			return ciaadra;
 		case 3:
-			//if (DONGLE_DEBUG && notinrom()) write_log (_T('BFE301 R %02X %s\n'), ciaadrb, debuginfo(0));
 			return ciaadrb;
 		case 4:
 			return (ciaata - ciaata_passed) & 0xff;
 		case 5:
-			return ((ciaata - ciaata_passed) >> 8) & 0xff;
+			return ((ciaata - ciaata_passed) >>> 8) & 0xff;
 		case 6:
 			return (ciaatb - ciaatb_passed) & 0xff;
 		case 7:
-			return ((ciaatb - ciaatb_passed) >> 8) & 0xff;
+			return ((ciaatb - ciaatb_passed) >>> 8) & 0xff;
 		case 8:
 			if (ciaatlatch) {
 				ciaatlatch = 0;
-				return ciaatol & 0xff;
+				return getciatod(ciaatol) & 0xff;
 			} else
-				return ciaatod & 0xff;
+				return getciatod(ciaatod) & 0xff;
 		case 9:
 			if (ciaatlatch)
-				return (ciaatol >> 8) & 0xff;
+				return (getciatod(ciaatol) >>> 8) & 0xff;
 			else
-				return (ciaatod >> 8) & 0xff;
+				return (getciatod(ciaatod) >>> 8) & 0xff;
 		case 10:
-			if (!ciaatlatch) { 
-				if (!(ciaacrb & 0x80))
-					ciaatlatch = 1;
-				ciaatol = ciaatod;
+			/* only if not already latched. A1200 confirmed. (TW) */
+			if (!SAEV_config.chipset.cia.type6526) {
+				if (!ciaatlatch) {
+					/* no latching if ALARM is set */
+					if (!(ciaacrb & 0x80))
+						ciaatlatch = 1;
+					ciaatol = ciaatod;
+				}
+				return (getciatod(ciaatol) >>> 16) & 0xff;
+			} else {
+				if (ciaatlatch)
+					return (getciatod(ciaatol) >>> 16) & 0xff;
+				else
+					return (getciatod(ciaatod) >>> 16) & 0xff;
 			}
-			return (ciaatol >> 16) & 0xff;
+			break;
+		case 11:
+			if (SAEV_config.chipset.cia.type6526) {
+				if (!ciaatlatch) {
+					if (!(ciaacrb & 0x80))
+						ciaatlatch = 1;
+					ciaatol = ciaatod;
+				}
+				if (ciaatlatch)
+					return getciatod(ciaatol) >>> 24;
+				else
+					return getciatod(ciaatod) >>> 24;
+			}
+			break;
 		case 12:
 			return ciaasdr;
 		case 13:
-			tmp = ciaaicr_reg;
-			ciaaicr &= ~ciaaicr_reg;
-			ciaaicr_reg = 0;
-			RethinkICRA();
+			tmp = ciaaicr & ~(0x40 | 0x20);
+			ciaaicr = 0;
 			return tmp;
 		case 14:
 			return ciaacra;
@@ -755,15 +1010,19 @@ function CIA() {
 		var tmp;
 		var reg = addr & 15;
 
-		//if ((addr >= 8 && addr <= 10) || CIAB_DEBUG_R > 1) write_log (_T('R_CIAB: bfd%x00 %08X\n'), reg, M68K_GETPC);
-
-		compute_passed_time ();
+		compute_passed_time();
 
 		switch (reg) {
 		case 0:
-			//if (currprefs.use_serial)
-			tmp = AMIGA.serial.readStatus(ciabdra);
-/*#ifdef PARALLEL_PORT
+			tmp = 0;
+			/*#ifdef ARCADIA
+			// CD inactive, Arcadia bios 4.00 does not detect printer
+			if (arcadia_bios && !SAEV_config.serial.enabled)
+				tmp = 0x20;
+			#endif*/
+			if (SAEV_config.serial.enabled)
+				tmp = SAER.serial.readstatus(ciabdra);
+			/*#ifdef PARALLEL_PORT
 			if (isprinter () > 0) {
 				//tmp |= ciabpra & (0x04 | 0x02 | 0x01);
 				tmp &= ~3; // clear BUSY and PAPEROUT
@@ -772,31 +1031,29 @@ function CIA() {
 				uae_u8 v;
 				parallel_direct_read_status (&v);
 				tmp |= v & 7;
-			} else
-#endif*/
-			{
+			}*/ {
 				tmp |= handle_parport_joystick(1, ciabpra, ciabdra);
-				//tmp = dongle_cia_read (1, reg, tmp);
-				//if (DONGLE_DEBUG && notinrom()) write_log (_T('BFD000 R %02X %s\n'), tmp, debuginfo(0));
 			}
+			//#endif
+			//tmp = dongle_cia_read(1, reg, tmp);
 			return tmp;
 		case 1:
-			//if (DONGLE_DEBUG && notinrom()) write_log (_T('BFD100 R %02X %s\n'), ciabprb, debuginfo(0));
 			tmp = ciabprb;
+			tmp = SAER.disk.status_ciab(tmp);
 			//tmp = dongle_cia_read(1, reg, tmp);
 			if (ciabcrb & 2) {
 				var pb7 = 0;
 				if (ciabcrb & 4)
 					pb7 = ciabcrb & 1;
 				tmp &= ~0x80;
-				tmp |= pb7 ? 0x80 : 0;
+				tmp |= pb7 ? 0x80 : 00;
 			}
 			if (ciabcra & 2) {
 				var pb6 = 0;
 				if (ciabcra & 4)
 					pb6 = ciabcra & 1;
 				tmp &= ~0x40;
-				tmp |= pb6 ? 0x40 : 0;
+				tmp |= pb6 ? 0x40 : 00;
 			}
 			return tmp;
 		case 2:
@@ -806,39 +1063,60 @@ function CIA() {
 		case 4:
 			return (ciabta - ciabta_passed) & 0xff;
 		case 5:
-			return ((ciabta - ciabta_passed) >> 8) & 0xff;
+			return ((ciabta - ciabta_passed) >>> 8) & 0xff;
 		case 6:
 			return (ciabtb - ciabtb_passed) & 0xff;
 		case 7:
-			return ((ciabtb - ciabtb_passed) >> 8) & 0xff;
+			return ((ciabtb - ciabtb_passed) >>> 8) & 0xff;
 		case 8:
+			CIAB_tod_check();
 			if (ciabtlatch) {
 				ciabtlatch = 0;
-				return ciabtol & 0xff;
+				return getciatod(ciabtol) & 0xff;
 			} else
-				return ciabtod & 0xff;
+				return getciatod(ciabtod) & 0xff;
 		case 9:
+			CIAB_tod_check();
 			if (ciabtlatch)
-				return (ciabtol >> 8) & 0xff;
+				return (getciatod(ciabtol) >>> 8) & 0xff;
 			else
-				return (ciabtod >> 8) & 0xff;
+				return (getciatod(ciabtod) >>> 8) & 0xff;
 		case 10:
-			if (!ciabtlatch) {
-				if (!(ciabcrb & 0x80))
-					ciabtlatch = 1;
-				ciabtol = ciabtod;
+			CIAB_tod_check();
+			if (!SAEV_config.chipset.cia.type6526) {
+				if (!ciabtlatch) {
+					/* no latching if ALARM is set */
+					if (!(ciabcrb & 0x80))
+						ciabtlatch = 1;
+					ciabtol = ciabtod;
+				}
+				return (getciatod(ciabtol) >>> 16) & 0xff;
+			} else {
+				if (ciabtlatch)
+					return (getciatod(ciabtol) >>> 16) & 0xff;
+				else
+					return (getciatod(ciabtod) >>> 16) & 0xff;
 			}
-			return (ciabtol >> 16) & 0xff;
+		case 11:
+			if (SAEV_config.chipset.cia.type6526) {
+				if (!ciabtlatch) {
+					if (!(ciabcrb & 0x80))
+						ciabtlatch = 1;
+					ciabtol = ciabtod;
+				}
+				if (ciabtlatch)
+					return getciatod(ciabtol) >>> 24;
+				else
+					return getciatod(ciabtod) >>> 24;
+			}
+			break;
 		case 12:
 			return ciabsdr;
 		case 13:
-			tmp = ciabicr_reg;
-			ciabicr &= ~ciabicr_reg;
-			ciabicr_reg = 0;
-			RethinkICRB();
+			tmp = ciabicr & ~(0x40 | 0x20);
+			ciabicr = 0;
 			return tmp;
 		case 14:
-			//write_log (_T('CIABCRA READ %d %x\n'), ciabcra, M68K_GETPC);
 			return ciabcra;
 		case 15:
 			return ciabcrb;
@@ -849,44 +1127,54 @@ function CIA() {
 	function WriteCIAA(addr, val) {
 		var reg = addr & 15;
 
-		//if (CIAA_DEBUG_W) write_log (_T('W_CIAA: bfe%x01 %02X %08X\n'), reg, val, M68K_GETPC);
-
-		/*if (!currprefs.cs_ciaoverlay && oldovl) {
-			map_overlay (1);
+		/*#ifdef ACTION_REPLAY
+		ar_ciaa[reg] = val;
+		#endif*/
+		if (!SAEV_config.chipset.cia.overlay && oldovl) {
+			SAER.memory.mapOverlay(true);
 			oldovl = 0;
-		}*/
+		}
 		switch (reg) {
 		case 0:
-			//if (DONGLE_DEBUG && notinrom()) write_log (_T('BFE001 W %02X %s\n'), val, debuginfo(0));
 			ciaapra = (ciaapra & ~0xc3) | (val & 0xc3);
 			bfe001_change();
-			//handle_cd32_joystick_cia(ciaapra, ciaadra);
+			//handle_cd32_joystick_cia (ciaapra, ciaadra);
 			//dongle_cia_write (0, reg, val);
+
+			//if (is_device_rom(SAEV_config, SAEC_RomType_AMAX, 0) > 0)
+			if (SAEV_config.memory.amaxRom.size > 0)
+				SAER.disk.amax_bfe001_write(val, ciaadra);
+
 			break;
 		case 1:
-			//if (DONGLE_DEBUG && notinrom()) write_log (_T('BFE101 W %02X %s\n'), val, debuginfo(0));
 			ciaaprb = val;
 			//dongle_cia_write (0, reg, val);
-/*#ifdef PARALLEL_PORT
+			/*#ifdef PARALLEL_PORT
 			if (isprinter() > 0) {
 				doprinter (val);
-				this.parallelack();
+				cia_parallelack ();
 			} else if (isprinter() < 0) {
 				parallel_direct_write_data (val, ciaadrb);
-				this.parallelack();
+				cia_parallelack ();
+			#ifdef ARCADIA
+			} else if (arcadia_bios) {
+				arcadia_parport (1, ciaaprb, ciaadrb);
+			#endif
 			}
-#endif*/
+			#endif*/
 			break;
 		case 2:
-			//if (DONGLE_DEBUG && notinrom()) write_log (_T('BFE201 W %02X %s\n'), val, debuginfo(0));
 			ciaadra = val;
-			//dongle_cia_write (0, reg, val);
+			//dongle_cia_write(0, reg, val);
 			bfe001_change();
 			break;
 		case 3:
 			ciaadrb = val;
-			//dongle_cia_write (0, reg, val);
-			//if (DONGLE_DEBUG && notinrom()) write_log (_T('BFE301 W %02X %s\n'), val, debuginfo(0));
+			//dongle_cia_write(0, reg, val);
+			/*#ifdef ARCADIA
+			if (arcadia_bios)
+				arcadia_parport (1, ciaaprb, ciaadrb);
+			#endif*/
 			break;
 		case 4:
 			CIA_update();
@@ -924,26 +1212,45 @@ function CIA() {
 			break;
 		case 8:
 			if (ciaacrb & 0x80) {
-				ciaaalarm = (ciaaalarm & ~0xff) | val;
+				//setciatod(&ciaaalarm, (getciatod(ciaaalarm) & ~0xff) | val);
+				setciatod_ciaaalarm(((getciatod(ciaaalarm) & 0xffffff00) | val) >>> 0);
 			} else {
-				ciaatod = (ciaatod & ~0xff) | val;
+				//setciatod(&ciaatod, (getciatod(ciaatod) & ~0xff) | val);
+				setciatod_ciaatod(((getciatod(ciaatod) & 0xffffff00) | val) >>> 0);
 				ciaatodon = 1;
-				ciaa_checkalarm(0);
+				ciaa_checkalarm(false);
 			}
 			break;
 		case 9:
 			if (ciaacrb & 0x80) {
-				ciaaalarm = (ciaaalarm & ~0xff00) | (val << 8);
+				//setciatod(&ciaaalarm, (getciatod(ciaaalarm) & ~0xff00) | (val << 8));
+				setciatod_ciaaalarm(((getciatod(ciaaalarm) & 0xffff00ff) | (val << 8)) >>> 0);
 			} else {
-				ciaatod = (ciaatod & ~0xff00) | (val << 8);
+				//setciatod(&ciaatod, (getciatod(ciaatod) & ~0xff00) | (val << 8));
+				setciatod_ciaatod(((getciatod(ciaatod) & 0xffff00ff) | (val << 8)) >>> 0);
 			}
 			break;
 		case 10:
 			if (ciaacrb & 0x80) {
-				ciaaalarm = (ciaaalarm & ~0xff0000) | (val << 16);
+				//setciatod(&ciaaalarm, (getciatod(ciaaalarm) & ~0xff0000) | (val << 16));
+				setciatod_ciaaalarm(((getciatod(ciaaalarm) & 0xff00ffff) | (val << 16)) >>> 0);
 			} else {
-				ciaatod = (ciaatod & ~0xff0000) | (val << 16);
-				ciaatodon = 0;
+				//setciatod(&ciaatod, (getciatod(ciaatod) & ~0xff0000) | (val << 16));
+				setciatod_ciaatod(((getciatod(ciaatod) & 0xff00ffff) | (val << 16)) >>> 0);
+				if (!SAEV_config.chipset.cia.type6526)
+					ciaatodon = 0;
+			}
+			break;
+		case 11:
+			if (SAEV_config.chipset.cia.type6526) {
+				if (ciaacrb & 0x80) {
+					//setciatod(&ciaaalarm, (getciatod(ciaaalarm) & ~0xff000000) | (val << 24));
+					setciatod_ciaaalarm(((getciatod(ciaaalarm) & 0x00ffffff) | (val << 24)) >>> 0);
+				} else {
+					//setciatod(&ciaatod, (getciatod(ciaatod) & ~0xff000000) | (val << 24));
+					setciatod_ciaatod(((getciatod(ciaatod) & 0x00ffffff) | (val << 24)) >>> 0);
+					ciaatodon = 0;
+				}
 			}
 			break;
 		case 12:
@@ -951,10 +1258,13 @@ function CIA() {
 			ciaasdr = val;
 			if ((ciaacra & 0x41) == 0x41 && ciaasdr_cnt == 0)
 				ciaasdr_cnt = 8 * 2;
+
 			CIA_calctimers();
 			break;
 		case 13:
-			setclra(val);
+			//setclr(&ciaaimask, val);
+			if (val & 0x80) ciaaimask |= val & 0x7F; else ciaaimask &= ~val;
+			RethinkICRA();
 			break;
 		case 14:
 			CIA_update();
@@ -962,8 +1272,8 @@ function CIA() {
 			if ((val & 1) && !(ciaacra & 1))
 				ciaastarta = CIASTARTCYCLESCRA;
 			if ((val & 0x40) == 0 && (ciaacra & 0x40) != 0) {
-				AMIGA.input.keyboard.lostsynccnt = 0;
-				//if (KB_DEBUG) BUG.info('KB_ACK %02x->%02x', ciaacra, val);
+				/* todo: check if low to high or high to low only */
+				kblostsynccnt = 0;
 			}
 			ciaacra = val;
 			if (ciaacra & 0x10) {
@@ -986,38 +1296,40 @@ function CIA() {
 		}
 	}
 
-	function WriteCIAB(addr, val)	{
+	function WriteCIAB(addr, val) {
 		var reg = addr & 15;
 
-		//if ((addr >= 8 && addr <= 10) || CIAB_DEBUG_W > 1) write_log (_T('W_CIAB: bfd%x00 %02X %08X\n'), reg, val, M68K_GETPC);
+		/*#ifdef ACTION_REPLAY
+		ar_ciab[reg] = val;
+		#endif*/
 		switch (reg) {
 		case 0:
-			//if (DONGLE_DEBUG && notinrom()) write_log (_T('BFD000 W %02X %s\n'), val, debuginfo(0));
-			//dongle_cia_write (1, reg, val);
+			//dongle_cia_write(1, reg, val);
 			ciabpra = val;
-			//if (currprefs.use_serial)
-			AMIGA.serial.writeStatus(ciabpra, ciabdra);
-/*#ifdef PARALLEL_PORT
-			if (isprinter () < 0)
+			if (SAEV_config.serial.enabled)
+				SAER.serial.writestatus(ciabpra, ciabdra);
+			/*#ifdef PARALLEL_PORT
+			if (isprinter () < 0) {
 				parallel_direct_write_status (val, ciabdra);
-#endif*/
+			}
+			#endif*/
 			break;
 		case 1:
-			//if (DONGLE_DEBUG && notinrom()) write_log (_T('BFD100 W %02X %s\n'), val, debuginfo(0));
-			//dongle_cia_write (1, reg, val);
+			/*#ifdef ACTION_REPLAY
+			action_replay_cia_access(true);
+			#endif*/
+			//dongle_cia_write(1, reg, val);
 			ciabprb = val;
-			AMIGA.disk.select(val);
+			SAER.disk.select(val);
 			break;
 		case 2:
-			//if (DONGLE_DEBUG && notinrom()) write_log (_T('BFD200 W %02X %s\n'), val, debuginfo(0));
-			//dongle_cia_write (1, reg, val);
+			//dongle_cia_write(1, reg, val);
 			ciabdra = val;
-			//if (currprefs.use_serial)
-			AMIGA.serial.writeStatus(ciabpra, ciabdra);
+			if (SAEV_config.serial.enabled)
+				SAER.serial.writestatus(ciabpra, ciabdra);
 			break;
 		case 3:
-			//if (DONGLE_DEBUG && notinrom()) write_log (_T('BFD300 W %02X %s\n'), val, debuginfo(0));
-			//dongle_cia_write (1, reg, val);
+			//dongle_cia_write(1, reg, val);
 			ciabdrb = val;
 			break;
 		case 4:
@@ -1055,27 +1367,50 @@ function CIA() {
 			CIA_calctimers();
 			break;
 		case 8:
+			CIAB_tod_check();
 			if (ciabcrb & 0x80) {
-				ciabalarm = (ciabalarm & ~0xff) | val;
+				//setciatod(&ciabalarm, (getciatod(ciabalarm) & ~0xff) | val);
+				setciatod_ciabalarm(((getciatod(ciabalarm) & 0xffffff00) | val) >>> 0);
 			} else {
-				ciabtod = (ciabtod & ~0xff) | val;
+				//setciatod(&ciabtod, (getciatod(ciabtod) & ~0xff) | val);
+				setciatod_ciabtod(((getciatod(ciabtod) & 0xffffff00) | val) >>> 0);
 				ciabtodon = 1;
-				ciab_checkalarm (0);
+				ciab_checkalarm(false, true);
 			}
 			break;
 		case 9:
+			CIAB_tod_check ();
 			if (ciabcrb & 0x80) {
-				ciabalarm = (ciabalarm & ~0xff00) | (val << 8);
+				//setciatod(&ciabalarm, (getciatod(ciabalarm) & ~0xff00) | (val << 8));
+				setciatod_ciabalarm(((getciatod(ciabalarm) & 0xffff00ff) | (val << 8)) >>> 0);
 			} else {
-				ciabtod = (ciabtod & ~0xff00) | (val << 8);
+				//setciatod(&ciabtod, (getciatod(ciabtod) & ~0xff00) | (val << 8));
+				setciatod_ciabtod(((getciatod(ciabtod) & 0xffff00ff) | (val << 8)) >>> 0);
 			}
 			break;
 		case 10:
+			CIAB_tod_check();
 			if (ciabcrb & 0x80) {
-				ciabalarm = (ciabalarm & ~0xff0000) | (val << 16);
+				//setciatod(&ciabalarm, (getciatod(ciabalarm) & ~0xff0000) | (val << 16));
+				setciatod_ciabalarm(((getciatod(ciabalarm) & 0xff00ffff) | (val << 16)) >>> 0);
 			} else {
-				ciabtod = (ciabtod & ~0xff0000) | (val << 16);
-				ciabtodon = 0;
+				//setciatod(&ciabtod, (getciatod(ciabtod) & ~0xff0000) | (val << 16));
+				setciatod_ciabtod(((getciatod(ciabtod) & 0xff00ffff) | (val << 16)) >>> 0);
+				if (!SAEV_config.chipset.cia.type6526)
+					ciabtodon = 0;
+			}
+			break;
+		case 11:
+			if (SAEV_config.chipset.cia.type6526) {
+				CIAB_tod_check();
+				if (ciabcrb & 0x80) {
+					//setciatod(&ciabalarm, (getciatod(ciabalarm) & ~0xff000000) | (val << 24));
+					setciatod_ciabalarm(((getciatod(ciabalarm) & 0x00ffffff) | (val << 24)) >>> 0);
+				} else {
+					//setciatod(&ciabtod, (getciatod(ciabtod) & ~0xff000000) | (val << 24));
+					setciatod_ciabtod(((getciatod(ciabtod) & 0x00ffffff) | (val << 24)) >>> 0);
+					ciabtodon = 0;
+				}
 			}
 			break;
 		case 12:
@@ -1088,7 +1423,9 @@ function CIA() {
 			CIA_calctimers();
 			break;
 		case 13:
-			setclrb(val);
+			//setclr(&ciabimask, val);
+			if (val & 0x80) ciabimask |= val & 0x7F; else ciabimask &= ~val;
+			RethinkICRB();
 			break;
 		case 14:
 			CIA_update();
@@ -1116,214 +1453,273 @@ function CIA() {
 		}
 	}
 
-	this.setup = function () {
-	};
+	/*this.cia_set_overlay = function(overlay) {
+		oldovl = overlay;
+	}*/
 
-	this.reset = function () {
-		if (TOD_HACK) {
-			tod_hack_tv = 0;
-			tod_hack_tod = 0;
-			tod_hack_enabled = 0;
-			if (AMIGA.config.cia.tod_hack)
-				tod_hack_enabled = TOD_HACK_TIME;
-		}
-		//kblostsynccnt = 0;
-		//serbits = 0;
-		//oldcd32mute = 1;
-		oldled = true;
+	/*-----------------------------------------------------------------------*/
+
+	//this.setup = function () {}
+
+	this.reset = function() { //CIA_reset()
+		//#ifdef TOD_HACK
+		tod_hack_tv = 0;
+		tod_hack_tod = 0;
+		tod_hack_enabled = 0;
+		if (SAEV_config.chipset.cia.todHack)
+			tod_hack_enabled = TOD_HACK_TIME;
+		//#endif
+
+		kblostsynccnt = 0;
+		serbits = 0;
+		oldcd32mute = 1;
 		//resetwarning_phase = resetwarning_timer = 0;
-		//heartbeat_cnt = 0;
+		heartbeat_cnt = 0;
+		ciab_tod_event_state = 0;
 
-		//oldovl = true;
-		//kbstate = 0;
-		ciaatlatch = ciabtlatch = 0;
-		ciaapra = 0;
-		ciaadra = 0;
-		ciaatod = ciabtod = 0;
-		ciaatodon = ciabtodon = 0;
-		ciaaicr = ciabicr = ciaaimask = ciabimask = 0;
-		ciaacra = ciaacrb = ciabcra = ciabcrb = 0x4;
-		/* outmode = toggle; */
-		ciaala = ciaalb = ciabla = ciablb = ciaata = ciaatb = ciabta = ciabtb = 0xFFFF;
-		ciaaalarm = ciabalarm = 0;
-		ciabpra = 0x8C;
-		ciabdra = 0;
-		div10 = 0;
-		ciaasdr_cnt = 0;
-		ciaasdr = 0;
-		ciabsdr_cnt = 0;
-		ciabsdr = 0;
-		ciaata_passed = ciaatb_passed = ciabta_passed = ciabtb_passed = 0;
+		{
+			oldovl = true;
+			kbstate = 0;
+			ciaatlatch = ciabtlatch = 0;
+			ciaapra = 0; ciaadra = 0;
+			ciaatod = ciabtod = 0; ciaatodon = ciabtodon = 0;
+			ciaaicr = ciabicr = ciaaimask = ciabimask = 0;
+			ciaacra = ciaacrb = ciabcra = ciabcrb = 0x4; /* outmode = toggle; */
+			ciaala = ciaalb = ciabla = ciablb = ciaata = ciaatb = ciabta = ciabtb = 0xFFFF;
+			ciaaalarm = ciabalarm = 0;
+			ciabpra = 0x8C; ciabdra = 0;
+			div10 = 0;
+			ciaasdr_cnt = 0; ciaasdr = 0;
+			ciabsdr_cnt = 0; ciabsdr = 0;
+			ciaata_passed = ciaatb_passed = ciabta_passed = ciabtb_passed = 0;
+			CIA_calctimers();
+			SAER.disk.select_set(ciabprb);
+		}
+		SAER.memory.mapOverlay(false);
+		check_led();
 
-		CIA_calctimers();
-		AMIGA.disk.select_set(ciabprb);
+		if (SAEV_config.serial.enabled)
+			SAER.serial.dtr_off(); // Drop DTR at reset
 
-		//map_overlay (0);
+		/*#ifdef CD32
+		akiko_reset ();
+		if (!akiko_init ())
+			currprefs.cs_cd32cd = changed_prefs.cs_cd32cd = 0;
+		#endif*/
+	}
 
-		//if (currprefs.use_serial) serial_dtr_off (); NI /* Drop DTR at reset */
-	};
+	this.dump = function() { //dumpcia()
+		SAEF_log("cia.dump() A: CRA %02x CRB %02x ICR %02x IM %02x TA %04x (%04x) TB %04x (%04x)", ciaacra, ciaacrb, ciaaicr, ciaaimask, ciaata, ciaala, ciaatb, ciaalb);
+		SAEF_log("cia.dump() TOD %06x (%06x) ALARM %06x %c%c CYC=%08X", ciaatod, ciaatol, ciaaalarm, ciaatlatch ? "L" : " ", ciaatodon ? " " : "S", SAEV_Events_currcycle);
+		SAEF_log("cia.dump() B: CRA %02x CRB %02x ICR %02x IM %02x TA %04x (%04x) TB %04x (%04x)", ciabcra, ciabcrb, ciabicr, ciabimask, ciabta, ciabla, ciabtb, ciablb);
+		SAEF_log("cia.dump() TOD %06x (%06x) ALARM %06x %c%c CLK=%d", ciabtod, ciabtol, ciabalarm, ciabtlatch ? "L" : " ", ciabtodon ? " " : "S", div10 / SAEC_Events_CYCLE_UNIT);
+	}
 
-	this.dump = function () {
-		BUG.info('A: CRA %02x CRB %02x ICR %02x IM %02x TA %04x (%04x) TB %04x (%04x)', ciaacra, ciaacrb, ciaaicr, ciaaimask, ciaata, ciaala, ciaatb, ciaalb);
-		BUG.info('TOD %06x (%06x) ALARM %06x %s%s CYC=%.1f', ciaatod, ciaatol, ciaaalarm, ciaatlatch ? 'L' : ' ', ciaatodon ? ' ' : 'S', AMIGA.events.currcycle * CYCLE_UNIT_INV);
-		BUG.info('B: CRA %02x CRB %02x ICR %02x IM %02x TA %04x (%04x) TB %04x (%04x)', ciabcra, ciabcrb, ciabicr, ciabimask, ciabta, ciabla, ciabtb, ciablb);
-		BUG.info('TOD %06x (%06x) ALARM %06x %s%s CLK=%.1f', ciabtod, ciabtol, ciabalarm, ciabtlatch ? 'L' : ' ', ciabtodon ? ' ' : 'S', div10 * CYCLE_UNIT_INV);
-	};
-
+	/*-----------------------------------------------------------------------*/
 	// Gayle or Fat Gary does not enable CIA /CS lines if both CIAs are selected
 	// Old Gary based Amigas enable both CIAs in this situation
+
 	function issinglecia() {
-		return false; //currprefs.cs_ide || currprefs.cs_pcmcia || currprefs.cs_mbdmac;
+		return SAEV_config.chipset.ide || SAEV_config.chipset.pcmcia || SAEV_config.chipset.mbdmac;
 	}
 	function isgayle() {
-		return false; //currprefs.cs_ide || currprefs.cs_pcmcia;
+		return SAEV_config.chipset.ide || SAEV_config.chipset.pcmcia;
 	}
 
-	function cia_wait_pre() {
-		if (!CUSTOM_SIMPLE) {
-			var div = (AMIGA.events.currcycle - AMIGA.events.eventtab[EV_CIA].oldcycles) % DIV10;
-			var tmp = Math.floor(DIV10 * ECLOCK_DATA_CYCLE / 10);
-			var cycles;
-
-			if (div >= tmp)
-				cycles = DIV10 - div + tmp;
-			else if (div)
-				cycles = DIV10 + tmp - div;
-			else
-				cycles = tmp - div;
-
-			if (cycles)
-				AMIGA.events.cycle(cycles);
-		}
-	}
-
-	function cia_wait_post(value) {
-		AMIGA.events.cycle(6 * CYCLE_UNIT / 2);
-	}
-
-	function isgaylenocia(addr) {
-		// gayle CIA region is only 4096 bytes at 0xbfd000 and 0xbfe000
-		if (!isgayle())
-			return true;
+	function iscia(addr) {
 		var mask = addr & 0xf000;
 		return mask == 0xe000 || mask == 0xd000;
 	}
+	function isgaylenocia(addr) {
+		if (!isgayle())
+			return true;
+		// gayle CIA region is only 4096 bytes at 0xbfd000 and 0xbfe000
+		return iscia(addr);
+	}
+	function isgarynocia(addr) {
+		return !iscia(addr) && SAEV_config.chipset.fatGaryRev >= 0;
+	}
 
-	this.load8 = function (addr) {
+	/*---------------------------------*/
+
+	function cia_wait_pre(cianummask) {
+		var div = (SAEV_Events_currcycle - SAER_Events_eventtab[SAEC_Events_EV_CIA].oldcycles) % DIV10;
+		var help = DIV10 * ECLOCK_DATA_CYCLE / 10 >>> 0;
+		var cycles;
+
+		if (div >= help) {
+			cycles = DIV10 - div;
+			cycles += help;
+		} else if (div)
+			cycles = DIV10 + help - div;
+		else
+			cycles = help - div;
+
+		if (cycles)
+			SAER.events.do_cycles(cycles);
+	}
+
+	function cia_wait_post(cianummask, value) {
+		SAER.events.do_cycles(6 * SAEC_Events_CYCLE_UNIT >> 1);
+
+		if (cia_interrupt_delay) {
+			var v = cia_interrupt_delay;
+			cia_interrupt_delay = 0;
+			if (v & 1) ICR(0x0008);
+			if (v & 2) ICR(0x2000);
+		}
+	}
+
+	/*---------------------------------*/
+
+	function get8(addr) {
 		var r = (addr & 0xf00) >> 8;
 		var v = 0xff;
 
+		if (isgarynocia(addr))
+			return SAER.memory.dummyGet(addr, 1, false, 0);
 		if (!isgaylenocia(addr))
 			return v;
 
-		cia_wait_pre();
 		switch ((addr >> 12) & 3) {
-			case 0:
-				if (!issinglecia())
-					v = (addr & 1) ? ReadCIAA(r) : ReadCIAB(r);
-				break;
-			case 1:
-				v = (addr & 1) ? 0xff : ReadCIAB(r);
-				break;
-			case 2:
-				v = (addr & 1) ? ReadCIAA(r) : 0xff;
-				break;
-			case 3:
-			{
-				//if (AMIGA.config.cpu.model == 68000 && AMIGA.config.cpu.compatible) v = (addr & 1) ? regs.irc : regs.irc >> 8;
-				if (warned > 0) {
-					BUG.info('cia_bget: unknown CIA address %x', addr);
-					warned--;
-				}
-				break;
+		case 0:
+			if (!issinglecia()) {
+				cia_wait_pre(1 | 2);
+				v = (addr & 1) ? ReadCIAA(r) : ReadCIAB(r);
+				cia_wait_post(1 | 2, v);
 			}
-		}
-		cia_wait_post(v);
-		return v;
-	};
+			break;
+		case 1:
+			cia_wait_pre(2);
+			if (SAEV_config.cpu.model == SAEC_Config_CPU_Model_68000 && SAEV_config.cpu.compatible) {
+				v = (addr & 1) ? SAER_CPU_regs.irc & 0xff : ReadCIAB(r);
+			} else {
+				v = (addr & 1) ? 0xff : ReadCIAB(r);
+			}
+			cia_wait_post(2, v);
+			break;
+		case 2:
+			cia_wait_pre(1);
+			if (SAEV_config.cpu.model == SAEC_Config_CPU_Model_68000 && SAEV_config.cpu.compatible)
+				v = (addr & 1) ? ReadCIAA(r) : SAER_CPU_regs.irc >> 8;
+			else
+				v = (addr & 1) ? ReadCIAA(r) : 0xff;
 
-	this.load16 = function (addr) {
+			cia_wait_post(1, v);
+			break;
+		case 3:
+			if (SAEV_config.cpu.model == SAEC_Config_CPU_Model_68000 && SAEV_config.cpu.compatible) {
+				cia_wait_pre(0);
+				v = (addr & 1) ? SAER_CPU_regs.irc & 0xff : SAER_CPU_regs.irc >> 8;
+				cia_wait_post(0, v);
+			}
+			break;
+		}
+
+		return v;
+	}
+
+	function get16(addr) {
 		var r = (addr & 0xf00) >> 8;
 		var v = 0xffff;
 
-		if (!isgaylenocia(addr))
+		if (isgarynocia(addr))
+			return SAER.memory.dummyGet(addr, 2, false, 0);
+		if (!isgaylenocia (addr))
 			return v;
 
-		cia_wait_pre();
 		switch ((addr >> 12) & 3) {
 			case 0:
-				if (!issinglecia())
+				if (!issinglecia()) {
+					cia_wait_pre(1 | 2);
 					v = (ReadCIAB(r) << 8) | ReadCIAA(r);
-				break;
-			case 1:
-				v = (ReadCIAB(r) << 8) | 0xff;
-				break;
-			case 2:
-				v = (0xff << 8) | ReadCIAA(r);
-				break;
-			case 3:
-			{
-				//if (AMIGA.config.cpu.model == 68000 && AMIGA.config.cpu.compatible) v = regs.irc;
-				if (warned > 0) {
-					BUG.info('cia_wget: unknown CIA address %x', addr);
-					warned--;
+					cia_wait_post(1 | 2, v);
 				}
 				break;
-			}
+			case 1:
+				cia_wait_pre(2);
+				v = (ReadCIAB(r) << 8) | 0xff;
+				cia_wait_post(2, v);
+				break;
+			case 2:
+				cia_wait_pre(1);
+				v = (0xff << 8) | ReadCIAA (r);
+				cia_wait_post(1, v);
+				break;
+			case 3:
+				if (SAEV_config.cpu.model == SAEC_Config_CPU_Model_68000 && SAEV_config.cpu.compatible) {
+					cia_wait_pre(0);
+					v = SAER_CPU_regs.irc;
+					cia_wait_post(0, v);
+				}
+				break;
 		}
-		cia_wait_post(v);
 		return v;
-	};
+	}
 
-	this.load32 = function (addr) {
-		var v = this.load16(addr) << 16;
-		v |= this.load16(addr + 2);
-		return v >>> 0;
-	};
+	function get32(addr) {
+		return ((get16(addr) << 16) | get16(addr + 2)) >>> 0;
+	}
 
-	this.store8 = function (addr, value) {
+	function put8(addr, value) {
 		var r = (addr & 0xf00) >> 8;
 
-		if (!isgaylenocia(addr))
+		if (isgarynocia(addr)) {
+			SAER.memory.dummyPut(addr, 1, 0);
+			return;
+		}
+		if (!isgaylenocia (addr))
 			return;
 
-		cia_wait_pre();
 		if (!issinglecia() || (addr & 0x3000) != 0) {
+			cia_wait_pre(((addr & 0x2000) == 0 ? 1 : 0) | ((addr & 0x1000) == 0 ? 2 : 0));
 			if ((addr & 0x2000) == 0)
 				WriteCIAB(r, value);
 			if ((addr & 0x1000) == 0)
 				WriteCIAA(r, value);
-			if (((addr & 0x3000) == 0x3000) && warned > 0) {
-				BUG.info('cia_bput: unknown CIA address %x %x', addr, value);
-				warned--;
-			}
+			cia_wait_post(((addr & 0x2000) == 0 ? 1 : 0) | ((addr & 0x1000) == 0 ? 2 : 0), value);
 		}
-		cia_wait_post(value);
-	};
+	}
 
-	this.store16 = function (addr, value) {
+	function put16(addr, value) {
 		var r = (addr & 0xf00) >> 8;
 
-		if (!isgaylenocia(addr))
+		if (isgarynocia(addr)) {
+			SAER.memory.dummyPut(addr, 2, 0);
+			return;
+		}
+		if (!isgaylenocia (addr))
 			return;
 
-		cia_wait_pre();
 		if (!issinglecia() || (addr & 0x3000) != 0) {
+			cia_wait_pre(((addr & 0x2000) == 0 ? 1 : 0) | ((addr & 0x1000) == 0 ? 2 : 0));
 			if ((addr & 0x2000) == 0)
 				WriteCIAB(r, value >> 8);
 			if ((addr & 0x1000) == 0)
 				WriteCIAA(r, value & 0xff);
-			if (((addr & 0x3000) == 0x3000) && warned > 0) {
-				BUG.info('cia_wput: unknown CIA address %x %x', addr, value);
-				warned--;
-			}
+			cia_wait_post(((addr & 0x2000) == 0 ? 1 : 0) | ((addr & 0x1000) == 0 ? 2 : 0), value);
 		}
-		cia_wait_post(value);
-	};
-
-	this.store32 = function (addr, value) {
-		this.store16(addr, value >> 16);
-		this.store16(addr + 2, value & 0xffff);
 	}
-}
 
+	function put32(addr, value) {
+		put16(addr, value >>> 16);
+		put16(addr + 2, value & 0xffff);
+	}
+
+	function getInst32(addr) {
+		if (SAEV_config.cpu.model >= SAEC_Config_CPU_Model_68020) return SAEF_Memory_dummyGetInst32(addr);
+		return get32(addr);
+	}
+	function getInst16(addr) {
+		if (SAEV_config.cpu.model >= SAEC_Config_CPU_Model_68020) return SAEF_Memory_dummyGetInst16(addr);
+		return get16(addr);
+	}
+	SAEV_CIA_bank = new SAEO_Memory_addrbank(
+		get32, get16, get8,
+		put32, put16, put8,
+		SAEF_Memory_defaultXLate, SAEF_Memory_defaultCheck, null, null, "CIA",
+		getInst32, getInst16,
+		//SAEC_Memory_addrbank_flag_IO | SAEC_Memory_addrbank_flag_CIA, S_READ, S_WRITE, null, 0x3f01, 0xbfc000
+		SAEC_Memory_addrbank_flag_IO | SAEC_Memory_addrbank_flag_CIA, null, 0x3f01, 0xbfc000
+	);
+}

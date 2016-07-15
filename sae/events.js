@@ -1,641 +1,740 @@
-/**************************************************************************
-* SAE - Scripted Amiga Emulator
-*
-* 2012-2015 Rupert Hausberger
-*
-* https://github.com/naTmeg/ScriptedAmigaEmulator
-*
-**************************************************************************/
+/*-------------------------------------------------------------------------
+| SAE - Scripted Amiga Emulator
+| https://github.com/naTmeg/ScriptedAmigaEmulator
+|
+| Copyright (C) 2012-2016 Rupert Hausberger
+|
+| This program is free software; you can redistribute it and/or
+| modify it under the terms of the GNU General Public License
+| as published by the Free Software Foundation; either version 2
+| of the License, or (at your option) any later version.
+|
+| This program is distributed in the hope that it will be useful,
+| but WITHOUT ANY WARRANTY; without even the implied warranty of
+| MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+| GNU General Public License for more details.
+|
+| Note: ported from WinUAE 3.2.x
+-------------------------------------------------------------------------*/
+/* global constants */
 
-function Event1() {
-	this.active = false;
-	this.evtime = 0;
-	this.oldcycles = 0;
-	this.handler = function(v) {};
-}
+const SAEC_Events_CYCLE_UNIT = 512;
+const SAEC_Events_CYCLE_UNIT_INV = 1.0 / SAEC_Events_CYCLE_UNIT; /* mul is always faster than div */
+const SAEC_Events_CYCLE_MAX = 0x100000000 * SAEC_Events_CYCLE_UNIT;
 
-function Event2() {
-	this.active = false;
-	this.evtime = 0;
-	this.handler = function(v) {};
-	this.data = null;
-}
+/*---------------------------------*/
 
-function Events() {
-	const SYNCBASE = 1000;
+const SAEC_Events_EV_CIA = 0;
+const SAEC_Events_EV_AUDIO = 1;
+const SAEC_Events_EV_HSYNC = 2;
 
-	this.eventtab = null;
-	this.eventtab2 = null;
-	this.currcycle = 0;
+const SAEC_Events_EV2_BLITTER = 0;
+const SAEC_Events_EV2_DISK = 1;
+
+const SAEC_Events_syncbase = 1000000;
+
+/*---------------------------------*/
+
+/*const SAEC_Events_cycle_line_REFRESH = 1;
+const SAEC_Events_cycle_line_STROBE = 2;
+const SAEC_Events_cycle_line_MISC = 3;
+const SAEC_Events_cycle_line_SPRITE = 4;
+const SAEC_Events_cycle_line_COPPER = 5;
+const SAEC_Events_cycle_line_BLITTER = 6;
+const SAEC_Events_cycle_line_CPU = 7;
+//const SAEC_Events_cycle_line_CPUNASTY	= 8;
+const SAEC_Events_cycle_line_COPPER_SPECIAL = 0x10;
+const SAEC_Events_cycle_line_MASK = 0x0f;*/
+
+/*---------------------------------*/
+/* global references */
+
+var SAER_Events_eventtab = null;
+
+//var SAER_Events_cycle_line = null;
+
+/*---------------------------------*/
+/* global variables */
+
+var SAEV_Events_currcycle = 0;
+var SAEV_Events_bogusframe = 0;
+var SAEV_Events_timeframes = 0;
+var SAEV_Events_hsync_counter = 0;
+var SAEV_Events_vsync_counter = 0;
+var SAEV_Events_frameskiptime = 0;
+var SAEV_Events_reflowtime = 0; //OWN
+
+/*---------------------------------*/
+
+function SAEO_Events() {
+	const EV_MISC = 3;
+	const EV_MAX = 4;
+	function Event() {
+		this.active = false;
+		this.evtime = 0;
+		this.oldcycles = 0;
+		this.handler = null;
+	};
+	var eventtab = new Array(EV_MAX); for (i = 0; i < EV_MAX; i++) eventtab[i] = new Event();
+	SAER_Events_eventtab = eventtab;
+
+	const EV2_MISC = 2;
+	const EV2_MAX = 12;
+	function Event2() {
+		this.active = false;
+		this.evtime = 0;
+		this.data = null;
+		this.handler = null;
+	};
+	var eventtab2 = new Array(EV2_MAX); for (i = 0; i < EV2_MAX; i++) eventtab2[i] = new Event2();
+
+	//var currcycle = 0; -> SAEV_Events_currcycle
 	var nextevent = 0;
-	var nextevent2 = 0;
-		
-	var dmal = 0;
-	var dmal_hpos = 0;
-		
-	var vsynctimebase = 0; 
-	var vsyncmintime = 0; 
-	var vsyncmaxtime = 0;    
-	var vsyncwaittime = 0;   
-	var vsynctimeperline = 0; 
-	var is_syncline = 0;
-	var is_syncline_end = 0;
-	//var hsync_counter = 0;
-	//var vsync_counter = 0;
-		
-	const MAVG_VSYNC_SIZE = 128;
-	var ma_frameskipt = new MAvg(MAVG_VSYNC_SIZE);
-	
-	const FPSCOUNTER_MAVG_SIZE = 10;
-	var fps_mavg = new MAvg(FPSCOUNTER_MAVG_SIZE);
-	var idle_mavg = new MAvg(FPSCOUNTER_MAVG_SIZE);
-	var timeframes = 0;
-	var lastframetime = 0;
-	var idletime = 0;
-	var frametime = 0;
-	var frameskiptime = 0;
+	var is_syncline = 0, is_syncline_end = 0;
+	//var vblank_found_chipset = false;
+	//var sleeps_remaining = 0;
 	var linecounter = 0;
 
-	var vsync_rendered = false;
-	var frame_rendered = false;
-	var frame_shown = false;
+	//var syncbase = 0; -> SAEC_Events_syncbase
+	var vsyncmintime = 0, vsyncmaxtime = 0, vsyncwaittime = 0;
+	var vsynctimebase = 0;
+	//var rpt_did_reset = 0;
 
-	var vsyncresume = false;
+	//var frameskiptime = 0; -> SAEV_Events_frameskiptime
+	var vsynctimeperline = 0; //global
 
-	/*---------------------------------*/
-	
-	this.setup = function () {
-		if (this.eventtab === null) {
-			this.eventtab = new Array(EV_MAX);
-			for (var i = 0; i < EV_MAX; i++)
-				this.eventtab[i] = new Event1();
+	var dmal = 0, dmal_hpos = 0; //u16
 
-			this.eventtab[EV_CIA].handler = function () {
-				AMIGA.cia.handler();
-			};
-			this.eventtab[EV_AUDIO].handler = function () {
-				AMIGA.audio.handler();
-			};
-			this.eventtab[EV_MISC].handler = function () {
-				AMIGA.events.misc_handler();
-			};
-			this.eventtab[EV_HSYNC].handler = function () {
-				AMIGA.events.hsync_handler();
-			}
+	//in framewait()
+	const MAVG_VSYNC_SIZE = 128;
+	var ma_frameskipt = new SAEO_MAvg(MAVG_VSYNC_SIZE);
+	//var ma_adjust = new mavg_data();
+	//var ma_legacy = new mavg_data();
+	//var ma_skip = new mavg_data();
+	var ma_reflowt = new SAEO_MAvg(10); //OWN
+	//var vsync_time = 0;
+
+	//in MISC_handler()
+	var dorecheck = false;
+	var recursive = 0;
+
+	/* Statistics */
+	const FPSCOUNTER_MAVG_SIZE = 10
+	var fps_mavg = new SAEO_MAvg(FPSCOUNTER_MAVG_SIZE);
+	var idle_mavg = new SAEO_MAvg(FPSCOUNTER_MAVG_SIZE);
+
+	//var bogusframe = 0; //-> SAEV_Events_bogusframe
+	//var timeframes = 0; //-> SAEV_Events_timeframes
+	var frametime = 0, lastframetime = 0; //global
+	var idletime = 0; //global
+	//var hsync_counter = 0; -> SAEV_Events_hsync_counter
+	//var vsync_counter = 0; -> SAEV_Events_vsync_counter
+
+	//event2_newevent_xx()
+	var nextno = EV2_MISC;
+
+	const PISSOFF_NOJIT_VALUE = 256 * SAEC_Events_CYCLE_UNIT;
+	var pissoff = 0;
+	//#define countdown pissoff
+
+	//#ifdef CPUEMU_13
+	//var cycle_line = new Uint8Array(256 + 1);
+	//SAER_Events_cycle_line = cycle_line;
+	//#endif
+
+	/*-----------------------------------------------------------------------*/
+
+	this.reset = function() { //init_eventtab()
+		if (eventtab[SAEC_Events_EV_HSYNC].handler === null) { //OWN
+			eventtab[SAEC_Events_EV_CIA].handler = function() { SAER.cia.handler(); };
+			eventtab[SAEC_Events_EV_HSYNC].handler = function() { SAER.playfield.hsync_handler(); };
+			eventtab[SAEC_Events_EV_AUDIO].handler = function() { SAER.audio.handler(); };
+			eventtab[EV_MISC].handler = MISC_handler;
+
+			eventtab2[SAEC_Events_EV2_BLITTER].handler = function(data) { SAER.blitter.handler(data); };
+			eventtab2[SAEC_Events_EV2_DISK].handler = function(data) { SAER.disk.handler(data); };
 		}
-		if (this.eventtab2 === null) {
-			this.eventtab2 = new Array(EV2_MAX);
-			for (var i = 0; i < EV2_MAX; i++)
-				this.eventtab2[i] = new Event2();
 
-			this.eventtab2[EV2_BLITTER].handler = function (data) {
-				AMIGA.blitter.handler(data);
-			};
-			this.eventtab2[EV2_DISK].handler = function (data) {
-				AMIGA.disk.handler(data);
-			};
-			this.eventtab2[EV2_DMAL].handler = function (data) {
-				AMIGA.events.dmal_handler(data);
-			}
-		}
-
-		this.calc_vsynctimebase(AMIGA.config.video.ntsc ? 60 : 50);
-	};
-
-	this.reset = function () {
-		dmal = 0;
-		dmal_hpos = 0;
-
-		this.currcycle = 0;
-		nextevent = CYCLE_MAX;
-		nextevent2 = EV2_MISC;
-
-		vsynctimebase = 0;
-		vsyncmintime = 0;
-		vsyncmaxtime = 0;
-		vsyncwaittime = 0;
-		vsynctimeperline = 0;
-		is_syncline = 0;
-		is_syncline_end = 0;
-
-		this.fpscounter_reset();
-
+		nextevent = 0;
+		nextno = EV2_MISC; //OWN
 		for (var i = 0; i < EV_MAX; i++) {
-			this.eventtab[i].active = false;
-			this.eventtab[i].evtime = 0;
-			this.eventtab[i].oldcycles = 0;
+			eventtab[i].active = false;
+			eventtab[i].oldcycles = SAEV_Events_currcycle;
 		}
-		for (var i = 0; i < EV2_MAX; i++) {
-			this.eventtab2[i].active = false;
-			this.eventtab2[i].evtime = 0;
-		}
-		this.eventtab[EV_HSYNC].evtime = 227 * CYCLE_UNIT;
-		/* 0xe3 */
-		this.eventtab[EV_HSYNC].active = true;
+		eventtab[SAEC_Events_EV_HSYNC].evtime = SAEV_Events_currcycle + SAER.playfield.get_maxhpos() * SAEC_Events_CYCLE_UNIT;
+		eventtab[SAEC_Events_EV_HSYNC].active = true;
+
+		for (i = 0; i < EV2_MAX; i++)
+			eventtab2[i].active = false;
 
 		this.schedule();
-	};
-	
-	this.calc_vsynctimebase = function (hz) {
-		vsynctimebase = Math.floor(SYNCBASE / hz);
-	};
-	
-	/*---------------------------------*/   
 
-	this.hpos = function () {
-		return Math.floor((this.currcycle - this.eventtab[EV_HSYNC].oldcycles) * CYCLE_UNIT_INV);
-	};
-	
-	this.cycles_in_range = function (endcycles) {
-		return (endcycles - this.currcycle > 0);
-	};
+		//OWN
+		dorecheck = false;
+		recursive = 0;
+		//nextno = EV2_MISC;
+		fpscounter_reset();
+		ma_frameskipt.clr();
+		ma_reflowt.clr();
+		//reset_frame_rate_hack();
+		//sleeps_remaining = 0;
+		linecounter = 0;
+	}
 
-	/*---------------------------------*/
+	this.clr_dmal = function() {
+		dmal = 0;
+	}
 
-	this.schedule = function () {
-		var mintime = CYCLE_MAX;
+	this.pauseResume = function(pause) {
+		if (pause) {
+			SAER.gui.data.fps = 0;
+			SAER.gui.data.idle = 0;
+			SAER.gui.fps(0, 0, 1);
+		} else {
+			dmal = 0;
+			fpscounter_reset();
+			ma_frameskipt.clr();
+		}
+	}
 
+	/*-----------------------------------------------------------------------*/
+
+	this.reset_frame_rate_hack = function() {
+		if (SAEV_config.cpu.speed < 0) {
+			//rpt_did_reset = 1;
+			is_syncline = 0;
+			vsyncmintime = SAEF_now() + vsynctimebase;
+			//SAEF_log("events.reset_frame_rate_hack() %d", vsyncmintime);
+		}
+	}
+	this.calc_vsynctimebase = function(hz) {
+		vsynctimebase = SAEC_Events_syncbase / hz >>> 0;
+		SAEF_log("events.calc_vsynctimebase() %d us (%f)", vsynctimebase, hz);
+		this.reset_frame_rate_hack();
+		return vsynctimebase;
+	}
+
+	this.schedule = function() {
+		var mintime = SAEC_Events_CYCLE_MAX;
 		for (var i = 0; i < EV_MAX; i++) {
-			if (this.eventtab[i].active) {
-				var evtime = this.eventtab[i].evtime - this.currcycle;
-				if (evtime < mintime) mintime = evtime;
+			if (eventtab[i].active) {
+				var eventtime = eventtab[i].evtime - SAEV_Events_currcycle;
+				if (eventtime < mintime)
+					mintime = eventtime;
 			}
 		}
-		nextevent = this.currcycle + mintime;
-	};
-	
-	this.cycle = function (cycles) {
-		if (vsyncresume) {
-			vsyncresume = false;
-			this.hsync_handler_post(1);
-		}
+		nextevent = SAEV_Events_currcycle + mintime;
+	}
 
-		while ((nextevent - this.currcycle) <= cycles) {
+	/*this.get_cycles = function() { //OPT inline ok
+		return SAEV_Events_currcycle;
+	}
+	this.set_cycles = function(x) {
+		SAEV_Events_currcycle = x;
+		eventtab[SAEC_Events_EV_HSYNC].oldcycles = x;
+	}
+	this.cycles_in_range = function(endcycles) { //OPT inline ok, used in disk.DSKBYTR()
+		return endcycles - SAEV_Events_currcycle > 0;
+	}*/
+
+	/*function current_hpos_safe() { //OPT inline ok
+		return ((SAEV_Events_currcycle - eventtab[SAEC_Events_EV_HSYNC].oldcycles) * SAEC_Events_CYCLE_UNIT_INV) >>> 0;
+	}*/
+	this.current_hpos = function() {
+		//var hp = current_hpos_safe();
+		var hp = ((SAEV_Events_currcycle - eventtab[SAEC_Events_EV_HSYNC].oldcycles) * SAEC_Events_CYCLE_UNIT_INV) >>> 0;
+		if (hp < 0 || hp > 256) {
+			SAEF_error("events.current_hpos() hpos = %d !?", hp);
+			hp = 0;
+		}
+		return hp;
+	}
+
+	/*-----------------------------------------------------------------------*/
+
+	this.do_cycles = function(cycles_to_add) { //do_cycles_slow()
+		if ((pissoff -= cycles_to_add) >= 0)
+			return;
+
+		cycles_to_add = -pissoff;
+		pissoff = 0;
+
+		//if (cycles_to_add == 0) SAEF_warn("event.do_cycles() cycles_to_add == 0");
+
+		while ((nextevent - SAEV_Events_currcycle) <= cycles_to_add) {
+			// Keep only CPU emulation running while waiting for sync point.
 			if (is_syncline) {
-				var rpt = read_processor_time();
-				if (is_syncline > 0) {
-					var v = rpt - vsyncmintime;
-					var v2 = rpt - is_syncline_end;
-					if (v > vsynctimebase || v < -vsynctimebase) v = 0;
-					if (v < 0 && v2 < 0) return;
-				} else if (is_syncline < 0) {
-					var v = rpt - is_syncline_end;
-					if (v < 0) return;
-				}
+				//if (!vblank_found_chipset) {
+					if (is_syncline > 0) {
+						var rpt = SAEF_now();
+						var v = rpt - vsyncmintime;
+						var v2 = rpt - is_syncline_end;
+						if (v > vsynctimebase || v < -vsynctimebase) v = 0;
+						if (v < 0 && v2 < 0) {
+							pissoff = PISSOFF_NOJIT_VALUE;
+							return;
+						}
+					} else if (is_syncline < 0) {
+						var rpt = SAEF_now();
+						var v = rpt - is_syncline_end;
+						if (v < 0) {
+							pissoff = PISSOFF_NOJIT_VALUE;
+							return;
+						}
+					}
+				//}
 				is_syncline = 0;
 			}
 
-			cycles -= nextevent - this.currcycle;
-			this.currcycle = nextevent;
+			cycles_to_add -= nextevent - SAEV_Events_currcycle;
+			SAEV_Events_currcycle = nextevent;
 
 			for (var i = 0; i < EV_MAX; i++) {
-				if (this.eventtab[i].active && this.eventtab[i].evtime == this.currcycle)
-					this.eventtab[i].handler(this.eventtab[i].data);
+				if (eventtab[i].active && eventtab[i].evtime == SAEV_Events_currcycle) {
+					/*if (eventtab[i].handler === null) {
+						SAEF_error("events.eventtab[%d].handler is null!", i);
+						eventtab[i].active = false;
+					} else*/
+						eventtab[i].handler();
+				}
 			}
 			this.schedule();
 		}
-		this.currcycle += cycles;
-	};
+		SAEV_Events_currcycle += cycles_to_add;
+	}
+	this.do_cycles_post = function(cycles, v) {
+		this.do_cycles(cycles);
+	}
 
-	/*---------------------------------*/
-	
-	var stack = { recursive:0, dorecheck:false };
+	/*-----------------------------------------------------------------------*/
 
-	this.misc_handler = function () {
-		//if (stack.recursive > 1) BUG.info('misc_handler() recursive %d', stack.recursive);
-		var mintime;
-		var ct = this.currcycle;
+	function MISC_handler() {
+		var mintime = SAEC_Events_CYCLE_MAX;
+		var ct = SAEV_Events_currcycle;
 
-		if (stack.recursive) {
-			stack.dorecheck = true;
+		if (recursive) {
+			dorecheck = true;
 			return;
 		}
-		stack.recursive++;
-		this.eventtab[EV_MISC].active = false;
+		recursive++;
+		SAER_Events_eventtab[EV_MISC].active = false;
 
 		var recheck = true;
 		while (recheck) {
 			recheck = false;
-			mintime = CYCLE_MAX;
-
+			mintime = SAEC_Events_CYCLE_MAX;
 			for (var i = 0; i < EV2_MAX; i++) {
-				if (this.eventtab2[i].active) {
-					if (this.eventtab2[i].evtime == ct) {
-						this.eventtab2[i].active = false;
-						this.eventtab2[i].handler(this.eventtab2[i].data);
-
-						if (stack.dorecheck || this.eventtab2[i].active) {
+				if (eventtab2[i].active) {
+					if (eventtab2[i].evtime == ct) {
+						eventtab2[i].active = false;
+						eventtab2[i].handler(eventtab2[i].data);
+						if (dorecheck || eventtab2[i].active) {
 							recheck = true;
-							stack.dorecheck = false;
+							dorecheck = false;
 						}
 					} else {
-						var eventtime = this.eventtab2[i].evtime - ct;
+						var eventtime = eventtab2[i].evtime - ct;
 						if (eventtime < mintime)
 							mintime = eventtime;
 					}
 				}
 			}
 		}
-		if (mintime != CYCLE_MAX) {
-			this.eventtab[EV_MISC].active = true;
-			this.eventtab[EV_MISC].oldcycles = ct;
-			this.eventtab[EV_MISC].evtime = ct + mintime;
-			this.schedule();
+		if (mintime != SAEC_Events_CYCLE_MAX) {
+			SAER_Events_eventtab[EV_MISC].active = true;
+			SAER_Events_eventtab[EV_MISC].oldcycles = ct;
+			SAER_Events_eventtab[EV_MISC].evtime = ct + mintime;
+			SAER.events.schedule();
 		}
-		stack.recursive--;
-	};
+		recursive--;
+	}
 
-	this.newevent2_x = function (t, data, func) {
-		var et = this.currcycle + t;
-		var no = nextevent2;
-		for (; ;) {
-			if (!this.eventtab2[no].active)
-				break;
-
-			no++;
-			if (no == EV2_MAX)
-				no = EV2_MISC;
-			if (no == nextevent2) {
-				BUG.info('newevent2_x() out of events!');
-				return;
+	this.event2_newevent_xx = function(no, t, data, func) {
+		var et = SAEV_Events_currcycle + t;
+		if (no < 0) {
+			no = nextno;
+			for (;;) {
+				if (!eventtab2[no].active)
+					break;
+				if (eventtab2[no].evtime == et && eventtab2[no].data == data && eventtab2[no].handler === func)
+					break;
+				no++;
+				if (no == EV2_MAX)
+					no = EV2_MISC;
+				if (no == nextno) {
+					SAEF_error("events.event2_newevent_xx() out of events!");
+					return;
+				}
 			}
+			nextno = no;
 		}
-		nextevent2 = no;
-
-		this.eventtab2[no].active = true;
-		this.eventtab2[no].evtime = et;
-		this.eventtab2[no].handler = func;
-		this.eventtab2[no].data = data;
-		this.misc_handler();
-	};
-
-	this.newevent2 = function (t, data, func) {
-		if (t <= 0)
+		eventtab2[no].active = true;
+		eventtab2[no].evtime = et;
+		eventtab2[no].handler = func;
+		eventtab2[no].data = data;
+		MISC_handler();
+	}
+	function event2_newevent_x(no, t, data, func) {
+		if (t <= 0) {
 			func(data);
-		else
-			this.newevent2_x(t * CYCLE_UNIT, data, func);
-	};
-
-	this.newevent = function (id, t, data) {
-		this.eventtab2[id].active = true;
-		this.eventtab2[id].evtime = this.currcycle + t * CYCLE_UNIT;
-		this.eventtab2[id].data = data;
-		this.misc_handler();
-	};
-
-	this.remevent = function (no) {
-		if (this.eventtab2[no].active) {
-			this.eventtab2[no].active = false;
-			//BUG.info('remevent() %d', no);
+			return;
 		}
-	};
-	
-	/*---------------------------------*/
-	
-	this.dmal_emu = function (v) {
-		if (!(AMIGA.dmacon & DMAF_DMAEN))
+		SAER.events.event2_newevent_xx(no, t * SAEC_Events_CYCLE_UNIT, data, func);
+	}
+	this.event2_newevent = function(no, t, data) {
+		event2_newevent_x(no, t, data, eventtab2[no].handler);
+	}
+	/*this.event2_newevent2 = function(t, data, func) {
+		event2_newevent_x(-1, t, data, func);
+	}*/
+
+	this.event2_remevent = function(no) {
+		eventtab2[no].active = false;
+	}
+
+	/*-----------------------------------------------------------------------*/
+	/* events dmal */
+
+	function dmal_emu(v) {
+		// Disk and Audio DMA bits are ignored by Agnus, Agnus only checks DMAL and master bit
+		if (!(SAEV_Custom_dmacon & SAEC_Custom_DMAF_DMAEN))
 			return;
 
-		//var hpos = this.hpos();
-		var dat, pt;
+		var hpos = SAER.events.current_hpos();
 		if (v >= 6) {
 			v -= 6;
 			var nr = v >> 1;
-			pt = AMIGA.audio.getpt(nr, (v & 1) != 0);
-			//var dat = AMIGA.mem.load16_chip(pt);
-			dat = AMIGA.mem.chip.data[pt >>> 1];
-			AMIGA.custom.last_value = dat;
-			AMIGA.audio.AUDxDAT(nr, dat);
+			var pt = SAER.audio.getpt(nr, (v & 1) != 0);
+			var dat = SAER_Memory_chipGet16_indirect(pt);
+			SAEV_Custom_last_value = dat;
+			SAER.audio.AUDxDAT(nr, dat);
 		} else {
 			var w = v & 1;
-			pt = AMIGA.disk.getpt();
+			var pt = SAER.disk.getpt();
+			// disk_fifostatus() needed in >100% disk speed modes
 			if (w) {
-				if (AMIGA.disk.fifostatus() <= 0) {
-					//var dat = AMIGA.mem.load16_chip(pt);
-					dat = AMIGA.mem.chip.data[pt >>> 1];
-					AMIGA.custom.last_value = dat;
-					AMIGA.disk.DSKDAT(dat);
+				// write to disk
+				if (SAER.disk.fifostatus() <= 0) {
+					var dat = SAER_Memory_chipGet16_indirect(pt);
+					SAEV_Custom_last_value = dat;
+					SAER.disk.DSKDAT(dat);
 				}
 			} else {
-				if (AMIGA.disk.fifostatus() >= 0) {
-					dat = AMIGA.disk.DSKDATR();
-					//AMIGA.mem.store16_chip(pt, dat);
-					AMIGA.mem.chip.data[pt >>> 1] = dat;
+				// read from disk
+				if (SAER.disk.fifostatus() >= 0) {
+					var dat = SAER.disk.DSKDATR();
+					SAER_Memory_chipPut16_indirect(pt, dat);
 				}
 			}
 		}
-	};
+	}
 
-	this.dmal_handler = function (v) {
-		while (dmal) {
-			if (dmal & 3)
-				this.dmal_emu(dmal_hpos + ((dmal & 2) ? 1 : 0));
-			dmal_hpos += 2;
-			dmal >>>= 2;
-		}
-		this.remevent(EV2_DMAL);
-	};
-	
-	this.dmal_hsync = function () {
-		if (dmal) BUG.info('dmal_hsync() DMAL error!? %04x', dmal);
-		dmal = AMIGA.audio.dmal();
-		dmal <<= 6;
-		dmal |= AMIGA.disk.dmal();
+	this.events_dmal_hsync = function() {
+		if (dmal) SAEF_error("events.events_dmal_hsync() DMAL error!? %04x", dmal);
+		dmal = SAER.audio.dmal();
+		dmal = (dmal << 6) & 0xffff;
+		dmal |= SAER.disk.dmal();
 		if (dmal) {
 			dmal_hpos = 0;
-			this.newevent(EV2_DMAL, 7, 13);
+			//SAER.events.event2_newevent2(7, 13, function(v) {
+			SAER.events.event2_newevent_xx(-1, 7 * SAEC_Events_CYCLE_UNIT, 13, function(v) {
+				while (dmal) {
+					if (dmal & 3)
+						dmal_emu(dmal_hpos + ((dmal & 2) ? 1 : 0));
+					dmal_hpos += 2;
+					dmal >>>= 2;
+				}
+			});
 		}
-	};
+	}
+
+	/*-----------------------------------------------------------------------*/
+	/* fps counter */
+
+	function fpscounter_reset() { //global
+		fps_mavg.clr();
+		idle_mavg.clr();
+		SAEV_Events_bogusframe = 2;
+		SAEV_Events_timeframes = 0;
+		lastframetime = SAEF_now();
+		idletime = 0;
+	}
+
+	this.fpscounter = function(frameok) {
+		var now = SAEF_now();
+		var last = now - lastframetime;
+		lastframetime = now;
+
+		if (SAEV_Events_bogusframe || last < 0)
+			return;
+
+		fps_mavg.set(last);
+		idle_mavg.set(idletime);
+		idletime = 0;
+
+		frametime += last;
+		SAEV_Events_timeframes++;
+
+		if ((SAEV_Events_timeframes & 7) == 0) {
+			var avg = idle_mavg.get();
+			var idle = 100.0 - (avg == 0 ? 0 : avg * 100 / vsynctimebase);
+			if (idle < 0)
+				idle = 0.0;
+			else if (idle > 100)
+				idle = 100.0;
+
+			avg = fps_mavg.get();
+			var fps = avg == 0 ? 0 : SAEC_Events_syncbase / avg;
+			if (fps > 999)
+				fps = 999.0;
+
+			if (SAEV_Playfield_fake_vblank_hz > fps) idle *= SAEV_Playfield_fake_vblank_hz / fps;
+			//if (currprefs.turbo_emulation && idle < 100) idle = 100.0;
+
+			SAER.gui.data.fps = fps;
+			//SAER.gui.data.idle = (int)idle;
+			SAER.gui.data.idle = idle;
+			SAER.gui.data.fps_color = frameok ? 0 : 1;
+			if ((SAEV_Events_timeframes & 15) == 0) {
+				//SAER.gui.fps(fps, (int)idle, frameok ? 0 : 1);
+				SAER.gui.fps(fps, idle, frameok ? 0 : 1);
+			}
+		}
+	}
+
+	/*-----------------------------------------------------------------------*/
+	/* synchronization */
+
+	this.framewait2_maximum = function(ll) {
+		//static int sleeps_remaining;
+		//if (is_last_line()) {
+		if (ll) {
+			/*sleeps_remaining = (165 - currprefs.cpu_idle) / 6;
+			if (sleeps_remaining < 0)
+				sleeps_remaining = 0;
+			// really last line, just run the cpu emulation until whole vsync time has been used
+			if (SAER.m68k.stopped && currprefs.cpu_idle) {
+				// CPU in STOP state: sleep if enough time left.
+				var rpt = SAEF_now();
+				while (!vsync_isdone () && ~~vsyncmintime - ~~(rpt + vsynctimebase / 10) > 0 && ~~vsyncmintime - ~~rpt < vsynctimebase) {
+					//if (!execute_other_cpu(rpt + vsynctimebase / 10))
+						SAEF_sleep(1);
+					rpt = SAEF_now();
+				}
+			} else*/ if (SAEV_config.cpu.speedThrottle) {
+				vsyncmintime = SAEF_now(); // end of CPU emulation time
+				is_syncline = 0;
+			} else {
+				vsyncmintime = vsyncmaxtime; // emulate if still time left
+				is_syncline_end = SAEF_now() + vsynctimebase; // far enough in future, we never wait that long
+				is_syncline = 2;
+			}
+		} else {
+			//static int linecounter;
+			// end of scanline, run cpu emulation as long as we still have time
+			vsyncmintime += vsynctimeperline;
+			linecounter++;
+			is_syncline = 0;
+			//if (!vsync_isdone() && !currprefs.turbo_emulation)
+			{
+				if (vsyncmaxtime - vsyncmintime > 0) {
+					if (vsyncwaittime - vsyncmintime > 0) {
+						var rpt = SAEF_now();
+						// Extra time left? Do some extra CPU emulation
+						if (vsyncmintime - rpt > 0) {
+							/*if (SAER.m68k.stopped && currprefs.cpu_idle && sleeps_remaining > 0) {
+								// STOP STATE: sleep.
+								SAEF_sleep(1);
+								sleeps_remaining--;
+							} else*/ {
+								is_syncline = 1;
+								// limit extra time
+								is_syncline_end = rpt + vsynctimeperline;
+								linecounter = 0;
+							}
+						}
+					}
+					if (!SAER_Playfield_isvsync()) {
+						// extra cpu emulation time if previous 10 lines without extra time.
+						if (!is_syncline && linecounter >= 10 && (!SAER.m68k.stopped)) { // || !currprefs.cpu_idle)) {
+							is_syncline = -1;
+							is_syncline_end = SAEF_now() + vsynctimeperline;
+							linecounter = 0;
+						}
+					}
+				}
+			}
+		}
+	}
+	this.framewait2_normal = function() {
+		vsyncmintime += vsynctimeperline;
+		//if (!vsync_isdone() && !currprefs.turbo_emulation)
+		{
+			var rpt = SAEF_now();
+			// sleep if more than 2ms "free" time
+			//while (!vsync_isdone() && vsyncmintime - Math.floor(rpt + vsynctimebase / 10) > 0 && vsyncmintime - rpt < vsynctimebase) {
+			while (vsyncmintime - Math.floor(rpt + vsynctimebase / 10) > 0 && vsyncmintime - rpt < vsynctimebase) {
+				//if (!execute_other_cpu(rpt + vsynctimebase / 10))
+				SAEF_sleep(1);
+				rpt = SAEF_now();
+				//SAEF_log("*");
+			}
+		}
+	}
 
 	/*---------------------------------*/
-	
-	function sleep(ms) {
-		var start = new Date().getTime();
-		while ((new Date().getTime() - start) < ms) {}
-	}
-
-	function read_processor_time() {
-		return (new Date().getTime()); 
-		//return window.performance.now(); 
-		//return window.performance.webkitNow(); 
-	}
 
 	function rpt_vsync(adjust) {
-		var curr_time = read_processor_time();
+		var curr_time = SAEF_now();
 		var v = curr_time - vsyncwaittime + adjust;
-		if (v > SYNCBASE || v < -SYNCBASE) {
+		if (v > SAEC_Events_syncbase || v < -SAEC_Events_syncbase) {
 			vsyncmintime = vsyncmaxtime = vsyncwaittime = curr_time;
 			v = 0;
 		}
 		return v;
 	}
+	/*function rtg_vsync() {
+		#ifdef PICASSO96
+		var start = SAEF_now();
+		picasso_handle_vsync();
+		var end = SAEF_now();
+		SAEV_Events_frameskiptime += end - start;
+		#endif
+	}
+	function rtg_vsynccheck() {
+		if (vblank_found_rtg) {
+			vblank_found_rtg = false;
+			rtg_vsync();
+		}
+	}*/
 
-	this.framewait = function () {
-		var clockadjust = 0;
+	this.framewait = function() {
 		var curr_time;
-
-		var frameskipt_avg = ma_frameskipt.set(frameskiptime);
-		frameskiptime = 0;
+		var start;
+		var vs = SAER_Playfield_isvsync_chipset();
+		var status = 0;
 
 		is_syncline = 0;
 
-		if (AMIGA.config.cpu.speed < 0) {
-			if (!frame_rendered)
-				frame_rendered = AMIGA.playfield.render_screen(false);
+		//static struct mavg_data ma_frameskipt;
+		var frameskipt_avg = ~~ma_frameskipt.set(SAEV_Events_frameskiptime); SAEV_Events_frameskiptime = 0;
+		var reflowt_avg = ~~ma_reflowt.set(SAEV_Events_reflowtime);
 
-			curr_time = read_processor_time();
+		/*OWN stripped
+		if (vs > 0) {} else if (vs < 0) {}*/
 
-			var adjust = 0;
-			if (Math.floor(curr_time - vsyncwaittime) > 0 && Math.floor(curr_time - vsyncwaittime) < (vsynctimebase >> 1))
+		status = 1;
+
+		var clockadjust = 0;
+		var vstb = vsynctimebase;
+
+		if (SAEV_config.cpu.speed < 0) { //max
+			if (!SAEV_Playfield_frame_rendered && !SAEV_Playfield_picasso_on)
+				SAEV_Playfield_frame_rendered = SAER.video.render_screen(false);
+
+			if (SAEV_config.cpu.speedThrottle) {
+				// this delay can safely overshoot frame time by 1-2 ms, following code will compensate for it.
+				for (;;) {
+					curr_time = SAEF_now();
+					if (vsyncwaittime - curr_time <= 0 || vsyncwaittime - curr_time > 2 * vsynctimebase)
+						break;
+					//rtg_vsynccheck();
+					SAEF_sleep(1);
+				}
+			} else
+				curr_time = SAEF_now();
+
+			var adjust = 0, max;
+			if (curr_time - vsyncwaittime > 0 && curr_time - vsyncwaittime < (vstb >> 1))
 				adjust += curr_time - vsyncwaittime;
 			adjust += clockadjust;
-
-			//console.log(adjust);
-
-			vsyncwaittime = curr_time + vsynctimebase - adjust;
+			if (SAEV_config.cpu.speedThrottle)
+				max = Math.truncate(vstb * (1000.0 + SAEV_config.cpu.speedThrottle) / 1000.0 - adjust);
+			else
+				max = vstb - adjust;
+			vsyncwaittime = curr_time + vstb - adjust;
 			vsyncmintime = curr_time;
 
-			var max = Math.floor(vsynctimebase - adjust);
 			if (max < 0) {
 				max = 0;
 				vsynctimeperline = 1;
 			} else
-				vsynctimeperline = Math.floor(max / (AMIGA.playfield.maxvpos_nom + 1));
+				vsynctimeperline = max / (SAER.playfield.get_maxvpos_display() + 1) >>> 0;
 
 			vsyncmaxtime = curr_time + max;
+
+			//SAEF_info("%06d:%06d/%06d", adjust, vsynctimeperline, vstb);
 		} else {
-			var start;
-			var t = 0;
+			const syncbase1000inv = 1.0 / (SAEC_Events_syncbase / 1000); //OWN
+			var t = reflowt_avg; //OWN
 
-			if (!frame_rendered) {
-				start = read_processor_time();
-				frame_rendered = AMIGA.playfield.render_screen(false);
-				t = read_processor_time() - start;
+			if (!SAEV_Playfield_frame_rendered && !SAEV_Playfield_picasso_on) {
+				start = SAEF_now();
+				SAEV_Playfield_frame_rendered = SAER.video.render_screen(false);
+				t += SAEF_now() - start;
 			}
-			while (rpt_vsync(clockadjust) < -4)// / (SYNCBASE / 1000.0);
-				sleep(2);
-
-			start = read_processor_time();
+			start = SAEF_now();
+			while (true) { //while (!currprefs.turbo_emulation) {
+				var v = rpt_vsync(clockadjust) * syncbase1000inv; //double
+				if (v >= -4) break;
+				//rtg_vsynccheck();
+				SAEF_sleep(2);
+			}
 			while (rpt_vsync(clockadjust) < 0) {
+				//rtg_vsynccheck();
 			}
-			idletime += read_processor_time() - start;
+			curr_time = SAEF_now();
+			idletime += curr_time - start;
 
-			curr_time = read_processor_time();
 			vsyncmintime = curr_time;
-			vsyncmaxtime = vsyncwaittime = curr_time + vsynctimebase;
-			if (frame_rendered) {
-				frame_shown = AMIGA.playfield.show_screen();
-				t += read_processor_time() - curr_time;
+			vsyncmaxtime = vsyncwaittime = curr_time + vstb;
+
+			if (SAEV_Playfield_frame_rendered) {
+				SAER.video.show_screen(0);
+				t += SAEF_now() - curr_time;
 			}
 			t += frameskipt_avg;
-
-			vsynctimeperline = Math.floor((vsynctimebase - t) / 3);
+			vsynctimeperline = ~~((vstb - t) / 3);
 			if (vsynctimeperline < 0)
 				vsynctimeperline = 0;
-			else if (vsynctimeperline > Math.floor(vsynctimebase / 3))
-				vsynctimeperline = Math.floor(vsynctimebase / 3);
-		}
-	};
+			else if (vsynctimeperline > vstb / 3 >>> 0)
+				vsynctimeperline = vstb / 3 >>> 0;
 
-	this.framewait2 = function () {
-		if (AMIGA.config.cpu.speed < 0) {
-			if (AMIGA.playfield.is_last_line()) {
-				/* really last line, just run the cpu emulation until whole vsync time has been used */
-				vsyncmintime = vsyncmaxtime;
-				/* emulate if still time left */
-				is_syncline_end = read_processor_time() + vsynctimebase;
-				/* far enough in future, we never wait that long */
-				is_syncline = 1;
-			} else {
-				/* end of scanline, run cpu emulation as long as we still have time */
-				vsyncmintime += vsynctimeperline;
-				linecounter++;
-				is_syncline = 0;
-				if (Math.floor(vsyncmaxtime - vsyncmintime) > 0) {
-					if (Math.floor(vsyncwaittime - vsyncmintime) > 0) {
-						var rpt = read_processor_time();
-						/* Extra time left? Do some extra CPU emulation */
-						if (Math.floor(vsyncmintime - rpt) > 0) {
-							is_syncline = 1;
-							/* limit extra time */
-							is_syncline_end = rpt + vsynctimeperline;
-							linecounter = 0;
-						}
-					}
-					// extra cpu emulation time if previous 10 lines without extra time.
-					if (!is_syncline && linecounter >= 10) {
-						is_syncline = -1;
-						is_syncline_end = read_processor_time() + vsynctimeperline;
-						linecounter = 0;
-					}
-				}
+			SAEV_Playfield_frame_shown = true;
+		}
+		return status != 0;
+	}
+
+	/*-----------------------------------------------------------------------*/
+	/* exact cycling */
+
+	/*this.alloc_cycle = function(hpos, type) {
+		//#ifdef CPUEMU_13
+		//#if 0
+		//if (cycle_line[hpos]) SAEF_log("events.alloc_cycle() hpos=%d, old=%d, new=%d", hpos, cycle_line[hpos], type);
+		//if ((type == SAEC_Events_cycle_line_COPPER) && (hpos & 1) && hpos != SAER.playfield.get_maxhpos() - 2) SAEF_log("events.alloc_cycle() odd %d cycle %d", hpos);
+		//if (!(hpos & 1) && (type == SAEC_Events_cycle_line_SPRITE || type == SAEC_Events_cycle_line_REFRESH || type == SAEC_Events_cycle_line_MISC)) SAEF_log("events.alloc_cycle() even %d cycle %d", type, hpos);
+		//#endif
+		cycle_line[hpos] = type;
+		//#endif
+	}
+	this.alloc_cycle_maybe = function(hpos, type) {
+		if ((cycle_line[hpos] & SAEC_Events_cycle_line_MASK) == 0)
+			this.alloc_cycle(hpos, type);
+	}
+	this.alloc_cycle_blitter = function(hpos, ptr, chnum) {
+		if (cycle_line[hpos] & SAEC_Events_cycle_line_COPPER_SPECIAL) {
+			//static int warned = 100;
+			var srcptr = SAER.copper.get_copxlc(); //cop_state.strobe == 1 ? cop1lc : cop2lc;
+			//if (warned > 0)
+			{
+				SAEF_warn("events.alloc_cycle_blitter() buggy copper cycle conflict with blitter ch %d", chnum);
+				//warned--;
 			}
-		} else {
-			if (AMIGA.playfield.vpos + 1 < AMIGA.playfield.maxvpos + AMIGA.playfield.lof_store && (AMIGA.playfield.vpos == Math.floor(AMIGA.playfield.maxvpos_nom / 3) || AMIGA.playfield.vpos == Math.floor(AMIGA.playfield.maxvpos_nom * 2 / 3))) {
-				vsyncmintime += vsynctimeperline;
-				var rpt = read_processor_time();
-				// sleep if more than 2ms "free" time
-				while (Math.floor(vsyncmintime) - Math.floor(rpt + vsynctimebase / 10) > 0 && Math.floor(vsyncmintime - rpt) < vsynctimebase) {
-					sleep(1);
-					rpt = read_processor_time();
-					//console.log('*');
-				}
-			}
+			//if ((currprefs.cs_hacks & 1) && SAEV_config.cpu.model == SAEC_Config_CPU_Model_68000)
+			if (SAEV_config.cpu.model == SAEC_Config_CPU_Model_68000 && SAEV_config.chipset.blitter.cycle_exact)
+				ptr.val = srcptr;
 		}
-	};
-	
-	this.fpscounter_reset = function () {
-		timeframes = 0;
-		fps_mavg.clr();
-		idle_mavg.clr();
-		lastframetime = read_processor_time();
-		idletime = 0;
-	};
-
-	this.fpscounter = function () {
-		var hz = AMIGA.playfield.vblank_hz;
-
-		var now = read_processor_time();
-		var last = now - lastframetime;
-		lastframetime = now;
-
-		if (AMIGA.config.video.framerate > 1) {
-			last <<= 1;
-			hz /= 2;
-		}
-
-		fps_mavg.set(last / 10);
-		idle_mavg.set(idletime / 10);
-		idletime = 0;
-
-		frametime += last;
-		timeframes++;
-
-		if ((timeframes & 7) == 0) {
-			var idle = 1000 - (idle_mavg.average == 0 ? 0.0 : idle_mavg.average * 1000.0 / vsynctimebase);
-			var fps = fps_mavg.average == 0 ? 0 : SYNCBASE * 10 / fps_mavg.average;
-			if (fps > 9999) fps = 9999;
-			if (idle < 0) idle = 0;
-			if (idle > 100 * 10) idle = 100 * 10;
-			if (hz * 10 > fps) idle *= (hz * 10 / fps);
-
-			if ((timeframes & 15) == 0) {
-				AMIGA.config.hooks.fps(Math.round(fps * 0.1));
-				AMIGA.config.hooks.cpu(Math.round(idle * 0.1));
-			}
-		}
-	};
-	         
-	/*---------------------------------*/
-
-	this.hsync_handler_pre = function (onvsync) {
-		//var hpos = this.hpos();
-		AMIGA.copper.sync_copper_with_cpu(AMIGA.playfield.maxhpos, 0);
-		AMIGA.playfield.hsync_handler_pre();
-		AMIGA.disk.hsync();
-		if (AMIGA.config.audio.enabled)
-			AMIGA.audio.hsync();
-		//AMIGA.cia.hsync_prehandler(); //empty
-		//hsync_counter++;
-		AMIGA.playfield.hsync_handler_pre_next_vpos(onvsync);
-
-		this.eventtab[EV_HSYNC].evtime = this.currcycle + AMIGA.playfield.maxhpos * CYCLE_UNIT;
-		this.eventtab[EV_HSYNC].oldcycles = this.currcycle;
-	};
-
-	this.vsync_handler_pre = function () {
-		//AMIGA.audio.vsync(); //empty
-		AMIGA.cia.vsync_prehandler();
-
-		if (!vsync_rendered) {
-			var start = read_processor_time();
-			AMIGA.playfield.vsync_handle_redraw();
-			frameskiptime += read_processor_time() - start;
-			//vsync_rendered = true;
-		}
-		this.framewait();
-		if (!frame_rendered)
-			frame_rendered = AMIGA.playfield.render_screen(false);
-		if (frame_rendered && !frame_shown)
-			//frame_shown = AMIGA.playfield.show_screen();
-			AMIGA.playfield.show_screen();
-
-		this.fpscounter();
-		vsync_rendered = false;
-		frame_shown = false;
-		frame_rendered = false;
-
-		AMIGA.playfield.checklacecount(null);
-	};
-	
-	var cia_hsync = 256;
-	this.hsync_handler_post = function (onvsync) {
-		AMIGA.copper.last_copper_hpos = 0;
-
-		var ciasyncs = !(AMIGA.playfield.bplcon0 & 2) || ((AMIGA.playfield.bplcon0 & 2) && AMIGA.config.chipset.genlock);
-		AMIGA.cia.hsync_posthandler(ciasyncs);
-		if (AMIGA.config.cia.tod > 0) {
-			cia_hsync -= 256;
-			if (cia_hsync <= 0) {
-				AMIGA.cia.vsync_posthandler(1);
-				cia_hsync += Math.floor((MAXVPOS_PAL * MAXHPOS_PAL * 50 * 256) / (AMIGA.playfield.maxhpos * (AMIGA.config.cia.tod == 2 ? 60 : 50)));
-			}
-		} else if (AMIGA.config.cia.tod == 0 && onvsync)
-			AMIGA.cia.vsync_posthandler(ciasyncs);
-
-		AMIGA.playfield.hsync_handler_post();
-		AMIGA.custom.last_value = 0xffff;
-
-		if (!AMIGA.config.blitter.immediate && AMIGA.blitter.getState() != BLT_done && AMIGA.dmaen(DMAF_BPLEN) && AMIGA.playfield.getDiwstate() == DIW_WAITING_STOP)
-			AMIGA.blitter.slowdown();
-
-		if (onvsync) {
-			// vpos_count >= MAXVPOS just to not crash if VPOSW writes prevent vsync completely
-			/*if ((AMIGA.playfield.bplcon0 & 8) && !lightpen_triggered) {
-			 vpos_lpen = AMIGA.playfield.vpos - 1;
-			 hpos_lpen = AMIGA.playfield.maxhpos;
-			 lightpen_triggered = 1;
-			 }*/
-			AMIGA.playfield.vpos = 0;
-			this.vsync_handler_post();
-			AMIGA.playfield.vpos_count = 0;
-		}
-		if (AMIGA.config.chipset.agnus_dip) {
-			if (AMIGA.playfield.vpos == 1)
-				AMIGA.INTREQ_0(INT_VERTB);
-		} else {
-			if (AMIGA.playfield.vpos == 0)
-				AMIGA.INTREQ_0(INT_VERTB);
-		}
-		this.dmal_hsync();
-		this.framewait2();
-		AMIGA.playfield.hsync_handler_post_nextline_how();
-		AMIGA.copper.reset2();
-
-		if (CUSTOM_SIMPLE)
-			AMIGA.playfield.do_sprites(0);
-
-		//AMIGA.copper.check(2);
-		AMIGA.playfield.hsync_handler_post_diw_change();
-	};
-	
-	this.vsync_handler_post = function () {
-		//if ((AMIGA.intreq & 0x0020) && (AMIGA.intena & 0x0020)) BUG.info('vblank interrupt not cleared');
-		AMIGA.disk.vsync();
-		AMIGA.playfield.vsync_handler_post();
-	};
-	
-	this.hsync_handler = function() {
-		var vs = AMIGA.playfield.is_custom_vsync();
-		this.hsync_handler_pre(vs);
-		if (vs) {
-			this.vsync_handler_pre();
-
-			//vsyncresume = true; throw new VSync(0, 'vsync');
-			
-			AMIGA.state = ST_IDLE;
-		}
-		this.hsync_handler_post(vs);
-	}	
+		this.alloc_cycle(hpos, SAEC_Events_cycle_line_BLITTER);
+	}*/
 }
-
