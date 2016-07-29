@@ -92,7 +92,6 @@ function SAEO_Video() {
 		this.surface = null;
 
 		this.div = null;
-		this.video = null;
 		this.shown = false;
 		this.fullscreen = false;
 	}
@@ -198,7 +197,12 @@ function SAEO_Video() {
 	function CreateWindow(left, top, width, height) {
 		var hWnd = new HWND();
 
-		hWnd.canvas = document.createElement("canvas");
+		var el = document.getElementById(SAEV_config.video.id);
+		if (el.nodeName == "CANVAS")
+			hWnd.canvas = el;
+		else
+			hWnd.canvas = document.createElement("canvas");
+
 		hWnd.canvas.width = width;
 		hWnd.canvas.height = height;
 		hWnd.canvas.style.backgroundColor = sprintf("#%06X", SAEV_config.video.backgroundColor);
@@ -265,40 +269,39 @@ function SAEO_Video() {
 	const SW_SHOWNORMAL = 1;
 	//const SW_SHOW = 5;
 	//const SW_SHOWDEFAULT = 10;
+
 	function ShowWindow(hWnd, nCmdShow) {
 		if (nCmdShow == SW_SHOWNORMAL && !hWnd.shown) {
-			hWnd.video = document.createElement("div");
-			hWnd.video.style.webkitTouchCallout = "none";
-			hWnd.video.style.webkitUserSelect = "none";
-			hWnd.video.style.khtmlUserSelect = "none";
-			hWnd.video.style.mozUserSelect = "none";
-			hWnd.video.style.msUserSelect = "none";
-			hWnd.video.style.userSelect = "none";
-			hWnd.video.appendChild(hWnd.canvas);
+			var el = document.getElementById(SAEV_config.video.id);
+			if (el.nodeName == "DIV") {
+				hWnd.div = el;
+				hWnd.div.style.width = String(currentmode.native_width)+"px";
+				hWnd.div.style.height = String(currentmode.native_height)+"px";
+				hWnd.div.appendChild(hWnd.canvas);
+			} else
+				hWnd.div = null;
 
-			hWnd.div = document.getElementById(SAEV_config.video.id);
-			hWnd.div.style.width = String(currentmode.native_width)+"px";
-			hWnd.div.style.height = String(currentmode.native_height)+"px";
-			hWnd.div.appendChild(hWnd.video);
 			hWnd.shown = true;
 		}
 		else if (nCmdShow == SW_HIDE && hWnd.shown) {
-			hWnd.div.removeChild(hWnd.video);
-			//hWnd.div.style.width = "0px";
-			//hWnd.div.style.height = "0px";
-			hWnd.video = null;
+			if (hWnd.div !== null) {
+				hWnd.div.removeChild(hWnd.canvas);
+				hWnd.canvas = null;
+			}
+
 			hWnd.shown = false;
 		}
 	}
 
 	function GetWindowRect(hWnd, rect) {
-		if (hWnd.shown) {
-			var bcr = hWnd.div.getBoundingClientRect();
+		/*if (hWnd.shown) {
+			var bcr = hWnd.canvas.getBoundingClientRect();
 			rect.left = Math.floor(bcr.left);
 			rect.top = Math.floor(bcr.top);
 			rect.right = Math.floor(bcr.right);
 			rect.bottom = Math.floor(bcr.bottom);
-		} else {
+			console.dir(bcr);
+		} else*/ {
 			rect.left = (screen.width >> 1) - (currentmode.native_width >> 1); if (rect.left < 0) rect.left = 0;
 			rect.top = (screen.height >> 1) - (currentmode.native_height >> 1); if (rect.top < 0) rect.top = 0;
 			rect.right = rect.left + currentmode.native_width;
@@ -1804,7 +1807,8 @@ function SAEO_Video() {
 		if (!SAEV_config.video.enabled)
 			return SAEE_None;
 
-		if (!document.getElementById(SAEV_config.video.id))
+		var id = document.getElementById(SAEV_config.video.id);
+		if (id === null || (id.nodeName != "DIV" && id.nodeName != "CANVAS"))
 			return SAEE_Video_ElementNotFound;
 
 		if (SAEV_config.video.api == SAEC_Config_Video_API_WebGL && !SAEC_info.video.webGL) {

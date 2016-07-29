@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en-us">
+	<head>
+		<title>SAE - Scripted Amiga Emulator</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+		<link rel="icon" type="image/x-icon" href="favicon.ico" />
+		<link rel="stylesheet" type="text/css" href="example.css" />
+
+		<!-- Emulator files. When making them into one file, keep the order -->
+		<script type="text/javascript" src="sae/prototypes.js"></script>
+		<script type="text/javascript" src="sae/utils.js"></script>
+		<script type="text/javascript" src="sae/dms.js"></script>
+		<script type="text/javascript" src="sae/config.js"></script>
+		<script type="text/javascript" src="sae/roms.js"></script>
+		<script type="text/javascript" src="sae/memory.js"></script>
+		<script type="text/javascript" src="sae/autoconf.js"></script>
+		<script type="text/javascript" src="sae/expansion.js"></script>
+		<script type="text/javascript" src="sae/events.js"></script>
+		<script type="text/javascript" src="sae/gayle.js"></script>
+		<script type="text/javascript" src="sae/ide.js"></script>
+		<script type="text/javascript" src="sae/filesys.js"></script>
+		<script type="text/javascript" src="sae/hardfile.js"></script>
+		<script type="text/javascript" src="sae/input.js"></script>
+		<script type="text/javascript" src="sae/serial.js"></script>
+		<script type="text/javascript" src="sae/custom.js"></script>
+		<script type="text/javascript" src="sae/blitter.js"></script>
+		<script type="text/javascript" src="sae/copper.js"></script>
+		<script type="text/javascript" src="sae/playfield.js"></script>
+		<script type="text/javascript" src="sae/video.js"></script>
+		<script type="text/javascript" src="sae/audio.js"></script>
+		<script type="text/javascript" src="sae/cia.js"></script>
+		<script type="text/javascript" src="sae/disk.js"></script>
+		<script type="text/javascript" src="sae/rtc.js"></script>
+		<script type="text/javascript" src="sae/m68k.js"></script>
+		<script type="text/javascript" src="sae/cpu.js"></script>
+		<script type="text/javascript" src="sae/amiga.js"></script>
+
+		<!-- API-calls and support functions -->
+		<script type="text/javascript" src="example.js"></script>
+	</head>
+
+	<body onload="init()">
+		<noscript>
+			<div style="height:20px"></div>
+			<div class="noscript">JavaScript is disabled or not supported!</div>
+			<div style="height:20px"></div>
+		</noscript>
+		<div style="text-align:center">
+			<div style="height:10px"></div>
+
+			<table style="margin:auto">
+				<!-- Status-leds for our hooks later -->
+				<tr>
+					<td class="arm">Status</td>
+					<td class="alm">
+						<table style="border:1px solid #333">
+							<tr>
+								<td class="acm" style="width:32px"><span id="status_led_power">PWR</span></td>
+								<td class="acm" style="width:16px"><span id="status_led_hd">HD</span></td>
+								<td class="arm" style="width:16px"><span id="status_led_df0">0</span></td>
+								<td class="arm" style="width:16px"><span id="status_led_df1">0</span></td>
+								<td class="arm" style="width:16px"><span id="status_led_df2">0</span></td>
+								<td class="arm" style="width:16px"><span id="status_led_df3">0</span></td>
+								<td class="arm" style="width:32px"><span id="status_led_fps">0</span></td>
+								<td class="arm" style="width:32px"><span id="status_led_cpu">0</span></td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+				<!-- Some config-items -->
+				<tr>
+					<td class="arm">Config</td>
+					<td class="alm">
+						<table style="border:1px solid #333">
+							<tr>
+								<td class="arm">Amiga Model</td>
+								<td>
+									<select id="cfg_model">
+										<option value="A500">A500</option>
+										<option value="A500P">A500 Plus</option>
+										<option value="A600">A600</option>
+										<option value="A1000">A1000</option>
+										<option value="A1200">A1200</option>
+										<option value="A2000">A2000</option>
+										<option value="A3000">A3000</option>
+										<option value="A4000">A4000</option>
+										<option value="A4000T">A4000 Tower</option>
+									</select>
+								</td>
+							</tr>
+							<tr>
+								<td class="arm">Resolution</td>
+								<td>
+									<select id="cfg_res">
+										<option value="1">Lores</option>
+										<option value="2">Hires</option>
+										<option value="3">SuperHires</option>
+									</select>
+									<select id="cfg_ntsc">
+										<option value="0">PAL</option>
+										<option value="1">NTSC</option>
+									</select>
+								</td>
+							</tr>
+							<tr>
+								<td class="arm">Kickstart ROM</td>
+								<td>
+									<input id="cfg_rom_file" type="file" style="position:absolute;left:-10000px;top:-10000px;" onchange="romSelect()" />
+									<span id="cfg_rom_name" class="red">&lt;unset&gt; (required)</span>
+									<button class="button" onclick="document.getElementById('cfg_rom_file').click()">Select</button>
+									<button class="button" id="cfg_rom_remove" onclick="romRemove()">Remove</button>
+								</td>
+							</tr>
+							<tr>
+								<td class="arm">Floppy (DF0)</td>
+								<td>
+									<input id="cfg_df0_file" type="file" style="position:absolute;left:-10000px;top:-10000px;" onchange="floppyInsert(0)" />
+									<span id="cfg_df0_name" class="gray">&lt;empty&gt;</span>
+									<button class="button" onclick="document.getElementById('cfg_df0_file').click()">Insert</button>
+									<button class="button" id="cfg_df0_eject" onclick="floppyEject(0)">Eject</button>
+								</td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+				<!-- Control-buttons -->
+				<tr>
+					<td class="arm">Controls</td>
+					<td class="alm">
+						<table>
+							<tr>
+								<td><button onclick="start()">Start</button></td>
+								<td><button onclick="stop()">Stop</button></td>
+								<td><button onclick="reset()">Reset</button></td>
+								<td><button onclick="pause(1)" id="controls_pr">Pause</button></td>
+							</tr>
+						</table>
+					</td>
+				</tr>
+				<!-- Output -->
+				<tr>
+					<td class="arm">Output</td>
+					<td class="alm">
+						<!-- Method 1: SAE will create a canvas and add it into the div-element below -->
+						<!--<div id="myVideo" style="margin:auto"></div>-->
+
+						<!-- Method 2: The canvas is already defined. SAE will output to the element below.
+						The size of the canvas is set by SAE according your settings -->
+						<canvas id="myVideo" style="margin:auto;background-color:#000"></canvas>
+					</td>
+				</tr>
+			</table>
+		</div>
+	</body>
+</html>

@@ -2205,7 +2205,7 @@ function SAEO_Playfield() {
 				switch (gfxvidinfo.drawbuffer.pixbytes) {
 					case 2:
 					pfield_do_linetoscr_normal = need_genlock_data ? linetoscr_16_stretch2_aga_genlock : linetoscr_16_stretch2_aga;
-					pfield_do_linetoscr_sprite = need_genlock_data ? linetoscr_16_stretch2_aga_spr_genlock : linetoscr_16_stretch2_aga_spr_genlock;
+					pfield_do_linetoscr_sprite = need_genlock_data ? linetoscr_16_stretch2_aga_spr_genlock : linetoscr_16_stretch2_aga_spr;
 					pfield_do_linetoscr_spriteonly = linetoscr_16_stretch2_aga_spronly;
 					break;
 					case 4:

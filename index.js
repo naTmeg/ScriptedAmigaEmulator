@@ -1382,13 +1382,10 @@ function start() {
 	var s = cache.state();
 	if (s == S_VALID) { /* all files are downloaded or cached, go! */
 		freezeButtons(false, true);
-		switchBaseEmul(true);
 
 		var err = sae.start(); /* this does start the emulator */
-		if (err != SAEE_None) {
-			switchBaseEmul(false);
+		if (err != SAEE_None)
 			alert(saee2text(err));
-		}
 	}
 	else if (s == S_PENDING) { /* files are still downloading, wait... */
 		setTimeout(start, 250);
@@ -1423,37 +1420,15 @@ function advandedStart() {
 }
 
 function stop() {
-	sae.stop();
-
-	if (paused) {
-		paused = false;
-		switchPauseResume(paused);
-	}
-	if (dskchg)
-		dskchgClose();
-
-	if (mode == MODE_Advanced)
-		setAdvandedConfig();
-
-	switchBaseEmul(false);
-}
-
-function reset() {
-	sae.reset();
-
-	if (paused) {
-		paused = false;
-		switchPauseResume(paused);
-	}
-	if (dskchg)
-		dskchgClose();
+	sae.stop(); /* send stop-request */
 }
 
 function pause(p) {
-	switchPauseResume(p);
-	paused = p;
+	sae.pause(p); /* send pause-request */
+}
 
-	sae.pause(p); /* true == pause, false == resume */
+function reset() {
+	sae.reset(false, false);
 }
 
 /*---------------------------------*/
@@ -2472,13 +2447,49 @@ function portUpdate(n) {
 }
 
 /*-----------------------------------------------------------------------*/
-/* status hooks */
+/* hooks */
 
 function hook_log_error(err, msg) {
 	stop();
 	if (msg.length)
 		alert(msg);
 }
+
+/*---------------------------------*/
+
+function hook_event_started() {
+	switchBaseEmul(true);
+}
+
+function hook_event_stopped() {
+	if (paused) {
+		paused = false;
+		switchPauseResume(paused);
+	}
+	if (dskchg)
+		dskchgClose();
+
+	if (mode == MODE_Advanced)
+		setAdvandedConfig();
+
+	switchBaseEmul(false);
+}
+
+function hook_event_reseted(hard) {
+	if (paused) {
+		paused = false;
+		switchPauseResume(paused);
+	}
+	if (dskchg)
+		dskchgClose();
+}
+
+function hook_event_paused(p) {
+	paused = p;
+	switchPauseResume(p);
+}
+
+/*---------------------------------*/
 
 const COL_GRAY = "#888";
 const COL_GREEN = "#8C8";
@@ -2546,6 +2557,11 @@ function initHooks() {
 }
 function setHooks() {
 	cfg.hook.log.error = hook_log_error;
+
+	cfg.hook.event.started = hook_event_started;
+	cfg.hook.event.stopped = hook_event_stopped;
+	cfg.hook.event.reseted = hook_event_reseted;
+	cfg.hook.event.paused = hook_event_paused;
 
 	cfg.hook.led.power = hook_led_power;
 	cfg.hook.led.hd = hook_led_hd;

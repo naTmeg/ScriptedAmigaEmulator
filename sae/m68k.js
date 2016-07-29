@@ -227,7 +227,6 @@ function SAEO_M68K() {
 					SAER.memory.clear();
 					SAEF_log("m68k.m68k_cycle() hardreset, memory cleared.");
 				}
-				cpu_hardreset = false;
 
 				if (SAEV_config.audio.mode == 0)
 					SAER_Events_eventtab[SAEC_Events_EV_AUDIO].active = false;
@@ -237,6 +236,11 @@ function SAEO_M68K() {
 				//SAER.audio.check_prefs_changed_audio();
 
 				//statusline_clear();
+
+				if (typeof SAEV_config.hook.event.reseted === "function")
+					SAEV_config.hook.event.reseted(cpu_hardreset);
+
+				cpu_hardreset = false;
 			}
 
 			if (startup) {

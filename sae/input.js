@@ -741,6 +741,10 @@ function SAEO_Keyboard() {
 		if (keyState[loc][code] != oldstate)
 			processKey(loc, code, keyState[loc][code]);
 	};
+
+	this.keyPress = function(e, down) {
+		handleKey(e, down);
+	};
 }
 
 function SAEO_Input() {
@@ -770,6 +774,10 @@ function SAEO_Input() {
 		this.keyboard.reset();
 		potgo.data = 0;
 		potgo.count = 0;
+	};
+
+	this.keyPress = function (e, down) {
+		this.keyboard.keyPress(e, down);
 	};
 
 	this.POTGO = function (v) {

@@ -1,0 +1,78 @@
+/*-------------------------------------------------------------------------
+| SAE - Scripted Amiga Emulator
+| https://github.com/naTmeg/ScriptedAmigaEmulator
+|
+| Copyright (C) 2012-2016 Rupert Hausberger
+|
+| This program is free software; you can redistribute it and/or
+| modify it under the terms of the GNU General Public License
+| as published by the Free Software Foundation; either version 2
+| of the License, or (at your option) any later version.
+|
+| This program is distributed in the hope that it will be useful,
+| but WITHOUT ANY WARRANTY; without even the implied warranty of
+| MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+| GNU General Public License for more details.
+-------------------------------------------------------------------------*/
+
+a:link		{ color:#24c; text-decoration:none; }
+a:visited	{ color:#24c; text-decoration:none; }
+a:hover		{ color:#24c; text-decoration:underline; }
+
+body {
+	top:0;
+	left:0;
+	margin:0;
+	padding:0;
+	font-family:Verdana;
+	font-size:13px;
+	background-color:#f8f8f8;
+	-webkit-touch-callout:none;
+	-webkit-user-select:none;
+	-khtml-user-select:none;
+	-moz-user-select:none;
+	-ms-user-select:none;
+	user-select:none;
+}
+
+table {
+	white-space:nowrap;
+}
+
+/*---------------------------------*/
+
+.gray { color:gray; }
+.green { color:green; }
+.orange { color:orange; }
+.red { color:red; }
+
+.alt { text-align:left; vertical-align:top; }
+.alm { text-align:left; vertical-align:middle; }
+.alb { text-align:left; vertical-align:bottom; }
+
+.act { text-align:center; vertical-align:top; }
+.acm { text-align:center; vertical-align:middle; }
+.acb { text-align:center; vertical-align:bottom; }
+
+.art { text-align:right; vertical-align:top; }
+.arm { text-align:right; vertical-align:middle; }
+.arb { text-align:right; vertical-align:bottom; }
+
+
+.info {
+	font-size:11px;
+	color:dimgray;
+}
+.warn {
+	font-size:11px;
+	color:red;
+}
+
+.noscript {
+	margin:auto;
+	padding:4px;
+	font-size:17px;
+	font-weight:bold;
+	text-align:center;
+	color:red;
+}

@@ -390,16 +390,25 @@ function ScriptedAmigaEmulator() {
 
 	this.start_program = function() {
 		this.do_start_program();
+
+		if (typeof SAEV_config.hook.event.started === "function")
+			SAEV_config.hook.event.started();
 	}
 
 	this.leave_program = function() {
 		this.dump();
 		this.do_leave_program();
+
+		if (typeof SAEV_config.hook.event.stopped === "function")
+			SAEV_config.hook.event.stopped();
 	}
 
 	this.pause_program = function(p) {
 		this.audio.pauseResume(p);
 		this.events.pauseResume(p);
+
+		if (typeof SAEV_config.hook.event.paused === "function")
+			SAEV_config.hook.event.paused(p);
 	}
 
 	/*---------------------------------*/
@@ -503,16 +512,16 @@ function ScriptedAmigaEmulator() {
 		}
 	};
 
-	this.reset = function(hardreset, keyboardreset) { //uae_reset(hardreset, keyboardreset)
-		if (typeof hardreset == "undefined") var hardreset = 1;
-		if (typeof keyboardreset == "undefined") var keyboardreset = 0;
+	this.reset = function(hard, keyboard) { //uae_reset(hard, keyboard)
+		if (typeof hard == "undefined") var hard = false;
+		if (typeof keyboard == "undefined") var keyboard = false;
 		if (this.running) {
-			SAEF_info("sae.reset() hard %d, keyboard %d", hardreset, keyboardreset);
+			SAEF_info("sae.reset() hard %d, keyboard %d", hard?1:0, keyboard?1:0);
 			if (SAEV_command == 0) {
-				SAEV_command = -SAEC_command_Reset;
-				if (keyboardreset)
+				SAEV_command = -SAEC_command_Reset; /* soft */
+				if (keyboard)
 					SAEV_command = -SAEC_command_KeyboardReset;
-				if (hardreset)
+				if (hard)
 					SAEV_command = -SAEC_command_HardReset;
 			}
 			return SAEE_None;
@@ -575,6 +584,10 @@ function ScriptedAmigaEmulator() {
 			return SAEE_NoMemory;
 		return SAEE_None;
 	};
+
+	this.keyPress = function(e, down) {
+		this.input.keyPress(e, down);
+	}
 
 	/*---------------------------------*/
 

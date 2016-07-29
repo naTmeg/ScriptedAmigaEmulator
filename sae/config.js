@@ -710,7 +710,7 @@ function SAEO_Config() {
 
 	this.hook = {
 		log: {
-			error: function (err, msg) {}
+			error: function(err, msg) {}
 		},
 		led: {
 			power: function(on) {},
@@ -718,6 +718,12 @@ function SAEO_Config() {
 			df: function(unit, dis, cyl, side, rw) {},
 			fps: function(fps, paused) {},
 			cpu: function(usage, paused) {}
+		},
+		event: {
+			started: function() {},
+			stopped: function() {},
+			reseted: function(hard) { console.warn("RES", hard); },
+			paused: function(paused) {}
 		}
 	};
 
