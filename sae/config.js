@@ -2350,26 +2350,26 @@ function SAEO_Configuration() {
 		fixup_prefs_dimensions(p);
 
 		//OWN
-		if (cfg.video.api == SAEC_Config_Video_API_Canvas && cfg.video.colorMode != 5) {
-			cfg.video.colorMode = 5;
-			SAEF_warn("config.fixup_prefs() cfg.video.colorMode must 5 if 'Canvas' is used. (set to 5)");
+		if (p.video.api == SAEC_Config_Video_API_Canvas && p.video.colorMode != 5) {
+			p.video.colorMode = 5;
+			SAEF_warn("config.fixup_prefs() p.video.colorMode must 5 if 'Canvas' is used. (set to 5)");
 		}
 		//OWN
-		if (cfg.video.luminance < -1000 || cfg.video.luminance > 1000) {
-			cfg.video.luminance = 0;
-			SAEF_warn("config.fixup_prefs() cfg.video.luminance must be between -1000 and 1000. (reset to 0)");
+		if (p.video.luminance < -1000 || p.video.luminance > 1000) {
+			p.video.luminance = 0;
+			SAEF_warn("config.fixup_prefs() p.video.luminance must be between -1000 and 1000. (reset to 0)");
 		}
-		if (cfg.video.contrast < -1000 || cfg.video.contrast > 1000) {
-			cfg.video.contrast = 0;
-			SAEF_warn("config.fixup_prefs() cfg.video.contrast must be between -1000 and 1000. (reset to 0)");
+		if (p.video.contrast < -1000 || p.video.contrast > 1000) {
+			p.video.contrast = 0;
+			SAEF_warn("config.fixup_prefs() p.video.contrast must be between -1000 and 1000. (reset to 0)");
 		}
-		if (cfg.video.gamma < -1000 || cfg.video.gamma > 1000) {
-			cfg.video.gamma = 0;
-			SAEF_warn("config.fixup_prefs() cfg.video.gamma must be between -1000 and 1000. (reset to 0)");
+		if (p.video.gamma < -1000 || p.video.gamma > 1000) {
+			p.video.gamma = 0;
+			SAEF_warn("config.fixup_prefs() p.video.gamma must be between -1000 and 1000. (reset to 0)");
 		}
-		if (cfg.video.alpha < 0 || cfg.video.alpha > 255) {
-			cfg.video.alpha = 255;
-			SAEF_warn("config.fixup_prefs() cfg.video.gamma must be between 0 and 255. (reset to 255)");
+		if (p.video.alpha < 0 || p.video.alpha > 255) {
+			p.video.alpha = 255;
+			SAEF_warn("config.fixup_prefs() p.video.gamma must be between 0 and 255. (reset to 255)");
 		}
 
 		/*#if !defined (CPUEMU_13)
