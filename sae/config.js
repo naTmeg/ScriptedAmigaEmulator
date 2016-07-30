@@ -722,7 +722,7 @@ function SAEO_Config() {
 		event: {
 			started: function() {},
 			stopped: function() {},
-			reseted: function(hard) { console.warn("RES", hard); },
+			reseted: function(hard) {},
 			paused: function(paused) {}
 		}
 	};
