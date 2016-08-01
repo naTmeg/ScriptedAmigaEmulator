@@ -198,6 +198,8 @@ function SAEO_M68K() {
 		else
 			setTimeout(function() { SAER.m68k.m68k_cycle(0, 0); }, 0);
 	}
+	
+var counter = 0;	
 
 	this.m68k_cycle = function(hardboot, startup) {
 		try {
@@ -268,6 +270,8 @@ function SAEO_M68K() {
 			//if (SAEV_config.cpu.speed >= 0)
 			prevtime = SAEF_now();
 
+console.log("loop", counter++);
+
 			setTimeout(function() { SAER.m68k.m68k_cycle(hardboot, startup); }, 0);
 		} catch(e) {
 			this.m68k_gone();
@@ -283,6 +287,8 @@ function SAEO_M68K() {
 	this.m68k_go = function(may_quit) {
 		var hardboot = 1;
 		var startup = 1;
+
+counter = 0;
 
 		//SAEF_info("m68k.m68k_go()");
 		SAER.events.reset_frame_rate_hack();
