@@ -68,6 +68,7 @@ const SAEE_Assert = 5;
 const SAEE_Internal = 6;
 
 const SAEE_Config_Invalid = 10;
+const SAEE_Config_Compressed = 11;
 
 const SAEE_CPU_Internal = 20;
 const SAEE_CPU_Requires68020 = 21;

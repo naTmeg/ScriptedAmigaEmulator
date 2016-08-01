@@ -493,6 +493,14 @@ function SAEF_ZFile_fopen_file(file) {
 		l.datasize = file.size;
 		l.allocsize = file.size; //OWN
 
+		var magic = ((l.data[0] << 24) | (l.data[1] << 16) | (l.data[2] << 8) | (l.data[3])) >>> 0;
+
+		SAEF_log("SAEF_ZFile_fopen_file() opening '%s', %d/%d bytes, crc32 0x%08x, magic %08x",
+			l.name, l.size, l.data.length, file.crc32 !== false ? file.crc32 : 0, magic);
+
+		if (magic == 0x04034B50 || magic == 0x504B0304)
+			SAEF_fatal(SAEE_Config_Compressed, "A ZIP file was detected. Compressed files are not yet supported.");
+
 		//if (l.data[0] == 68 && l.data[1] == 77 && l.data[2] == 83 && l.data[3] == 33) { /* DMS! */
 		if (SAEF_CompareArray(l.data, SAEF_String2Array("DMS!"), 4) == 0) {
 			var dms = new SAEO_DMS();

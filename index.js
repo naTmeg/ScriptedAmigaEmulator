@@ -489,8 +489,10 @@ function saee2text(err) {
 		case SAEE_NotRunning:					return "The emulator is not running.";
 		case SAEE_NoTimer:						return "No timing-functions avail. Please upgrade your browser.";
 		case SAEE_NoMemory:						return "Out of memory.";
-		case SAEE_Internal:						return "Internal emulator error.";
+		case SAEE_Assert:							return "Assertiation failed.";	
+		case SAEE_Internal:						return "Internal emulator error.";	
 		case SAEE_Config_Invalid:				return "Invalid configuration.";
+		case SAEE_Config_Compressed:			return "A ZIP file was detected. Compressed files are not yet supported.";
 		case SAEE_CPU_Internal:					return "Internal CPU-error.";
 		case SAEE_CPU_Requires68020:			return "The selected kickstart-rom does require a 68020 and 32bit address-space";
 		case SAEE_CPU_Requires680EC20:		return "The selected kickstart-rom does require a 68020.";
