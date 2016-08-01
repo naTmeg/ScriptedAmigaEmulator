@@ -278,9 +278,11 @@ function SAEO_Video() {
 				hWnd.div.style.width = String(currentmode.native_width)+"px";
 				hWnd.div.style.height = String(currentmode.native_height)+"px";
 				hWnd.div.appendChild(hWnd.canvas);
-			} else
+			} else {
 				hWnd.div = null;
-
+				hWnd.canvas.style.width = String(currentmode.native_width)+"px";
+				hWnd.canvas.style.height = String(currentmode.native_height)+"px";
+			}
 			hWnd.shown = true;
 		}
 		else if (nCmdShow == SW_HIDE && hWnd.shown) {
