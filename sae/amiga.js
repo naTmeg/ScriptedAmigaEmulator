@@ -390,7 +390,6 @@ function ScriptedAmigaEmulator() {
 	}
 
 	this.start_program = function() {
-console.warn("stage 2");
 		this.do_start_program();
 
 		if (typeof SAEV_config.hook.event.started === "function")
@@ -447,8 +446,6 @@ console.warn("stage 2");
 			return SAEE_AlreadyRunning;
 		}
 		SAEF_info("sae.start() starting...");
-
-console.warn("stage 1");
 
 		var err;
 		if ((err = this.config.setup()) != SAEE_None)

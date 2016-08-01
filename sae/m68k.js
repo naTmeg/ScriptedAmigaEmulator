@@ -199,15 +199,11 @@ function SAEO_M68K() {
 			setTimeout(function() { SAER.m68k.m68k_cycle(0, 0); }, 0);
 	}
 
-var counter = 0;
-
 	this.m68k_cycle = function(hardboot, startup) {
 		try {
 			if (SAEV_command > 0) {
 				cpu_keyboardreset = SAEV_command == SAEC_command_KeyboardReset;
 				cpu_hardreset = ((SAEV_command == SAEC_command_HardReset ? 1 : 0) | hardboot) != 0;
-
-console.warn("m68k_cycle() command start...", SAEV_command, cpu_hardreset);
 
 				if (SAEV_command == SAEC_command_Quit) {
 					this.m68k_gone();
@@ -245,7 +241,6 @@ console.warn("m68k_cycle() command start...", SAEV_command, cpu_hardreset);
 					SAEV_config.hook.event.reseted(cpu_hardreset);
 
 				cpu_hardreset = false;
-console.warn("m68k_cycle() ...command done", SAEV_command, cpu_hardreset);
 			}
 
 			if (startup) {
@@ -268,8 +263,6 @@ console.warn("m68k_cycle() ...command done", SAEV_command, cpu_hardreset);
 			if (prevtime !== false) // && SAEV_config.cpu.speed >= 0)
 				SAEV_Events_reflowtime = SAEF_now() - prevtime;
 
-console.log("loop", counter++);
-
 			SAER_CPU_run_func();
 
 			//if (SAEV_config.cpu.speed >= 0)
@@ -291,17 +284,12 @@ console.log("loop", counter++);
 		var hardboot = 1;
 		var startup = 1;
 
-console.warn("stage 3, calling setTimeout()...");
-counter = 0;
-
 		//SAEF_info("m68k.m68k_go()");
 		SAER.events.reset_frame_rate_hack();
 
 		SAER.running = true;
 		//this.m68k_cycle(1, 1);
 		setTimeout(function() { SAER.m68k.m68k_cycle(hardboot, startup); }, 0);
-
-console.warn("stage 4, ...done");
 	}
 	this.m68k_gone = function() {
 		//SAEF_info("m68k.m68k_gone()");
