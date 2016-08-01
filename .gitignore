@@ -1,0 +1,7 @@
+*.adf
+db/tools/index.htm
+db/index.htm
+db/games/index.htm
+db/demos_aga/index.htm
+db/demos/index.htm
+*.bin
