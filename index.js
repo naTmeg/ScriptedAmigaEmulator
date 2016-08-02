@@ -199,6 +199,7 @@ var amaxInfo = null; /* amax rom-info */
 var floppyNum = -1; /* current floppy-unit if floppy-info is shown  */
 var mountConfigNum = -1; /* current mount-unit if mount-info is shown  */
 var paused = false; /* is the emualtion currently paused? */
+var muted = false; /* is the audio-output currently muted? */
 
 var dskchg = false; /* disk-change requester in database-mode */
 var dskchgList = []; /* list of floppies to change, created dynamicaly */
@@ -439,6 +440,17 @@ function switchPauseResume(p) {
 	}
 }
 
+function switchMutePlay(m) {
+	var e = document.getElementById("controls_mp");
+	if (m) {
+		e.innerHTML = "Play";
+		e.onclick = function() { mute(false); };
+	} else {
+		e.innerHTML = "Mute";
+		e.onclick = function() { mute(true); };
+	}
+}
+
 function switchBaseEmul(emul) {
 	if (emul) {
 		document.body.style.backgroundColor = "#000000";
@@ -489,8 +501,8 @@ function saee2text(err) {
 		case SAEE_NotRunning:					return "The emulator is not running.";
 		case SAEE_NoTimer:						return "No timing-functions avail. Please upgrade your browser.";
 		case SAEE_NoMemory:						return "Out of memory.";
-		case SAEE_Assert:							return "Assertiation failed.";	
-		case SAEE_Internal:						return "Internal emulator error.";	
+		case SAEE_Assert:							return "Assertiation failed.";
+		case SAEE_Internal:						return "Internal emulator error.";
 		case SAEE_Config_Invalid:				return "Invalid configuration.";
 		case SAEE_Config_Compressed:			return "A ZIP file was detected. Compressed files are not yet supported.";
 		case SAEE_CPU_Internal:					return "Internal CPU-error.";
@@ -1431,6 +1443,13 @@ function pause(p) {
 
 function reset() {
 	sae.reset(false, false);
+}
+
+function mute(m) {
+	sae.mute(m);
+
+	muted = m;
+	switchMutePlay(muted);
 }
 
 /*---------------------------------*/
@@ -2468,6 +2487,10 @@ function hook_event_stopped() {
 		paused = false;
 		switchPauseResume(paused);
 	}
+	if (muted) {
+		muted = false;
+		switchMutePlay(muted);
+	}
 	if (dskchg)
 		dskchgClose();
 
@@ -2481,6 +2504,10 @@ function hook_event_reseted(hard) {
 	if (paused) {
 		paused = false;
 		switchPauseResume(paused);
+	}
+	if (muted) {
+		muted = false;
+		switchMutePlay(muted);
 	}
 	if (dskchg)
 		dskchgClose();

@@ -54,6 +54,7 @@ function SAEO_Audio() {
 	const SOUND_SYNC_MULTIPLIER = 1.0;
 	var scaled_sample_evtime_orig = 0.0;
 
+	var muted = false;
 	var paused = false;
 	var have_sound = false;
 	var sound_available = false;
@@ -213,6 +214,14 @@ function SAEO_Audio() {
 	const INV32768 = 1.0 / 32768; /* mul is always fasten than div */
 
 	function scaleplay(e, buffer, frames) {
+		if (muted) {
+			for (var ch = 0; ch < SAEV_config.audio.channels; ch++) {
+				var data = e.outputBuffer.getChannelData(ch);
+				for (var i = 0; i < e.outputBuffer.length; i++)
+					data[i] = 0.0;
+			}
+			return;
+		}
 		/*if (driver.context.sampleRate != used_freq) {
 		} else*/ {
 			var step = frames / e.outputBuffer.length;
@@ -372,11 +381,17 @@ function SAEO_Audio() {
 	}
 
 	function reset_sound() { //reset_sound()
+		muted = paused = false;
+
 		cache.readoffset = 0;
 		cache.writeoffset = 0;
 		cache.wait = true;
 
 		paula.average.clr();
+	}
+
+	function mute_sound(mute) { //OWN
+		muted = mute;
 	}
 
 	/*-----------------------------------------------------------------------*/
@@ -1457,11 +1472,9 @@ function SAEO_Audio() {
 	}
 
 	this.reset = function() {
-		var i;
-
 		reset_sound();
 
-		for (i = 0; i < sound_filter_state.length; i++)
+		for (var i = 0; i < sound_filter_state.length; i++)
 			sound_filter_state[i].clr();
 
 		for (i = 0; i < AUDIO_CHANNELS_MAX; i++) {
@@ -1485,6 +1498,10 @@ function SAEO_Audio() {
 			pause_sound();
 		else
 			resume_sound();
+	}
+
+	this.mute = function(mute) {
+		mute_sound(mute)
 	}
 
 	/*-----------------------------------------------------------------------*/

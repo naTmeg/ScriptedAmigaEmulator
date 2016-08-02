@@ -586,9 +586,15 @@ function ScriptedAmigaEmulator() {
 		return SAEE_None;
 	};
 
+	this.mute = function(mute) {
+		this.audio.mute(mute);
+		return SAEE_None;
+	};
+
 	this.keyPress = function(e, down) {
 		this.input.keyPress(e, down);
-	}
+		return SAEE_None;
+	};
 
 	/*---------------------------------*/
 

@@ -497,7 +497,7 @@ function SAEF_ZFile_fopen_file(file) {
 
 		//SAEF_log("SAEF_ZFile_fopen_file() opening '%s', %d/%d bytes, crc32 0x%08x, magic %08x", l.name, l.size, l.data.length, file.crc32 !== false ? file.crc32 : 0, magic);
 
-		if (magic == 0x04034B50 || magic == 0x504B0304)
+		if (magic == 0x504B0304 || magic == 0x04034B50)
 			SAEF_fatal(SAEE_Config_Compressed, "A ZIP file was detected. Compressed files are not yet supported.");
 
 		//if (l.data[0] == 68 && l.data[1] == 77 && l.data[2] == 83 && l.data[3] == 33) { /* DMS! */

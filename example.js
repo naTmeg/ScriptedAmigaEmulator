@@ -23,6 +23,7 @@ var inf = null; /* Reference to the info-object */
 
 var running = false; /* Is the emualtion currently running? */
 var paused = false; /* Is the emualtion currently paused? */
+var muted = false; /* Is the audio-output currently muted? */
 
 /*-----------------------------------------------------------------------*/
 /* Helpers */
@@ -64,14 +65,27 @@ function switchPauseResume(p) {
 	}
 }
 
+function switchMutePlay(m) {
+	var e = document.getElementById("controls_mp");
+	if (m) {
+		e.innerHTML = "Play";
+		e.onclick = function() { mute(false); };
+	} else {
+		e.innerHTML = "Mute";
+		e.onclick = function() { mute(true); };
+	}
+}
+
 function saee2text(err) {
 	switch (err) {
 		case SAEE_AlreadyRunning:				return "The emulator is already running.";
 		case SAEE_NotRunning:					return "The emulator is not running.";
 		case SAEE_NoTimer:						return "No timing-functions avail. Please upgrade your browser.";
 		case SAEE_NoMemory:						return "Out of memory.";
+		case SAEE_Assert:							return "Assertiation failed.";
 		case SAEE_Internal:						return "Internal emulator error.";
 		case SAEE_Config_Invalid:				return "Invalid configuration.";
+		case SAEE_Config_Compressed:			return "A ZIP file was detected. Compressed files are not yet supported.";
 		case SAEE_CPU_Internal:					return "Internal CPU-error.";
 		case SAEE_CPU_Requires68020:			return "The selected kickstart-rom does require a 68020 and 32bit address-space";
 		case SAEE_CPU_Requires680EC20:		return "The selected kickstart-rom does require a 68020.";
@@ -327,6 +341,18 @@ function pause(p) {
 		alert(saee2text(err));
 }
 
+function mute(m) {
+	/* Mute or play audio.
+	true == mute, false == play */
+	var err = sae.mute(m);
+	if (err == SAEE_None) {
+		muted = m;
+		switchMutePlay(muted);
+		/* ... */
+	} else
+		alert(saee2text(err));
+}
+
 function romSelect() {
 	var e = document.getElementById("cfg_rom_file").files[0];
 	if (e) {
@@ -441,6 +467,10 @@ function hook_event_stopped() {
 		paused = false;
 		switchPauseResume(paused);
 	}
+	if (muted) {
+		muted = false;
+		switchMutePlay(muted);
+	}
 	resetLEDs();
 }
 
@@ -449,6 +479,10 @@ function hook_event_reseted(hard) {
 	if (paused) {
 		paused = false;
 		switchPauseResume(paused);
+	}
+	if (muted) {
+		muted = false;
+		switchMutePlay(muted);
 	}
 }
 

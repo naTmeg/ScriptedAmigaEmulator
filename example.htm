@@ -133,6 +133,7 @@
 								<td><button onclick="stop()">Stop</button></td>
 								<td><button onclick="reset()">Reset</button></td>
 								<td><button onclick="pause(1)" id="controls_pr">Pause</button></td>
+								<td><button onclick="mute(1)" id="controls_mp">Mute</button></td>
 							</tr>
 						</table>
 					</td>
@@ -144,8 +145,12 @@
 						<!-- Method 1: SAE will create a canvas and add it into the div-element below -->
 						<div id="myVideo" style="margin:auto"></div>
 
+
 						<!-- Method 2: The canvas is already defined. SAE will output to the element below.
-						The size of the canvas is set by SAE according your settings -->
+						The size of the canvas is set by SAE according your settings.
+
+						See example2.htm -->
+
 						<!--<canvas id="myVideo" style="margin:auto;background-color:#000"></canvas>-->
 					</td>
 				</tr>
