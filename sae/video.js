@@ -2017,6 +2017,11 @@ function SAEO_Video() {
 		DirectDraw_ReleaseDC(hdc);
 	}*/
 
+	this.hideCursor = function(hide) {
+		if (hAmigaWnd !== null && hAmigaWnd.shown)
+			hAmigaWnd.canvas.style.cursor = hide ? "none" : "auto";
+	}
+
 	/*-----------------------------------------------------------------------*/
 
 	//var flushymin = 0, flushymax = 0;

@@ -47,15 +47,19 @@ function SAEO_Mouse() {
 	};
 
 	this.mouseover = function(e) {
-		//SAER.video.hideCursor(1);
+		if (SAEV_config.video.hideCursor)
+			SAER.video.hideCursor(true);
+
 		this.mousemove(e);
 		lx = cx;
 		ly = cy;
 	};
 
 	this.mouseout = function(e) {
-		//SAER.video.hideCursor(0);
 		this.mouseup(e);
+
+		if (SAEV_config.video.hideCursor)
+			SAER.video.hideCursor(false);
 	};
 
 	this.mousemove = function(e) {

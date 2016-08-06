@@ -587,8 +587,17 @@ function ScriptedAmigaEmulator() {
 	};
 
 	this.mute = function(mute) {
-		this.audio.mute(mute);
-		return SAEE_None;
+		if (this.running) {
+			this.audio.mute(mute);
+			if (mute)
+				SAEF_log("sae.mute() audio muted");
+			else
+				SAEF_log("sae.mute() playing audio");
+			return SAEE_None;
+		} else {
+			SAEF_warn("sae.mute() emulation not running");
+			return SAEE_NotRunning;
+		}
 	};
 
 	this.keyPress = function(e, down) {

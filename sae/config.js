@@ -575,6 +575,7 @@ function SAEO_Config() {
 		id: "",
 		enabled: false,
 		//driver: 0,
+		hideCursor: false,
 
 		scandoubler: false, //gfx_scandoubler
 		framerate: 0, //gfx_framerate
@@ -1075,6 +1076,7 @@ function SAEO_Configuration() {
 
 		p.video.id = "video";
 		p.video.enabled = true;
+		p.video.hideCursor = true;
 		p.video.scandoubler = false;
 		p.video.framerate = 1;
 		p.video.hresolution = SAEC_Config_Video_HResolution_HiRes;
