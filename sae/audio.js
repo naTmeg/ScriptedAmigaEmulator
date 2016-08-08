@@ -368,6 +368,7 @@ function SAEO_Audio() {
 	}
 
 	function setup_sound() { //init_sound()
+		muted = paused = false;
 		//SAER.gui.data.sndbuf_status = 3;
 		//SAER.gui.data.sndbuf = 0;
 		if (!have_sound)
@@ -381,8 +382,6 @@ function SAEO_Audio() {
 	}
 
 	function reset_sound() { //reset_sound()
-		muted = paused = false;
-
 		cache.readoffset = 0;
 		cache.writeoffset = 0;
 		cache.wait = true;
