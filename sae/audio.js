@@ -214,22 +214,25 @@ function SAEO_Audio() {
 	const INV32768 = 1.0 / 32768; /* mul is always fasten than div */
 
 	function scaleplay(e, buffer, frames) {
+		var chn=SAEV_config.audio.channels;
+		var z=e.outputBuffer.length;
 		if (muted) {
-			for (var ch = 0; ch < SAEV_config.audio.channels; ch++) {
+			for (var ch = 0; ch < chn; ch++) {
 				var data = e.outputBuffer.getChannelData(ch);
-				for (var i = 0; i < e.outputBuffer.length; i++)
+				for (var i = 0; i < z; i++)
 					data[i] = 0.0;
 			}
 			return;
 		}
 		/*if (driver.context.sampleRate != used_freq) {
 		} else*/ {
-			var step = frames / e.outputBuffer.length;
+			var step = frames / z;
 
-			for (var ch = 0; ch < SAEV_config.audio.channels; ch++) {
+			for (var ch = 0; ch < chn; ch++) {
 				var data = e.outputBuffer.getChannelData(ch);
-				for (var i = 0, j = 0.0; i < e.outputBuffer.length; i++, j += step)
-					data[i] = buffer[ch][j >>> 0] * INV32768;
+				var tbuf=buffer[ch];
+				for (var i = 0, j = 0.0; i < z; i++, j += step)
+					data[i] = tbuf[j >>> 0] * INV32768;
 			}
 		}
 	}
