@@ -824,12 +824,18 @@ function SAEO_CIA() {
 		if (SAEV_config.ports[0].type == SAEC_Config_Ports_Type_Mouse) {
 			if (!SAER.input.mouse.button[0]) tmp |= 0x40;
 			if (dra & 0x40) tmp = (tmp & ~0x40) | (pra & 0x40);
-		} else if (SAEV_config.ports[0].type == SAEC_Config_Ports_Type_Joy0) {
+		} else if (
+			(SAEV_config.ports[0].type == SAEC_Config_Ports_Type_Joy) ||
+			(SAEV_config.ports[0].type == SAEC_Config_Ports_Type_JoyEmu)
+		) {
 			if (!SAER.input.joystick[0].button[0]) tmp |= 0x40;
 			if (dra & 0x40) tmp = (tmp & ~0x40) | (pra & 0x40);
 		} else tmp |= 0x40;
 
-		if (SAEV_config.ports[1].type == SAEC_Config_Ports_Type_Joy1) {
+		if (
+			(SAEV_config.ports[1].type == SAEC_Config_Ports_Type_Joy) ||
+			(SAEV_config.ports[1].type == SAEC_Config_Ports_Type_JoyEmu)
+		) {
 			if (!SAER.input.joystick[1].button[0]) tmp |= 0x80;
 			if (dra & 0x80) tmp = (tmp & ~0x80) | (pra & 0x80);
 		} else tmp |= 0x80;

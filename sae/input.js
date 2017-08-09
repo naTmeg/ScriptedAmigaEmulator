@@ -113,17 +113,57 @@ function SAEO_Mouse() {
 	}
 }
 
-function SAEO_Joystick(type) {
-	this.type = type;
-	this.button = [false, false, false];
+function SAEO_Joystick( port ) {
+	this.button = [false, false];
 	this.state = [false, false, false, false];
 	this.dir = 0;
+	this.port = port;
+	this.type = SAEC_Config_Ports_Type_None;
+	this.config = {};
 
 	this.reset = function() {
-		this.button = [false, false, false];
+		this.button = [false, false];
 		this.state = [false, false, false, false];
 	};
+	
+	this.setup = function() {
+		this.config = SAEV_config.ports[this.port];
 
+		if (this.config.type == SAEC_Config_Ports_Type_Joy) {
+
+			if ('getGamepads' in navigator) {
+				this.gamepad = navigator.getGamepads()[this.config.device];
+				if (this.gamepad && this.gamepad.connected) {
+					SAEF_log("Assigned controller " + this.gamepad.id + " #" + this.gamepad.index + " to port " + this.port);
+				} else {
+					console.warn("Chosen gamepad device with index " + this.config.device + " was not detected." );
+				}
+			} else {
+				window.alert("Your browser doesn't support the HTML5 Gamepad API for joysticks. Please use emulated joystick or a newer browser.")
+			};
+
+			// The gamepad API only supports polling not events
+			var joystick = this;
+			function pollGamepad() {
+				window.requestAnimationFrame(pollGamepad);
+				var pad = navigator.getGamepads()[joystick.config.device];
+				if (pad && pad.connected) {
+					joystick.button = [
+						pad.buttons[0].pressed,
+						pad.buttons[1].pressed
+					];
+					joystick.state = [
+						pad.axes[0] < -0.6, // l
+						pad.axes[1] < -0.6, // u
+						pad.axes[0] > 0.6, // r
+						pad.axes[1] > 0.6 // d
+					];
+				}
+			}
+			window.requestAnimationFrame(pollGamepad);
+		}
+	};
+	
 	this.update = function() {
 		var u = this.state[1];
 		var d = this.state[3];
@@ -575,7 +615,7 @@ function SAEO_Keyboard() {
 		}
 
 		/* joystick emul */
-		if (SAEV_config.ports[0].type == SAEC_Config_Ports_Type_Joy0) {
+		if (SAEV_config.ports[0].type == SAEC_Config_Ports_Type_JoyEmu) {
 			var l, u, r, d, f1, f2;
 			switch (SAEV_config.ports[0].move) {
 				case SAEC_Config_Ports_Move_Arrows:
@@ -628,7 +668,7 @@ function SAEO_Keyboard() {
 				}
 			}
 		}
-		if (SAEV_config.ports[1].type == SAEC_Config_Ports_Type_Joy1) {
+		if (SAEV_config.ports[1].type == SAEC_Config_Ports_Type_JoyEmu) {
 			var l, u, r, d, f1, f2;
 			switch (SAEV_config.ports[1].move) {
 				case SAEC_Config_Ports_Move_Arrows:
@@ -754,8 +794,8 @@ function SAEO_Keyboard() {
 function SAEO_Input() {
 	this.mouse = new SAEO_Mouse();
 	this.joystick = new Array(2);
-	this.joystick[0] = new SAEO_Joystick(SAEC_Config_Ports_Type_Joy0);
-	this.joystick[1] = new SAEO_Joystick(SAEC_Config_Ports_Type_Joy1);
+	this.joystick[0] = new SAEO_Joystick(0);
+	this.joystick[1] = new SAEO_Joystick(1);
 	this.keyboard = new SAEO_Keyboard();
 
 	var potgo = {
@@ -765,6 +805,8 @@ function SAEO_Input() {
 
 	this.setup = function () {
 		this.keyboard.setup();
+		this.joystick[0].setup();
+		this.joystick[1].setup();
 	};
 
 	this.cleanup = function () {
@@ -783,7 +825,7 @@ function SAEO_Input() {
 	this.keyPress = function (e, down) {
 		this.keyboard.keyPress(e, down);
 	};
-
+	  
 	this.POTGO = function (v) {
 		//SAEF_log("Input.POTGO() $%04x", v);
 		potgo.data = v;
@@ -796,13 +838,20 @@ function SAEO_Input() {
 		if (SAEV_config.ports[0].type == SAEC_Config_Ports_Type_Mouse) {
 			if (this.mouse.button[2]) v &= 0xfbff;
 			if (this.mouse.button[1]) v &= 0xfeff;
-		} else if (SAEV_config.ports[0].type == SAEC_Config_Ports_Type_Joy0) {
-			if (this.joystick[0].button[1]) v &= 0xfbff;
-			if (this.joystick[0].button[2]) v &= 0xfeff;
+		} else if (
+			(SAEV_config.ports[0].type == SAEC_Config_Ports_Type_Joy) ||
+			(SAEV_config.ports[0].type == SAEC_Config_Ports_Type_JoyEmu)
+		){
+			if (this.joystick[0].button[0]) v &= 0xfbff;
+			if (this.joystick[0].button[1]) v &= 0xfeff;
 		}
-		if (SAEV_config.ports[1].type == SAEC_Config_Ports_Type_Joy1) {
-			if (this.joystick[1].button[1]) v &= 0xbfff;
-			if (this.joystick[1].button[2]) v &= 0xefff;
+		
+		if (
+			(SAEV_config.ports[1].type == SAEC_Config_Ports_Type_Joy) ||
+			(SAEV_config.ports[1].type == SAEC_Config_Ports_Type_JoyEmu)
+		){
+			if (this.joystick[1].button[0]) v &= 0xbfff;
+			if (this.joystick[1].button[1]) v &= 0xefff;
 		}
 		//SAEF_log("Input.POTGOR() $%04x", v);
 		return v;
@@ -826,7 +875,10 @@ function SAEO_Input() {
 		if (SAEV_config.ports[0].type == SAEC_Config_Ports_Type_Mouse) {
 			this.mouse.update();
 			return this.mouse.pos;
-		} else if (SAEV_config.ports[0].type == SAEC_Config_Ports_Type_Joy0) {
+		} else if (
+			(SAEV_config.ports[0].type == SAEC_Config_Ports_Type_Joy) ||
+			(SAEV_config.ports[0].type == SAEC_Config_Ports_Type_JoyEmu)
+		) {
 			this.joystick[0].update();
 			return this.joystick[0].dir;
 		}
@@ -837,7 +889,10 @@ function SAEO_Input() {
 		if (SAEV_config.ports[1].type == SAEC_Config_Ports_Type_Mouse) {
 			this.mouse.update();
 			return this.mouse.pos;
-		} else if (SAEV_config.ports[1].type == SAEC_Config_Ports_Type_Joy1) {
+		} else if (
+			(SAEV_config.ports[1].type == SAEC_Config_Ports_Type_Joy) ||
+			(SAEV_config.ports[1].type == SAEC_Config_Ports_Type_JoyEmu)
+		) {
 			this.joystick[1].update();
 			return this.joystick[1].dir;
 		}
@@ -848,4 +903,3 @@ function SAEO_Input() {
 		//SAEF_log("Input.JOYTEST() $%04x", v);
 	}
 }
-

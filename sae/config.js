@@ -372,8 +372,8 @@ const SAEC_Config_Audio_Interpol_Crux = 3;
 
 const SAEC_Config_Ports_Type_None = 0;
 const SAEC_Config_Ports_Type_Mouse = 1;
-const SAEC_Config_Ports_Type_Joy0 = 2;
-const SAEC_Config_Ports_Type_Joy1 = 3;
+const SAEC_Config_Ports_Type_Joy = 2;
+const SAEC_Config_Ports_Type_JoyEmu = 3;
 
 const SAEC_Config_Ports_Move_None = 0;
 const SAEC_Config_Ports_Move_Arrows = 1;
@@ -675,7 +675,7 @@ function SAEO_Config() {
 		move: SAEC_Config_Ports_Move_WASD,
 		fire: [49,50]
 	}, {
-		type: SAEC_Config_Ports_Type_Joy1,
+		type: SAEC_Config_Ports_Type_JoyEmu,
 		move: SAEC_Config_Ports_Move_Arrows,
 		fire: [16,17]
 	}];
@@ -1161,7 +1161,8 @@ function SAEO_Configuration() {
 		p.ports[0].type = SAEC_Config_Ports_Type_Mouse;
 		p.ports[0].move = SAEC_Config_Ports_Move_WASD;
 		p.ports[0].fire = [49,50];
-		p.ports[1].type = SAEC_Config_Ports_Type_Joy1;
+		p.ports[1].type = SAEC_Config_Ports_Type_JoyEmu;
+		p.ports[1].device = 0;
 		p.ports[1].move = SAEC_Config_Ports_Move_Arrows;
 		p.ports[1].fire = [16,17];
 		/*memset (&p.jports[0], 0, sizeof (struct jport));

@@ -63,6 +63,8 @@ input[type=text] {
 
 /*---------------------------------*/
 
+.hidden { display: none; }
+
 .gray { color:gray; }
 .green { color:green; }
 .orange { color:orange; }
