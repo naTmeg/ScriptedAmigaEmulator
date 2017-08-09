@@ -1161,7 +1161,7 @@ function SAEO_Configuration() {
 		p.ports[0].type = SAEC_Config_Ports_Type_Mouse;
 		p.ports[0].move = SAEC_Config_Ports_Move_WASD;
 		p.ports[0].fire = [49,50];
-		p.ports[1].type = SAEC_Config_Ports_Type_Joy;
+		p.ports[1].type = SAEC_Config_Ports_Type_JoyEmu;
 		p.ports[1].device = 0;
 		p.ports[1].move = SAEC_Config_Ports_Move_Arrows;
 		p.ports[1].fire = [16,17];
