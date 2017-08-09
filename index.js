@@ -1180,29 +1180,30 @@ function setAdvandedConfig() {
 function setAvailableGamepads( select_id ) {
 
 	var sel = document.getElementById(select_id);
-	var gamepads = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads() : []);
-
-	/* Clear list */
-	for(var i = sel.options.length - 1 ; i >= 0 ; i--) {sel.remove(i);};
-
-	/* Add gamepads */
-	for (i = 0; i < gamepads.length; i++) {
-		if (gamepads[i]) {
+	if (sel) {
+		var gamepads = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads() : []);
+	
+		/* Clear list */
+		for(var i = sel.options.length - 1 ; i >= 0 ; i--) {sel.remove(i);};
+	
+		/* Add gamepads */
+		for (i = 0; i < gamepads.length; i++) {
+			if (gamepads[i]) {
+				var opt = document.createElement('option');
+				opt.value = gamepads[i].index;
+				opt.innerHTML = gamepads[i].id + ' #' + i;
+				sel.appendChild(opt);
+			}
+		}
+	
+	
+		/* Add placeholder if no devices found */
+		if (sel.options.length == 0) {
 			var opt = document.createElement('option');
-			opt.value = gamepads[i].index;
-			opt.innerHTML = gamepads[i].id + ' #' + i;
+			opt.value = '';
+			opt.innerHTML = 'Not Detected. Press a button on controller';
 			sel.appendChild(opt);
 		}
-	}
-
-
-	/* Add placeholder if no devices found */
-	if (sel.options.length == 0) {
-		var opt = document.createElement('option');
-		opt.value = '';
-		opt.innerHTML = 'No controllers detected';
-		opt.disabled = true;
-		sel.appendChild(opt);
 	}
 }
 
@@ -2731,3 +2732,17 @@ function dskchgSelect() {
 			sae.insert(n);
 	}
 }
+
+/* Detect changes in connected gamepads/joysticks */
+window.addEventListener("gamepadconnected", function(e) {
+	SAEF_log("New gamepad " + e.gamepad.id + " connected");
+	setAvailableGamepads('cfg_ports_0_joy_device'); 
+	setAvailableGamepads('cfg_ports_1_joy_device');
+});
+window.addEventListener("gamepaddisconnected", function(e) {
+	window.setTimeout(function(){
+		SAEF_log("Gamepad " + e.gamepad.id + " disconnected");
+		setAvailableGamepads('cfg_ports_0_joy_device');
+		setAvailableGamepads('cfg_ports_1_joy_device');
+	}, 100);
+});
