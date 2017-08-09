@@ -1487,16 +1487,17 @@
 								<div class="page" id="cfg_page_ports">
 									<table>
 										<tr>
-											<td class="arm">Mouse</td>
+											<td class="arm">Port 1</td>
 											<td>
 												<select id="cfg_ports_0" size="1" onchange="portUpdate(0)">
 													<option value="0">Disabled</option>
 													<option value="1">Mouse</option>
 													<option value="2">Joystick</option>
+													<option value="3">Emulated</option>
 												</select>
 											</td>
 											<td>
-												<div id="cfg_ports_0_grp">
+												<div id="cfg_ports_0_joyemu_grp">
 													Move
 													<select id="cfg_ports_0_move" size="1">
 														<option value="1">Arrows</option>
@@ -1556,19 +1557,27 @@
 														<option value="50">2</option>
 													</select>
 												</div>
+												<div id="cfg_ports_0_joy_grp" class="hidden">
+													Device
+													<select id="cfg_ports_0_joy_device" size="1">
+														<option value="0" disabled>No controllers detected</option>
+														<!-- Populated with connected gamepads via HTML5 Gamepad API -->
+													</select>											
+												</div>
 											</td>
 											<td style="width:100%"></td>
 										</tr>
 										<tr>
-											<td class="arm">Game</td>
+											<td class="arm">Port 2</td>
 											<td>
 												<select id="cfg_ports_1" size="1" onchange="portUpdate(1)">
 													<option value="0">Disabled</option>
-													<option value="3">Joystick</option>
+													<option value="2">Joystick</option>
+													<option value="3">Emulated</option>
 												</select>
 											</td>
 											<td>
-												<div id="cfg_ports_1_grp">
+												<div id="cfg_ports_1_joyemu_grp">
 													Move
 													<select id="cfg_ports_1_move" size="1">
 														<option value="1">Arrows</option>
@@ -1628,6 +1637,13 @@
 														<option value="50">2</option>
 													</select>
 												</div>
+												<div id="cfg_ports_1_joy_grp" class="hidden">
+													Device
+													<select id="cfg_ports_1_joy_device" size="1">
+														<option value="" disabled>No controllers detected</option>
+														<!-- Populated with connected gamepads via HTML5 Gamepad API -->
+													</select>
+												</div>                 
 											</td>
 											<td style="width:100%"></td>
 										</tr>
@@ -1638,7 +1654,7 @@
 										</tr>
 										<tr>
 											<td class="arm"><input id="cfg_keyborad_enabled" type="checkbox" /></td>
-											<td class="alm" colspan="3">Enabled <span class="info">(joystick-emulation does always work)</span></td>
+											<td class="alm" colspan="3">Enabled <span class="info">(joystick-emulation doesn't always work)</span></td>
 										</tr>
 										<tr><td colspan="4"><div style="height:10px"></div></td></tr>
 										<tr>

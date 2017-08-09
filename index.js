@@ -1158,19 +1158,52 @@ function setAdvandedConfig() {
 	setSelect("cfg_ports_0_move", cfg.ports[0].move);
 	setSelect("cfg_ports_0_fire_1", cfg.ports[0].fire[0]);
 	setSelect("cfg_ports_0_fire_2", cfg.ports[0].fire[1]);
-	styleDisplayInline("cfg_ports_0_grp", cfg.ports[0].type == SAEC_Config_Ports_Type_Joy0);
-
+	styleDisplayInline("cfg_ports_0_joyemu_grp", cfg.ports[0].type == SAEC_Config_Ports_Type_JoyEmu);
+	styleDisplayInline("cfg_ports_0_joy_grp", cfg.ports[0].type == SAEC_Config_Ports_Type_Joy);
+	setAvailableGamepads('cfg_ports_0_joy_device');
+	
 	setSelect("cfg_ports_1", cfg.ports[1].type);
 	setSelect("cfg_ports_1_move", cfg.ports[1].move);
 	setSelect("cfg_ports_1_fire_1", cfg.ports[1].fire[0]);
 	setSelect("cfg_ports_1_fire_2", cfg.ports[1].fire[1]);
-	styleDisplayInline("cfg_ports_1_grp", cfg.ports[1].type == SAEC_Config_Ports_Type_Joy1);
-
+	styleDisplayInline("cfg_ports_1_joyemu_grp", cfg.ports[1].type == SAEC_Config_Ports_Type_JoyEmu);
+	styleDisplayInline("cfg_ports_1_joy_grp", cfg.ports[1].type == SAEC_Config_Ports_Type_Joy);
+	setAvailableGamepads('cfg_ports_1_joy_device');
+	
 	setCheckbox("cfg_keyborad_enabled", cfg.keyboard.enabled);
 
 	setCheckbox("cfg_serial_enabled", cfg.serial.enabled);
 
 	styleDisplayTableCell("controls_disk", 1);
+}
+
+function setAvailableGamepads( select_id ) {
+
+	var sel = document.getElementById(select_id);
+	var gamepads = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads() : []);
+
+	/* Clear list */
+	for(var i = sel.options.length - 1 ; i >= 0 ; i--) {sel.remove(i);};
+
+	/* Add gamepads */
+	for (i = 0; i < gamepads.length; i++) {
+		if (gamepads[i]) {
+			var opt = document.createElement('option');
+			opt.value = gamepads[i].index;
+			opt.innerHTML = gamepads[i].id + ' #' + i;
+			sel.appendChild(opt);
+		}
+	}
+
+
+	/* Add placeholder if no devices found */
+	if (sel.options.length == 0) {
+		var opt = document.createElement('option');
+		opt.value = '';
+		opt.innerHTML = 'No controllers detected';
+		opt.disabled = true;
+		sel.appendChild(opt);
+	}
 }
 
 function getAdvandedFloppy() {
@@ -1360,7 +1393,7 @@ function getAdvandedConfig() {
 
 	/* ports */
 	cfg.ports[0].type = getSelect("cfg_ports_0");
-	if (cfg.ports[0].type == SAEC_Config_Ports_Type_Joy0) {
+	if (cfg.ports[0].type == SAEC_Config_Ports_Type_JoyEmu) {
 		cfg.ports[0].move = getSelect("cfg_ports_0_move");
 		cfg.ports[0].fire[0] = getSelect("cfg_ports_0_fire_1");
 		cfg.ports[0].fire[1] = getSelect("cfg_ports_0_fire_2");
@@ -1369,8 +1402,12 @@ function getAdvandedConfig() {
 			return false;
 		}
 	}
+	if (cfg.ports[0].type == SAEC_Config_Ports_Type_Joy) {
+		cfg.ports[0].device = getSelect("cfg_ports_0_joy_device");
+	}
+  
 	cfg.ports[1].type = getSelect("cfg_ports_1");
-	if (cfg.ports[1].type == SAEC_Config_Ports_Type_Joy1) {
+	if (cfg.ports[1].type == SAEC_Config_Ports_Type_JoyEmu) {
 		cfg.ports[1].move = getSelect("cfg_ports_1_move");
 		cfg.ports[1].fire[0] = getSelect("cfg_ports_1_fire_1");
 		cfg.ports[1].fire[1] = getSelect("cfg_ports_1_fire_2");
@@ -1379,7 +1416,13 @@ function getAdvandedConfig() {
 			return false;
 		}
 	}
-
+	if (cfg.ports[1].type == SAEC_Config_Ports_Type_Joy) {
+		cfg.ports[1].device = getSelect("cfg_ports_1_joy_device");
+		if (cfg.ports[0].type == SAEC_Config_Ports_Type_Joy && cfg.ports[1].device == cfg.ports[0].device) {
+			alert("Joystick device on port 2 can't be the same device used on port 1.");
+			return false;
+		}
+	}
 	cfg.keyboard.enabled = getCheckbox("cfg_keyborad_enabled");
 
 	cfg.serial.enabled = getCheckbox("cfg_serial_enabled");
@@ -2460,11 +2503,20 @@ function channelsUpdate() {
 /*---------------------------------*/
 
 function portUpdate(n) {
-	var v = getSelect("cfg_ports_"+n);
-	if (n == 0)
-		styleDisplayInline("cfg_ports_0_grp", v == SAEC_Config_Ports_Type_Joy0);
-	else
-		styleDisplayInline("cfg_ports_1_grp", v == SAEC_Config_Ports_Type_Joy1);
+	var v = getSelect("cfg_ports_" + n);
+	if (n == 0) {
+		styleDisplayInline("cfg_ports_0_joyemu_grp", v == SAEC_Config_Ports_Type_JoyEmu);
+		styleDisplayInline("cfg_ports_0_joy_grp", v == SAEC_Config_Ports_Type_Joy);
+		if (v == SAEC_Config_Ports_Type_Joy) {
+			setAvailableGamepads("cfg_ports_0_joy_device");
+		}
+	} else {
+		styleDisplayInline("cfg_ports_1_joyemu_grp", v == SAEC_Config_Ports_Type_JoyEmu);
+		styleDisplayInline("cfg_ports_1_joy_grp", v == SAEC_Config_Ports_Type_Joy);
+		if (v == SAEC_Config_Ports_Type_Joy) {
+			setAvailableGamepads("cfg_ports_1_joy_device");
+		}
+	}
 }
 
 /*-----------------------------------------------------------------------*/
