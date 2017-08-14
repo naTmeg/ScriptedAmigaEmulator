@@ -92,6 +92,8 @@ const SAEE_Video_LinkShader = 44;
 
 const SAEE_Audio_RequiresWebAudio = 50;
 
+const SAEE_Input_GamepadNotReady = 60;
+
 /*-----------------------------------------------------------------------*/
 /* global references */
 
@@ -147,7 +149,11 @@ const SAEC_info = (function() {
 		},
 		video: {
 			canvas: false,
-			webGL: false
+			webGL: false,
+			pointerLock: false
+		},
+		input: {
+			gamepad: false
 		}
 	};
 
@@ -216,6 +222,7 @@ const SAEC_info = (function() {
 			var ctx = canvas.getContext("2d");
 			var imageData = ctx.createImageData(16, 16);
 			info.video.canvas = true;
+
 			try {
 				const glParams = {
 					alpha: false,
@@ -229,8 +236,15 @@ const SAEC_info = (function() {
 				ctx = canvas.getContext("webgl", glParams) || canvas.getContext("experimental-webgl", glParams);
 				info.video.webGL = true;
 			} catch(e) {}
+
+			if (canvas.requestPointerLock || canvas.mozRequestPointerLock)
+				info.video.pointerLock = true;
 		} catch(e) {}
 	}
+
+	/* input */
+	if (navigator.getGamepads || navigator.webkitGetGamepads)
+		info.input.gamepad = true;
 
 	return info;
 })();
@@ -454,9 +468,8 @@ function ScriptedAmigaEmulator() {
 			return err;
 		if ((err = this.audio.obtain()) != SAEE_None)
 			return err;
-
-		this.input.setup(); //inputdevice_init();
-
+		if ((err = this.input.setup()) != SAEE_None) //inputdevice_init();
+			return err;
 		if ((err = this.gui.setup()) != SAEE_None)
 			return err;
 

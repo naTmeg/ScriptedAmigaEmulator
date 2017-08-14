@@ -90,6 +90,7 @@ function SAEO_Video() {
 		this.ctx = null;
 		this.texture = null;
 		this.surface = null;
+		this.requestPointerLock = null;
 
 		this.div = null;
 		this.shown = false;
@@ -194,6 +195,24 @@ function SAEO_Video() {
 		return SAEE_None;
 	}
 
+	function pointerLockChange() {
+		if (document.pointerLockElement === hAmigaWnd.canvas || document.mozPointerLockElement === hAmigaWnd.canvas) {
+			hAmigaWnd.canvas.onmousedown = function(e) {
+				SAER.input.mouse.mousedown(e);
+			};
+			hAmigaWnd.canvas.onmouseup = function(e) {
+				SAER.input.mouse.mouseup(e);
+			};
+			document.addEventListener("mousemove", SAER.input.mouse.mousemove_locked, false);
+			//SAEF_log("sae.video() mouse-pointer locked");
+		} else {
+			hAmigaWnd.canvas.onmousedown = function(e) {};
+			hAmigaWnd.canvas.onmouseup = function(e) {};
+			document.removeEventListener("mousemove", SAER.input.mouse.mousemove_locked, false);
+			//SAEF_log("sae.video() mouse-pointer unlocked");
+		}
+	}
+
 	function CreateWindow(left, top, width, height) {
 		var hWnd = new HWND();
 
@@ -237,26 +256,48 @@ function SAEO_Video() {
 			return false;
 		};
 		if (SAEV_config.ports[0].type == SAEC_Config_Ports_Type_Mouse) {
-			hWnd.canvas.onmousedown = function(e) {
-				SAER.input.mouse.mousedown(e);
-			};
-			hWnd.canvas.onmouseup = function(e) {
-				SAER.input.mouse.mouseup(e);
-			};
-			hWnd.canvas.onmouseover = function(e) {
-				SAER.input.mouse.mouseover(e);
-			};
-			hWnd.canvas.onmouseout = function(e) {
-				SAER.input.mouse.mouseout(e);
-			};
-			hWnd.canvas.onmousemove = function(e) {
-				SAER.input.mouse.mousemove(e);
+			if (SAEV_config.video.cursor == SAEC_Config_Video_Cursor_Lock)
+				hWnd.canvas.requestPointerLock = hWnd.canvas.requestPointerLock || hWnd.canvas.mozRequestPointerLock;
+			else
+				hWnd.canvas.requestPointerLock = null;
+
+			if (typeof hWnd.canvas.requestPointerLock == "function") {
+				document.addEventListener("pointerlockchange", pointerLockChange, false);
+				document.addEventListener("mozpointerlockchange", pointerLockChange, false);
+
+				hWnd.canvas.onclick = function(e) {
+					if (!(document.pointerLockElement === hAmigaWnd.canvas || document.mozPointerLockElement === hAmigaWnd.canvas))
+						hWnd.canvas.requestPointerLock();
+				};
+			} else {
+				hWnd.canvas.onmousedown = function(e) {
+					SAER.input.mouse.mousedown(e);
+				};
+				hWnd.canvas.onmouseup = function(e) {
+					SAER.input.mouse.mouseup(e);
+				};
+				hWnd.canvas.onmouseover = function(e) {
+					SAER.input.mouse.mouseover(e);
+				};
+				hWnd.canvas.onmouseout = function(e) {
+					SAER.input.mouse.mouseout(e);
+				};
+				hWnd.canvas.onmousemove = function(e) {
+					SAER.input.mouse.mousemove(e);
+				};
 			}
 		}
 		return hWnd;
 	}
 
 	function DestroyWindow(hWnd) {
+		if (SAEV_config.ports[0].type == SAEC_Config_Ports_Type_Mouse) {
+			if (typeof hWnd.canvas.requestPointerLock == "function") {
+				document.removeEventListener('pointerlockchange', pointerLockChange, false);
+				document.removeEventListener('mozpointerlockchange', pointerLockChange, false);
+			}
+			hWnd.canvas.requestPointerLock = null;
+		}
 		if (SAEV_config.video.api == SAEC_Config_Video_API_WebGL)
 			hWnd.texture = null;
 		else if (SAEV_config.video.api == SAEC_Config_Video_API_Canvas)
@@ -286,10 +327,8 @@ function SAEO_Video() {
 			hWnd.shown = true;
 		}
 		else if (nCmdShow == SW_HIDE && hWnd.shown) {
-			if (hWnd.div !== null) {
+			if (hWnd.div !== null)
 				hWnd.div.removeChild(hWnd.canvas);
-				hWnd.canvas = null;
-			}
 
 			hWnd.shown = false;
 		}

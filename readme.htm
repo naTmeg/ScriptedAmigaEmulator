@@ -21,10 +21,12 @@
 						<li><a href="readme.htm#limits">Limits</a></li>
 						<li style="list-style:none"><div style="height:8px"></div></li>
 						<li><a href="readme.htm#usage">Usage</a></li>
+						<li><a href="readme.htm#api">API</a></li>
 						<li><a href="readme.htm#safety">Safety</a></li>
 						<li><a href="readme.htm#privacy">Privacy</a></li>
 						<li style="list-style:none"><div style="height:8px"></div></li>
 						<li><a href="readme.htm#support">Your game or demo</a></li>
+						<li><a href="readme.htm#references">References</a></li>
 						<li style="list-style:none"><div style="height:8px"></div></li>
 						<li><a href="readme.htm#author">Author</a></li>
 						<li><a href="readme.htm#thanks">Thanks</a></li>
@@ -57,6 +59,8 @@
 							<ul>
 								<li>WegGL/Canvas2D- and WebAudio-extensions.</li>
 								<li>Typed-arrays and FileReader-extension.</li>
+								<li>pointerLock-extension. (optional)</li>
+								<li>gamepad-extension. (optional)</li>
 								<li>The browser should support compilation of javascript-code to native-code. (JIT)</li>
 								<li>The browser should be able to use multiple cpu-cores on a single thread/tab.</li>
 								<li>Memory-requirements are between 200MB to 1.5GB depending on configuration and browser.</li>
@@ -307,6 +311,21 @@
 								<li>Or, go to &quot;Chipset/Features/Manual&quot; and select &quot;Onboard-IDE&quot; or &quot;PCMCIA-slot&quot; manually.</li>
 							</ul>
 						</li>
+						<li>If gamepads/joysticks did not get recognized
+							<ul>
+								<li>Try to press buttons on the controller.</li>
+								<li>Open a new tab and return to the SAE-tab. (Chrome)</li>
+							</ul>
+						</li>
+					</ul>
+				</li>
+			</ul>
+			<ul id="api">
+				<li><span class="label">API</span>
+					<ul>
+						<li>There's no written documentation about the API yet, blame me. At least there's a commented example:</li>
+						<li><a href="example.htm">example 1</a></li>
+						<li><a href="example2.htm">example 2</a></li>
 					</ul>
 				</li>
 			</ul>
@@ -342,6 +361,14 @@
 					</ul>
 				</li>
 			</ul>
+			<ul id="references">
+				<li><span class="label">Some sites using this project</span>
+					<ul>
+						<li><a target="_blank" href="https://archive.org/details/softwarelibrary_amiga">archive.org</a></li>
+						<li><a target="_blank" href="http://retroweb.maclab.org/articles/Amiga-500.html">maclab.org</a></li>
+					</ul>
+				</li>
+			</ul>
 			<ul>
 				<li style="list-style:none"><div class="linehoriz"></div></li>
 			</ul>
@@ -360,7 +387,7 @@
 						<li><a target="_blank" href="http://winuae.net">WinUAE team</a>, especially Toni Wilen.</li>
 						<li><a target="_blank" href="http://web.archive.org/web/20130812173347/http://www.amigaemulator.org/">Bernd Schmidt</a>, the father of amiga-emulation.</li>
 						<li><a target="_blank" href="http://aros.org">AROS team</a></li>
-						<li>All people who contributed their games. Thanks for your support!</li>
+						<li>All people who contributed their software or helped via github. Thanks for your support!</li>
 					</ul>
 				</li>
 			</ul>
@@ -397,6 +424,40 @@
 			<ul id="history">
 				<li><span class="label">History</span>
 					<ul>
+						<li><span class="label">0.9.0 fixes and updates (2016-2017):</span>
+							<ul>
+								<li>Config
+									<ul>
+										<li>Added hooks that get called after the emulator has been started, stopped, reseted or paused.</li>
+										<li>Fixed invalid access of the config-object. Thanks 'db48x'.</li>
+									</ul>
+								</li>
+								<li>Input
+									<ul>
+										<li>Added experimental support for the 'Gamepad API'. It is disabled by default.<br />
+										    Go to 'Config/Ports' to enable it. Thanks to 'SpliFF' for the basic implementation.</li>
+									</ul>
+								</li>
+								<li>Video
+									<ul>
+										<li>A canvas-element can now used directly as output. See <a href="example2.htm">example2.htm</a></li>
+										<li>The mouse-pointer can now be hidden or locked via the 'pointerLock API'.<br />
+											 'pointerLock' is enabled by default, all browsers should support that. See 'Config/Video/Cursor'.</li>
+									</ul>
+								</li>
+								<li>Audio
+									<ul>
+										<li>Added mute-support over sae.mute()</li>
+									</ul>
+								</li>
+								<li>Common
+									<ul>
+										<li>Added an error if a ZIP-file get detected. Compressed files are not yet supported.</li>
+									</ul>
+								</li>
+							</ul>
+						</li>
+						<li style="list-style-type:none"><br/></li>
 						<li><span class="label">0.9.0 (15.07.2016)</span>
 							<ul>
 								<li>CPU
@@ -833,7 +894,7 @@
 		</div>
 		<div style="height:5px"></div>
 		<div id="foot" class="foot" style="line-height:14px">
-			<span class="gray">2012-2016 Rupert Hausberger</span> |
+			<span class="gray">2012-2017 Rupert Hausberger</span> |
 			<span class="gray">Description</span> |
 			<a target="_blank" href="disass.htm">Disassembler</a> |
 			<a target="_blank" href="https://github.com/naTmeg/ScriptedAmigaEmulator">Source-code</a>

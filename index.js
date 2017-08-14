@@ -523,6 +523,7 @@ function saee2text(err) {
 		case SAEE_Video_ComphileShader:		return "Can not compile the required shader-program.";
 		case SAEE_Video_LinkShader:			return "Can not link the required shader-program.";
 		case SAEE_Audio_RequiresWebAudio:	return "This browser does not support 'WebAudio'. Please upgrade to an actual version.";
+		case SAEE_Input_GamepadNotReady:		return "The selected joystick-/gamepad-device is not ready.\n\nTry to press some buttons after closing this window...";
 		default: return "("+err+")";
 	}
 }
@@ -994,11 +995,21 @@ function fixAdvandedConfig() {
 			cfg.video.enabled = false;
 		else if (SAEV_config.video.api == SAEC_Config_Video_API_WebGL && !inf.video.webGL)
 			SAEV_config.video.api = SAEC_Config_Video_API_Canvas;
+
+		if (SAEV_config.video.cursor == SAEC_Config_Video_Cursor_Lock && !inf.video.pointerLock)
+			SAEV_config.video.cursor = SAEC_Config_Video_Cursor_Show;
 	}
 	/* audio */
 	if (cfg.audio.mode >= SAEC_Config_Audio_Mode_On) {
 		if (!inf.audio.webAudio)
 			cfg.audio.mode = SAEC_Config_Audio_Mode_Off_Emul;
+	}
+	/* input */
+	if (!inf.input.gamepad) {
+		if (cfg.ports[0].type == SAEC_Config_Ports_Type_Joy)
+			cfg.ports[0].type = SAEC_Config_Ports_Type_JoyEmu;
+		if (cfg.ports[1].type == SAEC_Config_Ports_Type_Joy)
+			cfg.ports[1].type = SAEC_Config_Ports_Type_JoyEmu;
 	}
 }
 
@@ -1110,6 +1121,7 @@ function setAdvandedConfig() {
 	{
 		setSelect("cfg_video_api", cfg.video.api);
 		setDisabled("cfg_video_api", inf.video.webGL == false);
+		setSelect("cfg_video_cursor", cfg.video.cursor);
 		setSelect("cfg_video_color_mode", cfg.video.colorMode);
 		setCheckbox("cfg_video_antialias", cfg.video.antialias);
 		//setRadio("cfg_video_fs", cfg.video.apmode[0].gfx_fullscreen);
@@ -1158,13 +1170,17 @@ function setAdvandedConfig() {
 	setSelect("cfg_ports_0_move", cfg.ports[0].move);
 	setSelect("cfg_ports_0_fire_1", cfg.ports[0].fire[0]);
 	setSelect("cfg_ports_0_fire_2", cfg.ports[0].fire[1]);
-	styleDisplayInline("cfg_ports_0_grp", cfg.ports[0].type == SAEC_Config_Ports_Type_Joy0);
+	styleDisplayInline("cfg_ports_0_joyemu_grp", cfg.ports[0].type == SAEC_Config_Ports_Type_JoyEmu);
+	styleDisplayInline("cfg_ports_0_joy_grp", cfg.ports[0].type == SAEC_Config_Ports_Type_Joy);
+	setSelect("cfg_ports_0_joy_device", cfg.ports[0].device);
 
 	setSelect("cfg_ports_1", cfg.ports[1].type);
 	setSelect("cfg_ports_1_move", cfg.ports[1].move);
 	setSelect("cfg_ports_1_fire_1", cfg.ports[1].fire[0]);
 	setSelect("cfg_ports_1_fire_2", cfg.ports[1].fire[1]);
-	styleDisplayInline("cfg_ports_1_grp", cfg.ports[1].type == SAEC_Config_Ports_Type_Joy1);
+	styleDisplayInline("cfg_ports_1_joyemu_grp", cfg.ports[1].type == SAEC_Config_Ports_Type_JoyEmu);
+	styleDisplayInline("cfg_ports_1_joy_grp", cfg.ports[1].type == SAEC_Config_Ports_Type_Joy);
+	setSelect("cfg_ports_1_joy_device", cfg.ports[1].device);
 
 	setCheckbox("cfg_keyborad_enabled", cfg.keyboard.enabled);
 
@@ -1302,6 +1318,7 @@ function getAdvandedConfig() {
 	cfg.video.enabled = getCheckbox("cfg_video_enabled");
 	if (cfg.video.enabled) {
 		cfg.video.api = getSelect("cfg_video_api");
+		cfg.video.cursor = getSelect("cfg_video_cursor");
 		cfg.video.colorMode = getSelect("cfg_video_color_mode");
 		cfg.video.antialias = getCheckbox("cfg_video_antialias");
 		//cfg.video.apmode[0].gfx_fullscreen = getRadio("cfg_video_fs");
@@ -1360,26 +1377,49 @@ function getAdvandedConfig() {
 
 	/* ports */
 	cfg.ports[0].type = getSelect("cfg_ports_0");
-	if (cfg.ports[0].type == SAEC_Config_Ports_Type_Joy0) {
+	if (cfg.ports[0].type == SAEC_Config_Ports_Type_JoyEmu) {
 		cfg.ports[0].move = getSelect("cfg_ports_0_move");
 		cfg.ports[0].fire[0] = getSelect("cfg_ports_0_fire_1");
 		cfg.ports[0].fire[1] = getSelect("cfg_ports_0_fire_2");
 		if (cfg.ports[0].fire[0] != SAEC_Config_Ports_Fire_None && cfg.ports[0].fire[0] == cfg.ports[0].fire[1]) {
-			alert("Fire-button 1/2 on port 0 can\"t be the same.");
+			alert("Fire-button 1/2 on mouse-port can't be the same.");
+			changePage(PID_Ports);
 			return false;
 		}
 	}
-	cfg.ports[1].type = getSelect("cfg_ports_1");
-	if (cfg.ports[1].type == SAEC_Config_Ports_Type_Joy1) {
-		cfg.ports[1].move = getSelect("cfg_ports_1_move");
-		cfg.ports[1].fire[0] = getSelect("cfg_ports_1_fire_1");
-		cfg.ports[1].fire[1] = getSelect("cfg_ports_1_fire_2");
-		if (cfg.ports[1].fire[0] != SAEC_Config_Ports_Fire_None && cfg.ports[1].fire[0] == cfg.ports[1].fire[1]) {
-			alert("Fire-button 1/2 on port 1 can\"t be the same.");
+	if (cfg.ports[0].type == SAEC_Config_Ports_Type_Joy) {
+		cfg.ports[0].device = getSelect("cfg_ports_0_joy_device");
+		if (cfg.ports[0].device == SAEC_Config_Ports_Device_None) {
+			alert("Joystick-device on mouse-port not found.");
+			changePage(PID_Ports);
 			return false;
 		}
 	}
 
+	cfg.ports[1].type = getSelect("cfg_ports_1");
+	if (cfg.ports[1].type == SAEC_Config_Ports_Type_JoyEmu) {
+		cfg.ports[1].move = getSelect("cfg_ports_1_move");
+		cfg.ports[1].fire[0] = getSelect("cfg_ports_1_fire_1");
+		cfg.ports[1].fire[1] = getSelect("cfg_ports_1_fire_2");
+		if (cfg.ports[1].fire[0] != SAEC_Config_Ports_Fire_None && cfg.ports[1].fire[0] == cfg.ports[1].fire[1]) {
+			alert("Fire-button 1/2 on game-port can't be the same.");
+			changePage(PID_Ports);
+			return false;
+		}
+	}
+	if (cfg.ports[1].type == SAEC_Config_Ports_Type_Joy) {
+		cfg.ports[1].device = getSelect("cfg_ports_1_joy_device");
+		if (cfg.ports[1].device == SAEC_Config_Ports_Device_None) {
+			alert("Joystick-device on game-port not found.");
+			changePage(PID_Ports);
+			return false;
+		}
+		if (cfg.ports[0].type == SAEC_Config_Ports_Type_Joy && cfg.ports[1].device == cfg.ports[0].device) {
+			alert("Joystick device on mouse-port can't be the same as on game-port.");
+			changePage(PID_Ports);
+			return false;
+		}
+	}
 	cfg.keyboard.enabled = getCheckbox("cfg_keyborad_enabled");
 
 	cfg.serial.enabled = getCheckbox("cfg_serial_enabled");
@@ -1397,7 +1437,7 @@ function start() {
 	if (s == S_VALID) { /* all files are downloaded or cached, go! */
 		freezeButtons(false, true);
 
-		var err = sae.start(); /* this does start the emulator */
+		var err = sae.start(); /* send start-request */
 		if (err != SAEE_None)
 			alert(saee2text(err));
 	}
@@ -1465,6 +1505,7 @@ function init() {
 	//console.log(cfg);
 
 	initHooks();
+	initGamepads();
 
 	dbInit();
 	setDatabaseConfig();
@@ -2460,11 +2501,14 @@ function channelsUpdate() {
 /*---------------------------------*/
 
 function portUpdate(n) {
-	var v = getSelect("cfg_ports_"+n);
-	if (n == 0)
-		styleDisplayInline("cfg_ports_0_grp", v == SAEC_Config_Ports_Type_Joy0);
-	else
-		styleDisplayInline("cfg_ports_1_grp", v == SAEC_Config_Ports_Type_Joy1);
+	var v = getSelect("cfg_ports_" + n);
+	if (n == 0) {
+		styleDisplayInline("cfg_ports_0_joyemu_grp", v == SAEC_Config_Ports_Type_JoyEmu);
+		styleDisplayInline("cfg_ports_0_joy_grp", v == SAEC_Config_Ports_Type_Joy);
+	} else {
+		styleDisplayInline("cfg_ports_1_joyemu_grp", v == SAEC_Config_Ports_Type_JoyEmu);
+		styleDisplayInline("cfg_ports_1_joy_grp", v == SAEC_Config_Ports_Type_Joy);
+	}
 }
 
 /*-----------------------------------------------------------------------*/
@@ -2677,5 +2721,83 @@ function dskchgSelect() {
 
 		if (cache.req(dbUrl, filename, 0xdc000, false, cfg.floppy.drive[n].file))
 			sae.insert(n);
+	}
+}
+
+/*-----------------------------------------------------------------------*/
+/* Detect changes in connected gamepads/joysticks */
+
+function setAvailableGamepads(select_id, gamepads) {
+	var sel = document.getElementById(select_id);
+	if (sel) {
+		/* Clear list */
+		for (var i = sel.options.length - 1; i >= 0; i--)
+			sel.remove(i);
+
+		/* Add gamepads */
+		for (i = 0; i < gamepads.length; i++) {
+			if (gamepads[i]) {
+				var id = gamepads[i].id, idx;
+				if ((idx = id.lastIndexOf(" (")) != -1 && idx >= 4)
+					id = id.substr(0, idx);
+
+				var opt = document.createElement("option");
+				opt.value = gamepads[i].index;
+				opt.innerHTML = "#" + i + ": " + id;
+				sel.appendChild(opt);
+			}
+		}
+		/* Add placeholder if no devices found */
+		if (sel.options.length == 0) {
+			var opt = document.createElement("option");
+			opt.value = "-1";
+			opt.innerHTML = "- no device detected (try to press a joystick-button) -";
+			sel.appendChild(opt);
+		}
+	}
+}
+function noGamepadAPI(select_id) {
+	var sel = document.getElementById(select_id);
+	if (sel) {
+		/* Clear list */
+		for (var i = sel.options.length - 1; i >= 0; i--)
+			sel.remove(i);
+
+		/* Add placeholder if no devices found */
+		if (sel.options.length == 0) {
+			var opt = document.createElement("option");
+			opt.value = "-1";
+			opt.innerHTML = "- gamepad API not found (browser-update required) -";
+			sel.appendChild(opt);
+		}
+	}
+}
+
+function initGamepads() {
+	if (inf.input.gamepad) {
+		/* first query */
+		var gamepads = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads() : []);
+		setAvailableGamepads("cfg_ports_0_joy_device", gamepads);
+		setAvailableGamepads("cfg_ports_1_joy_device", gamepads);
+
+		window.addEventListener("gamepadconnected", function(e) {
+			var gamepads = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads() : []);
+			setAvailableGamepads("cfg_ports_0_joy_device", gamepads);
+			setAvailableGamepads("cfg_ports_1_joy_device", gamepads);
+
+			SAEF_info("sae.initGamepads() device '" + e.gamepad.id + "' connected.");
+		});
+		window.addEventListener("gamepaddisconnected", function(e) {
+			window.setTimeout(function() {
+				var gamepads = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads() : []);
+				setAvailableGamepads("cfg_ports_0_joy_device", gamepads);
+				setAvailableGamepads("cfg_ports_1_joy_device", gamepads);
+
+				SAEF_info("sae.initGamepads() device '" + e.gamepad.id + "' disconnected.");
+			}, 100);
+		});
+	} else {
+		noGamepadAPI("cfg_ports_0_joy_device");
+		noGamepadAPI("cfg_ports_1_joy_device");
 	}
 }

@@ -266,6 +266,10 @@ function SAEO_Config_Mount_Data() { //uaedev_config_data
 const SAEC_Config_Video_API_Canvas = 0;
 const SAEC_Config_Video_API_WebGL = 1;
 
+const SAEC_Config_Video_Cursor_Show = 0;
+const SAEC_Config_Video_Cursor_Hide = 1;
+const SAEC_Config_Video_Cursor_Lock = 2;
+
 const SAEC_Config_Video_HResolution_LoRes = 0;
 const SAEC_Config_Video_HResolution_HiRes = 1;
 const SAEC_Config_Video_HResolution_SuperHiRes = 2;
@@ -372,8 +376,8 @@ const SAEC_Config_Audio_Interpol_Crux = 3;
 
 const SAEC_Config_Ports_Type_None = 0;
 const SAEC_Config_Ports_Type_Mouse = 1;
-const SAEC_Config_Ports_Type_Joy0 = 2;
-const SAEC_Config_Ports_Type_Joy1 = 3;
+const SAEC_Config_Ports_Type_Joy = 2;
+const SAEC_Config_Ports_Type_JoyEmu = 3;
 
 const SAEC_Config_Ports_Move_None = 0;
 const SAEC_Config_Ports_Move_Arrows = 1;
@@ -381,6 +385,8 @@ const SAEC_Config_Ports_Move_Numpad = 2;
 const SAEC_Config_Ports_Move_WASD = 3;
 
 const SAEC_Config_Ports_Fire_None = 0;
+
+const SAEC_Config_Ports_Device_None = -1;
 
 /*---------------------------------*/
 /* debug */
@@ -574,8 +580,7 @@ function SAEO_Config() {
 	this.video = {
 		id: "",
 		enabled: false,
-		//driver: 0,
-		hideCursor: false,
+		cursor: 0,
 
 		scandoubler: false, //gfx_scandoubler
 		framerate: 0, //gfx_framerate
@@ -673,11 +678,13 @@ function SAEO_Config() {
 	this.ports = [{
 		type: SAEC_Config_Ports_Type_Mouse,
 		move: SAEC_Config_Ports_Move_WASD,
-		fire: [49,50]
+		fire: [49,50],
+		device: SAEC_Config_Ports_Device_None
 	}, {
-		type: SAEC_Config_Ports_Type_Joy1,
+		type: SAEC_Config_Ports_Type_JoyEmu,
 		move: SAEC_Config_Ports_Move_Arrows,
-		fire: [16,17]
+		fire: [16,17],
+		device: SAEC_Config_Ports_Device_None
 	}];
 
 	this.keyboard = {
@@ -1076,7 +1083,7 @@ function SAEO_Configuration() {
 
 		p.video.id = "video";
 		p.video.enabled = true;
-		p.video.hideCursor = true;
+		p.video.cursor = SAEC_Config_Video_Cursor_Lock;
 		p.video.scandoubler = false;
 		p.video.framerate = 1;
 		p.video.hresolution = SAEC_Config_Video_HResolution_HiRes;
@@ -1161,9 +1168,11 @@ function SAEO_Configuration() {
 		p.ports[0].type = SAEC_Config_Ports_Type_Mouse;
 		p.ports[0].move = SAEC_Config_Ports_Move_WASD;
 		p.ports[0].fire = [49,50];
-		p.ports[1].type = SAEC_Config_Ports_Type_Joy1;
+		p.ports[0].device = SAEC_Config_Ports_Device_None;
+		p.ports[1].type = SAEC_Config_Ports_Type_JoyEmu;
 		p.ports[1].move = SAEC_Config_Ports_Move_Arrows;
 		p.ports[1].fire = [16,17];
+		p.ports[1].device = SAEC_Config_Ports_Device_None;
 		/*memset (&p.jports[0], 0, sizeof (struct jport));
 		memset (&p.jports[1], 0, sizeof (struct jport));
 		memset (&p.jports[2], 0, sizeof (struct jport));
@@ -2400,7 +2409,17 @@ function SAEO_Configuration() {
 			p.chipset.cia.tod = p.chipset.ntsc ? SAEC_Config_Chipset_CIA_TOD_60Hz : SAEC_Config_Chipset_CIA_TOD_50Hz;
 
 		built_in_chipset_prefs(p);
+
 		//inputdevice_fix_prefs(p);
+		if (p.ports[0].type == SAEC_Config_Ports_Type_Joy && p.ports[0].device == SAEC_Config_Ports_Device_None) {
+			p.ports[0].type = SAEC_Config_Ports_Type_JoyEmu;
+			SAEF_warn("config.fixup_prefs() p.ports[0].device is invalid. (falling back to joystick-emulation)");
+		}
+		if (p.ports[1].type == SAEC_Config_Ports_Type_Joy && p.ports[1].device == SAEC_Config_Ports_Device_None) {
+			p.ports[1].type = SAEC_Config_Ports_Type_JoyEmu;
+			SAEF_warn("config.fixup_prefs() p.ports[1].device is invalid. (falling back to joystick-emulation)");
+		}
+
 		return true; //err == 0;
 	}
 }

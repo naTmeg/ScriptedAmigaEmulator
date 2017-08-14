@@ -1219,11 +1219,13 @@
 										<table>
 											<tr>
 												<td class="arm"><span class="label">Driver</span></td>
-												<td colspan="3"></td>
+												<td></td>
+												<td class="arm"><span class="label">Cursor</span></td>
+												<td></td>
 											</tr>
 											<tr>
 												<td class="arm">Mode</td>
-												<td colspan="3">
+												<td>
 													<select id="cfg_video_api" size="1" onchange="videoUpdateAPI()">
 														<option value="1">WebGL</option>
 														<option value="0">Canvas</option>
@@ -1231,6 +1233,14 @@
 													<select id="cfg_video_color_mode" size="1" onchange="videoUpdateCM()">
 														<option value="2">16 bits per pixel (R5G6B5)</option>
 														<option value="5">32 bits per pixel (RGBA)</option>
+													</select>
+												</td>
+												<td class="arm">Mode</td>
+												<td class="alm">
+													<select id="cfg_video_cursor" size="1">
+														<option value="0">Always shown</option>
+														<option value="1">Hide over display</option>
+														<option value="2">Lock to display</option>
 													</select>
 												</td>
 											</tr>
@@ -1493,10 +1503,11 @@
 													<option value="0">Disabled</option>
 													<option value="1">Mouse</option>
 													<option value="2">Joystick</option>
+													<option value="3">Emulated</option>
 												</select>
 											</td>
 											<td>
-												<div id="cfg_ports_0_grp">
+												<div id="cfg_ports_0_joyemu_grp">
 													Move
 													<select id="cfg_ports_0_move" size="1">
 														<option value="1">Arrows</option>
@@ -1556,6 +1567,13 @@
 														<option value="50">2</option>
 													</select>
 												</div>
+												<div id="cfg_ports_0_joy_grp">
+													Device
+													<select id="cfg_ports_0_joy_device" size="1">
+														<option value="-1" disabled="disabled">- please wait -</option>
+														<!-- Populated with connected gamepads via HTML5 Gamepad API -->
+													</select>
+												</div>
 											</td>
 											<td style="width:100%"></td>
 										</tr>
@@ -1564,11 +1582,12 @@
 											<td>
 												<select id="cfg_ports_1" size="1" onchange="portUpdate(1)">
 													<option value="0">Disabled</option>
-													<option value="3">Joystick</option>
+													<option value="2">Joystick</option>
+													<option value="3">Emulated</option>
 												</select>
 											</td>
 											<td>
-												<div id="cfg_ports_1_grp">
+												<div id="cfg_ports_1_joyemu_grp">
 													Move
 													<select id="cfg_ports_1_move" size="1">
 														<option value="1">Arrows</option>
@@ -1628,8 +1647,19 @@
 														<option value="50">2</option>
 													</select>
 												</div>
+												<div id="cfg_ports_1_joy_grp">
+													Device
+													<select id="cfg_ports_1_joy_device" size="1">
+														<option value="-1" disabled="disabled">- please wait -</option>
+														<!-- Populated with connected gamepads via HTML5 Gamepad API -->
+													</select>
+												</div>
 											</td>
 											<td style="width:100%"></td>
+										</tr>
+										<tr>
+											<td></td>
+											<td colspan="3"><span class="info">Note: If a joystick-device get not detected, try to press some buttons on it.</span></td>
 										</tr>
 										<tr><td colspan="4"><div style="height:10px"></div></td></tr>
 										<tr>
@@ -1638,7 +1668,7 @@
 										</tr>
 										<tr>
 											<td class="arm"><input id="cfg_keyborad_enabled" type="checkbox" /></td>
-											<td class="alm" colspan="3">Enabled <span class="info">(joystick-emulation does always work)</span></td>
+											<td class="alm" colspan="3">Enabled <span class="info">(emulated joysticks do always work)</span></td>
 										</tr>
 										<tr><td colspan="4"><div style="height:10px"></div></td></tr>
 										<tr>
@@ -1662,7 +1692,7 @@
 			</div>
 			<div style="height:5px"></div>
 			<div id="foot" class="foot" style="line-height:14px">
-				<span class="gray">2012-2016 Rupert Hausberger</span> |
+				<span class="gray">2012-2017 Rupert Hausberger</span> |
 				<a target="_blank" href="readme.htm">Description</a> |
 				<a target="_blank" href="disass.htm">Disassembler</a> |
 				<a target="_blank" href="https://github.com/naTmeg/ScriptedAmigaEmulator">Source-code</a>

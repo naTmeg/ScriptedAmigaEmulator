@@ -211,11 +211,11 @@ function SAEO_Audio() {
 
 	/*---------------------------------*/
 
-	const INV32768 = 1.0 / 32768; /* mul is always fasten than div */
+	const INV32768 = 1.0 / 32768; /* mul is always faster than div */
 
 	function scaleplay(e, buffer, frames) {
-		var chn=SAEV_config.audio.channels;
-		var z=e.outputBuffer.length;
+		var chn = SAEV_config.audio.channels;
+		var z = e.outputBuffer.length;
 		if (muted) {
 			for (var ch = 0; ch < chn; ch++) {
 				var data = e.outputBuffer.getChannelData(ch);
@@ -224,13 +224,13 @@ function SAEO_Audio() {
 			}
 			return;
 		}
-		/*if (driver.context.sampleRate != used_freq) {
-		} else*/ {
+		/*if (driver.context.sampleRate != used_freq) {} else*/
+		{
 			var step = frames / z;
 
 			for (var ch = 0; ch < chn; ch++) {
 				var data = e.outputBuffer.getChannelData(ch);
-				var tbuf=buffer[ch];
+				var tbuf = buffer[ch];
 				for (var i = 0, j = 0.0; i < z; i++, j += step)
 					data[i] = tbuf[j >>> 0] * INV32768;
 			}
