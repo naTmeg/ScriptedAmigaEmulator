@@ -325,10 +325,10 @@ function SAEO_DMS() {
 			//l = (j - k) << 1;
 			l = j - k;
 			//memmove(&freq[k + 1], &freq[k], (size_t)l);
-			for (m = l; m >= 0; m--) freq[k + m + 1] = freq[k + m];
+			for (m = l-1; m >= 0; m--) freq[k + m + 1] = freq[k + m];
 			freq[k] = f;
 			//memmove(&son[k + 1], &son[k], (size_t)l);
-			for (m = l; m >= 0; m--) son[k + m + 1] = son[k + m];
+			for (m = l-1; m >= 0; m--) son[k + m + 1] = son[k + m];
 			son[k] = i;
 		}
 		/* connect prnt */
