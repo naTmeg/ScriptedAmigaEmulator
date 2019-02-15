@@ -1068,17 +1068,17 @@ function SAEO_Memory() {
 	/* BANK Extended 2nd Kickstart ROM */
 
 	function extendedkickmem2_get32(addr) {
-		addr = (addr & extendedkickmem2_bank.mask) >>> 0;
+		addr = ((addr - extendedkickmem2_bank.start) & extendedkickmem2_bank.mask) >>> 0;
 		//var m = extendedkickmem2_bank.baseaddr + addr; return do_get_mem_long ((uae_u32 *)m);
 		return ((extendedkickmem2_bank.baseaddr[addr] << 24) | (extendedkickmem2_bank.baseaddr[addr+1] << 16) | (extendedkickmem2_bank.baseaddr[addr+2] << 8) | extendedkickmem2_bank.baseaddr[addr+3]) >>> 0;
 	}
 	function extendedkickmem2_get16(addr) {
-		addr = (addr & extendedkickmem2_bank.mask) >>> 0;
+		addr = ((addr - extendedkickmem2_bank.start) & extendedkickmem2_bank.mask) >>> 0;
 		//var m = extendedkickmem2_bank.baseaddr + addr; return do_get_mem_word ((uae_u16 *)m);
 		return (extendedkickmem2_bank.baseaddr[addr] << 8) | extendedkickmem2_bank.baseaddr[addr+1];
 	}
 	function extendedkickmem2_get8(addr) {
-		addr = (addr & extendedkickmem2_bank.mask) >>> 0;
+		addr = ((addr - extendedkickmem2_bank.start) & extendedkickmem2_bank.mask) >>> 0;
 		return extendedkickmem2_bank.baseaddr[addr];
 	}
 	function extendedkickmem2_put32(addr, b) {
