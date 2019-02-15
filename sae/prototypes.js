@@ -16,15 +16,8 @@
 -------------------------------------------------------------------------*/
 /* Object */
 
-if (!Object.prototype.clone) {
-	Object.prototype.clone = function() {
-		var copy = {}; //this.constructor();
-		for (var attr in this) {
-			if (this.hasOwnProperty(attr))
-				copy[attr] = this[attr];
-		}
-		return copy;
-	};
+function cloneObject(object) {
+	return Object.assign({}, object);
 }
 
 /*-----------------------------------------------------------------------*/

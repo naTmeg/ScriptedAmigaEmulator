@@ -869,7 +869,7 @@ function SAEO_Video() {
 			}
 
 			if (fw) {
-				rc = md.rect.clone();
+				rc = cloneObject(md.rect);
 				//flags |= WS_EX_TOPMOST;
 				//style = WS_POPUP;
 				currentmode.native_width = rc.right - rc.left;
@@ -1545,9 +1545,9 @@ function SAEO_Video() {
 
 		SAER.config.fixup_prefs_dimensions_ext(p);
 		if (isfullscreen_2(p) != 0)
-			p.video.size = p.video.size_fs.clone();
+			p.video.size = cloneObject(p.video.size_fs);
 		else
-			p.video.size = p.video.size_win.clone();
+			p.video.size = cloneObject(p.video.size_win);
 
 		//md = getdisplay(p);
 		//set_config_changed();

@@ -1442,7 +1442,7 @@ function SAEO_IDE() {
 			return null;
 		var ide = idetable[ch];
 		if (ci !== null) {
-			ide.hdhfd.hfd.ci = ci.clone(); //memcpy(&ide.hdhfd.hfd.ci, ci, sizeof(struct uaedev_config_info)); //ATT
+			ide.hdhfd.hfd.ci = cloneObject(ci); //memcpy(&ide.hdhfd.hfd.ci, ci, sizeof(struct uaedev_config_info)); //ATT
 		}
 		/*if (ci.type == UAEDEV_CD && ci.device_emu_unit >= 0) {
 			device_func_init (0);

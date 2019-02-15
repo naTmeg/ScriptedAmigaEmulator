@@ -385,7 +385,7 @@ function SAEO_Hardfile() {
 			if (hfd.ci.file.size == 0)
 				return 0;
 
-			file = hfd.ci.file.clone();
+			file = cloneObject(hfd.ci.file);
 		}
 		hfd.byteswap = false;
 		hfd.adide = false;
