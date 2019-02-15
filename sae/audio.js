@@ -1517,10 +1517,10 @@ function SAEO_Audio() {
 		audio_channel[1].adk_mask = (((t >> 1) & 1) - 1) >>> 0;
 		audio_channel[2].adk_mask = (((t >> 2) & 1) - 1) >>> 0;
 		audio_channel[3].adk_mask = (((t >> 3) & 1) - 1) >>> 0;*/
-		audio_channel[0].enabled = (t &  1) == 0;
-		audio_channel[1].enabled = (t &  3) == 0;
-		audio_channel[2].enabled = (t &  7) == 0;
-		audio_channel[3].enabled = (t & 15) == 0;
+		audio_channel[0].enabled = (t & 1) == 0;
+		audio_channel[1].enabled = (t & 2) == 0;
+		audio_channel[2].enabled = (t & 4) == 0;
+		audio_channel[3].enabled = (t & 8) == 0;
 
 		if ((prevcon & 0xff) != (SAEV_Custom_adkcon & 0xff)) {
 			audio_activate();
