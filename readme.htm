@@ -344,9 +344,9 @@
 			<ul id="privacy">
 				<li><span class="label">Privacy</span>
 					<ul>
-						<li>No files or informations about files, that you are selecting from your computer, are transferred to the internet.<br />
-						<span class="info">(Note that this may not be the case for other sites, which are using this project.)</span></li>
-						<li>This site is using google-analytics for visitor-statistics. Other scripts are not used.</li>
+						<li>This site is completely free of 3rd-party stuff. (analytics, tracking, aids, ...)</li>
+						<li>No files (that you are selecting from your computer or informations about them) are transferred to the Internet.<br />
+						<span class="info">Note that this may not be the case for other sites, which are using this project.</span></li>
 					</ul>
 				</li>
 			</ul>
@@ -424,18 +424,18 @@
 			<ul id="history">
 				<li><span class="label">History</span>
 					<ul>
-						<li><span class="label">0.9.0 fixes and updates (2016-2017):</span>
+						<li><span class="label">0.9.0 fixes and updates (2016-2019):</span>
 							<ul>
 								<li>Config
 									<ul>
 										<li>Added hooks that get called after the emulator has been started, stopped, reseted or paused.</li>
-										<li>Fixed invalid access of the config-object. Thanks 'db48x'.</li>
+										<li>Fixed invalid access of the config-object. (Thanks 'db48x' for commit)</li>
 									</ul>
 								</li>
 								<li>Input
 									<ul>
 										<li>Added experimental support for the 'Gamepad API'. It is disabled by default.<br />
-										    Go to 'Config/Ports' to enable it. Thanks to 'SpliFF' for the basic implementation.</li>
+										    Go to 'Config/Ports' to enable it. (Thanks to 'SpliFF' for the basic implementation)</li>
 									</ul>
 								</li>
 								<li>Video
@@ -448,11 +448,24 @@
 								<li>Audio
 									<ul>
 										<li>Added mute-support over sae.mute()</li>
+										<li>Fixed wrong/multiple audio-channel selection at the ADKCON-register. (Thanks 'Vesuri' for commit)</li>
+									</ul>
+								</li>
+								<li>Disk
+									<ul>
+										<li>Fixed bug in DMS decompression with DEEP Compression (Thanks 'steffest' for commit)</li>
+									</ul>
+								</li>
+								<li>Memory
+									<ul>
+										<li>Fixed wrong $A80000-memory-access in combination with extended-roms > 1mb. (Thanks 'Vesuri' for commit)</li>
 									</ul>
 								</li>
 								<li>Common
 									<ul>
+										<li>Removed Google-Analytics. Sorry for the molestation.</li>
 										<li>Added an error if a ZIP-file get detected. Compressed files are not yet supported.</li>
+										<li>Fixed Object.prototype.clone() to a custom function to be compatible with 'jQuery'. (Thanks 'Vesuri' for commit)</li>
 									</ul>
 								</li>
 							</ul>
@@ -894,7 +907,7 @@
 		</div>
 		<div style="height:5px"></div>
 		<div id="foot" class="foot" style="line-height:14px">
-			<span class="gray">2012-2017 Rupert Hausberger</span> |
+			<span class="gray">2012-2019 Rupert Hausberger</span> |
 			<span class="gray">Description</span> |
 			<a target="_blank" href="disass.htm">Disassembler</a> |
 			<a target="_blank" href="https://github.com/naTmeg/ScriptedAmigaEmulator">Source-code</a>

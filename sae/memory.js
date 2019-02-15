@@ -1094,11 +1094,11 @@ function SAEO_Memory() {
 			SAEF_warn("Illegal extendedkickmem2 put32 at %08x", addr);
 	}
 	function extendedkickmem2_check(addr, size) {
-		addr = (addr & extendedkickmem2_bank.mask) >>> 0;
+		addr = ((addr - extendedkickmem2_bank.start) & extendedkickmem2_bank.mask) >>> 0;
 		return (addr + size) <= extendedkickmem2_bank.allocated;
 	}
 	function extendedkickmem2_xlate(addr) {
-		addr = (addr & extendedkickmem2_bank.mask) >>> 0;
+		addr = ((addr - extendedkickmem2_bank.start) & extendedkickmem2_bank.mask) >>> 0;
 		//return extendedkickmem2_bank.baseaddr + addr;
 		return addr;
 	}

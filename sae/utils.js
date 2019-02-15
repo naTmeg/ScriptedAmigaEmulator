@@ -196,6 +196,10 @@ function SAEF_memcpy(dst,dsto, src,srco, length) {
 
 /*-----------------------------------------------------------------------*/
 
+function SAEF_CloneObject(object) {
+	return Object.assign({}, object);
+}
+
 function SAEF_Array2String(array, start, end) {
 	if (typeof end == "undefined") end = array.length;
 	if (typeof start == "undefined") start = 0;

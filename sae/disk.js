@@ -1178,7 +1178,7 @@ function SAEO_Disk() {
 
 			//drv.newname = fname;
 			//drv.newnamewriteprotected = forcedwriteprotect;
-			drv.newfile = cloneObject(file); //ATT
+			drv.newfile = SAEF_CloneObject(file); //ATT
 			//SAER.gui.filename(dnum, file.name); //fname);
 		}
 
@@ -2422,7 +2422,7 @@ function SAEO_Disk() {
 		drv.dskeject = false;
 		//drv.newname = name;
 		//drv.newnamewriteprotected = forcedwriteprotect;
-		drv.newfile = cloneObject(file); //ATT
+		drv.newfile = SAEF_CloneObject(file); //ATT
 
 		if (file.size == 0)
 			SAER.disk.eject(num);
