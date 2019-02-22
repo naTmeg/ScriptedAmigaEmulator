@@ -23,8 +23,9 @@
 		<script type="text/javascript" src="sae/ide.js"></script>
 		<script type="text/javascript" src="sae/filesys.js"></script>
 		<script type="text/javascript" src="sae/hardfile.js"></script>
+		<script type="text/javascript" src="sae/dongle.js"></script>
 		<script type="text/javascript" src="sae/input.js"></script>
-		<script type="text/javascript" src="sae/serial.js"></script>
+		<script type="text/javascript" src="sae/serpar.js"></script>
 		<script type="text/javascript" src="sae/custom.js"></script>
 		<script type="text/javascript" src="sae/blitter.js"></script>
 		<script type="text/javascript" src="sae/copper.js"></script>
@@ -58,7 +59,7 @@
 					<br />
 					This site is the home- and demopage of the <a target="_blank" href="https://github.com/naTmeg/ScriptedAmigaEmulator">SAE</a>,
 					an <a target="_blank" href="https://en.wikipedia.org/wiki/Amiga">Amiga</a> emulator in pure HTML5 and JavaScript.<br />
-					It is heavily based on <a target="_blank" href="http://winuae.net">WinUAE</a> and does use the <a target="_blank" href="http://aros.org">AROS</a>-Kickstart replacement.
+					It is heavily based on <a target="_blank" href="http://winuae.net">WinUAE</a> and does use the <a target="_blank" href="http://aros.sourceforge.net">AROS</a>-Kickstart replacement.
 					For more informations,<br />please see the <a target="_blank" href="readme.htm">description.</a><br />
 					<br />
 					Select an item to 'Start' from the database or press 'Config' for an advanced setup...<br />
@@ -1671,12 +1672,25 @@
 										</tr>
 										<tr><td colspan="4"><div style="height:10px"></div></td></tr>
 										<tr>
-											<td class="arm"><span class="label">Serial</span></td>
+											<td class="arm"><span class="label">Hardware dongle</span></td>
 											<td colspan="3"></td>
 										</tr>
 										<tr>
-											<td class="arm"><input id="cfg_serial_enabled" type="checkbox" /></td>
-											<td class="alm" colspan="3">Enabled <span class="info">(output to developer-console)</span></td>
+											<td class="arm">Type</td>
+											<td class="alm" colspan="3">
+												<select id="cfg_dongle" size="1">
+													<option value="0">None</option>
+													<option value="1">RoboCop 3 (J2)</option>
+													<option value="2">Leaderboard (J2)</option>
+													<option value="3">B.A.T. II (Serial)</option>
+													<option value="4">Italy Soccer '90 (J2)</option>
+													<option value="5">Dames Grand Maitre (J2)</option>
+													<option value="6">Rugby Coach (J2)</option>
+													<option value="7">Cricket Captain (J1)</option>
+													<option value="8">Leviathanv (J1)</option>
+													<option value="9">Logistix (J2)</option>
+												</select>
+											</td>
 										</tr>
 									</table>
 								</div>
@@ -1708,8 +1722,8 @@
 									<td><button onclick="stop()">Stop</button></td>
 									<td><button onclick="pause(1)" id="controls_pr">Pause</button></td>
 									<td><button onclick="mute(1)" id="controls_mp">Mute</button></td>
+									<td id="controls_screen"><button onclick="screen(1)" id="controls_sw">Screen</button></td>
 									<td id="controls_disk"><button onclick="dskchgOpen()">Disk</button></td>
-									<!--<td><button onclick="toggleFullScreen()">FS</button></td>-->
 								</tr>
 							</table>
 						</div>

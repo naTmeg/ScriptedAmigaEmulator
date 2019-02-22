@@ -2,7 +2,7 @@
 | SAE - Scripted Amiga Emulator
 | https://github.com/naTmeg/ScriptedAmigaEmulator
 |
-| Copyright (C) 2012-2016 Rupert Hausberger
+| Copyright (C) 2012 Rupert Hausberger
 |
 | This program is free software; you can redistribute it and/or
 | modify it under the terms of the GNU General Public License
@@ -221,7 +221,7 @@ function SAEF_String2Array(string, start, end) {
 /*function SAEF_CopyArray(dst_array, src_array, src_end) {
 	if (typeof src_end == "undefined") src_end = src_array.length;
 	for (var i = 0; i < src_end; i++) {
-		if (typeof dst_array[i] === 'undefined' || typeof src_array[i] === 'undefined')
+		if (typeof dst_array[i] == "undefined" || typeof src_array[i] == "undefined")
 			return 1;
 		dst_array[i] = src_array[i];
 	}
@@ -231,7 +231,7 @@ function SAEF_String2Array(string, start, end) {
 function SAEF_CompareArray(array1, array2, end2) {
 	if (typeof end2 == "undefined") end2 = array2.length;
 	for (var i = 0; i < end2; i++) {
-		if (typeof array1[i] === 'undefined' || typeof array2[i] === 'undefined')
+		if (typeof array1[i] == "undefined" || typeof array2[i] == "undefined")
 			return 1;
 		if (array1[i] != array2[i])
 			return 1;
@@ -241,7 +241,7 @@ function SAEF_CompareArray(array1, array2, end2) {
 function SAEF_CompareArrayAfter(array1, start1, array2, end2) {
 	if (typeof end2 == "undefined") end2 = array2.length;
 	for (var i = 0; i < end2; i++) {
-		if (typeof array1[start1 + i] === 'undefined' || typeof array2[i] === 'undefined')
+		if (typeof array1[start1 + i] == "undefined" || typeof array2[i] == "undefined")
 			return 1;
 		if (array1[start1 + i] != array2[i])
 			return 1;

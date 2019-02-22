@@ -2,7 +2,7 @@
 | SAE - Scripted Amiga Emulator
 | https://github.com/naTmeg/ScriptedAmigaEmulator
 |
-| Copyright (C) 2012-2016 Rupert Hausberger
+| Copyright (C) 2012 Rupert Hausberger
 |
 | This program is free software; you can redistribute it and/or
 | modify it under the terms of the GNU General Public License
@@ -159,9 +159,9 @@ var dbNum = 0;
 /*---------------------------------*/
 
 const AROS_ROM_FILE = "aros-amiga-m68k-rom.bin";
-const AROS_ROM_CRC = 0xE8A40832; /* also edit roms.js on change */
+const AROS_ROM_CRC = 0x3F4FCC0A; /* also edit roms.js on change */
 const AROS_EXT_FILE = "aros-amiga-m68k-ext.bin";
-const AROS_EXT_CRC = 0x5C39D820;
+const AROS_EXT_CRC = 0xF2E52B07;
 
 /*---------------------------------*/
 
@@ -199,6 +199,7 @@ var amaxInfo = null; /* amax rom-info */
 var floppyNum = -1; /* current floppy-unit if floppy-info is shown  */
 var mountConfigNum = -1; /* current mount-unit if mount-info is shown  */
 var paused = false; /* is the emualtion currently paused? */
+var screened = false; /* is the video-output currently fullscreen? */
 var muted = false; /* is the audio-output currently muted? */
 
 var dskchg = false; /* disk-change requester in database-mode */
@@ -440,6 +441,17 @@ function switchPauseResume(p) {
 	}
 }
 
+function switchScreenWindow(s) {
+	var e = document.getElementById("controls_sw");
+	if (s) {
+		e.innerHTML = "Window";
+		e.onclick = function() { screen(false); };
+	} else {
+		e.innerHTML = "Screen";
+		e.onclick = function() { screen(true); };
+	}
+}
+
 function switchMutePlay(m) {
 	var e = document.getElementById("controls_mp");
 	if (m) {
@@ -522,6 +534,7 @@ function saee2text(err) {
 		case SAEE_Video_RequiresWegGl:		return "This browser does not support 'WebGL'. Please upgrade to an actual version.";
 		case SAEE_Video_ComphileShader:		return "Can not compile the required shader-program.";
 		case SAEE_Video_LinkShader:			return "Can not link the required shader-program.";
+		case SAEE_Video_RequiresFullscreen:	return "This browser does not support the 'Fullscreen-API'. Please upgrade to an actual version.";
 		case SAEE_Audio_RequiresWebAudio:	return "This browser does not support 'WebAudio'. Please upgrade to an actual version.";
 		case SAEE_Input_GamepadNotReady:		return "The selected joystick-/gamepad-device is not ready.\n\nTry to press some buttons after closing this window...";
 		default: return "("+err+")";
@@ -698,6 +711,7 @@ function setDatabaseConfig() {
 
 	styleDisplayBlock("config_database", 1);
 	styleDisplayTableCell("controls_disk", 0);
+	styleDisplayTableCell("controls_screen", inf.video.requestFullScreen ? 1:0);
 }
 
 function getDatabaseEntryFilename(dbe, disk, adf) {
@@ -1183,10 +1197,10 @@ function setAdvandedConfig() {
 	setSelect("cfg_ports_1_joy_device", cfg.ports[1].device);
 
 	setCheckbox("cfg_keyborad_enabled", cfg.keyboard.enabled);
-
-	setCheckbox("cfg_serial_enabled", cfg.serial.enabled);
+	setSelect("cfg_dongle", cfg.dongle);
 
 	styleDisplayTableCell("controls_disk", 1);
+	styleDisplayTableCell("controls_screen", inf.video.requestFullScreen ? 1:0);
 }
 
 function getAdvandedFloppy() {
@@ -1421,8 +1435,7 @@ function getAdvandedConfig() {
 		}
 	}
 	cfg.keyboard.enabled = getCheckbox("cfg_keyborad_enabled");
-
-	cfg.serial.enabled = getCheckbox("cfg_serial_enabled");
+	cfg.dongle = getSelect("cfg_dongle");
 
 	/* hooks */
 	setHooks();
@@ -1485,11 +1498,18 @@ function reset() {
 	sae.reset(false, false);
 }
 
+function screen(s) {
+	sae.screen(s);
+
+	screened = s;
+	switchScreenWindow(s);
+}
+
 function mute(m) {
 	sae.mute(m);
 
 	muted = m;
-	switchMutePlay(muted);
+	switchMutePlay(m);
 }
 
 /*---------------------------------*/
@@ -2531,6 +2551,10 @@ function hook_event_stopped() {
 		paused = false;
 		switchPauseResume(paused);
 	}
+	if (screened) {
+		screened = false;
+		switchScreenWindow(screened);
+	}
 	if (muted) {
 		muted = false;
 		switchMutePlay(muted);
@@ -2549,6 +2573,10 @@ function hook_event_reseted(hard) {
 		paused = false;
 		switchPauseResume(paused);
 	}
+	if (screened) {
+		screened = false;
+		switchScreenWindow(screened);
+	}
 	if (muted) {
 		muted = false;
 		switchMutePlay(muted);
@@ -2560,6 +2588,11 @@ function hook_event_reseted(hard) {
 function hook_event_paused(p) {
 	paused = p;
 	switchPauseResume(p);
+}
+
+function hook_event_screened(s) {
+	screened = s;
+	switchScreenWindow(s);
 }
 
 /*---------------------------------*/
@@ -2618,6 +2651,8 @@ function hook_led_cpu(usage, paused) {
 	}
 }
 
+/*---------------------------------*/
+
 function initHooks() {
 	e_led_power = document.getElementById("status_led_power");
 	e_led_hd = document.getElementById("status_led_hd");
@@ -2635,6 +2670,7 @@ function setHooks() {
 	cfg.hook.event.stopped = hook_event_stopped;
 	cfg.hook.event.reseted = hook_event_reseted;
 	cfg.hook.event.paused = hook_event_paused;
+	cfg.hook.event.screened = hook_event_screened;
 
 	cfg.hook.led.power = hook_led_power;
 	cfg.hook.led.hd = hook_led_hd;

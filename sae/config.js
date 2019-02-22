@@ -2,7 +2,7 @@
 | SAE - Scripted Amiga Emulator
 | https://github.com/naTmeg/ScriptedAmigaEmulator
 |
-| Copyright (C) 2012-2016 Rupert Hausberger
+| Copyright (C) 2012 Rupert Hausberger
 |
 | This program is free software; you can redistribute it and/or
 | modify it under the terms of the GNU General Public License
@@ -672,8 +672,9 @@ function SAEO_Config() {
 	struct uae_input_device keyboard_settings[MAX_INPUT_SETTINGS][MAX_INPUT_DEVICES];
 	struct uae_input_device internalevent_settings[MAX_INPUT_SETTINGS][INTERNALEVENT_COUNT];
 	TCHAR input_config_name[GAMEPORT_INPUT_SETTINGS][256];
-	int dongle;
 	int input_contact_bounce;*/
+
+	this.dongle = 0;
 
 	this.ports = [{
 		type: SAEC_Config_Ports_Type_Mouse,
@@ -693,22 +694,25 @@ function SAEO_Config() {
 	};
 
 	this.serial = {
-		enabled: false, //use_serial
-		demand: false //serial_demand
-		/*bool serial_hwctsrts;
+		enabled: false //use_serial
+		/*bool serial_demand;
+		bool serial_hwctsrts;
 		bool serial_direct;
 		int serial_stopbits;
 		int serial_crlf;
 		TCHAR sername[256];*/
 	};
 
-	/*bool parallel_demand;
-	int parallel_matrix_emulation;
-	bool parallel_postscript_emulation;
-	bool parallel_postscript_detection;
-	int parallel_autoflush_time;
-	TCHAR ghostscript_parameters[256];
-	TCHAR prtname[256];*/
+	this.parallel = {
+		enabled: false //OWN
+		/*bool parallel_demand;
+		int parallel_matrix_emulation;
+		bool parallel_postscript_emulation;
+		bool parallel_postscript_detection;
+		int parallel_autoflush_time;
+		TCHAR ghostscript_parameters[256];
+		TCHAR prtname[256];*/
+	};
 
 	/*int leds_on_screen;
 	int leds_on_screen_mask[2];
@@ -731,7 +735,16 @@ function SAEO_Config() {
 			started: function() {},
 			stopped: function() {},
 			reseted: function(hard) {},
-			paused: function(paused) {}
+			paused: function(paused) {},
+			screened: function(screened) {}
+		},
+		serial: {
+			get: function() { return -1; },
+			put: function(charCode) {}
+		},
+		parallel: {
+			get: function() { return 0; },
+			put: function(charCode) {}
 		}
 	};
 
@@ -1165,6 +1178,8 @@ function SAEO_Configuration() {
 		p.sound_auto = 1;
 		p.sound_cdaudio = false;*/
 
+		p.dongle = 0;
+
 		p.ports[0].type = SAEC_Config_Ports_Type_Mouse;
 		p.ports[0].move = SAEC_Config_Ports_Move_WASD;
 		p.ports[0].fire = [49,50];
@@ -1191,11 +1206,12 @@ function SAEO_Configuration() {
 		//p.keyboard_lang = KBD_LANG_US;
 
 		p.serial.enabled = false;
-		p.serial.demand = false;
+		//p.serial_demand = false;
 		//p.serial_hwctsrts = 1;
 		//p.serial_stopbits = 0;
 		//p.sername[0] = 0;
 
+		p.parallel.enabled = false;
 		/*p.parallel_demand = 0;
 		p.parallel_matrix_emulation = 0;
 		p.parallel_postscript_emulation = 0;

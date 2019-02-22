@@ -2,7 +2,7 @@
 | SAE - Scripted Amiga Emulator
 | https://github.com/naTmeg/ScriptedAmigaEmulator
 |
-| Copyright (C) 2012-2016 Rupert Hausberger
+| Copyright (C) 2012 Rupert Hausberger
 |
 | This program is free software; you can redistribute it and/or
 | modify it under the terms of the GNU General Public License
@@ -303,7 +303,7 @@ function SAEO_Audio() {
 	function open_sound() {
 		driver.context = null;
 		try {
-			var AudioContextDriver = window.AudioContext || window.webkitAudioContext;
+			var AudioContextDriver = window.webkitAudioContext || window.AudioContext;
 			driver.context = new AudioContextDriver();
 			driver.processor = driver.context.createScriptProcessor(paula.frames, SAEV_config.audio.channels, SAEV_config.audio.channels);
 		} catch (e) {

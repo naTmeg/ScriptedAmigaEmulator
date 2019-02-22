@@ -2,7 +2,7 @@
 | SAE - Scripted Amiga Emulator
 | https://github.com/naTmeg/ScriptedAmigaEmulator
 |
-| Copyright (C) 2012-2016 Rupert Hausberger
+| Copyright (C) 2012 Rupert Hausberger
 |
 | This program is free software; you can redistribute it and/or
 | modify it under the terms of the GNU General Public License
@@ -23,6 +23,7 @@ var inf = null; /* Reference to the info-object */
 
 var running = false; /* Is the emualtion currently running? */
 var paused = false; /* Is the emualtion currently paused? */
+var screened = false; /* Is the video-output currently fullscreen? */
 var muted = false; /* Is the audio-output currently muted? */
 
 /*-----------------------------------------------------------------------*/
@@ -65,6 +66,17 @@ function switchPauseResume(p) {
 	}
 }
 
+function switchScreenWindow(s) {
+	var e = document.getElementById("controls_sw");
+	if (s) {
+		e.innerHTML = "Window";
+		e.onclick = function() { screen(false); };
+	} else {
+		e.innerHTML = "Screen";
+		e.onclick = function() { screen(true); };
+	}
+}
+
 function switchMutePlay(m) {
 	var e = document.getElementById("controls_mp");
 	if (m) {
@@ -103,6 +115,7 @@ function saee2text(err) {
 		case SAEE_Video_RequiresWegGl:		return "This browser does not support 'WebGL'. Please upgrade to an actual version.";
 		case SAEE_Video_ComphileShader:		return "Can not compile the required shader-program.";
 		case SAEE_Video_LinkShader:			return "Can not link the required shader-program.";
+		case SAEE_Video_RequiresFullscreen:	return "This browser does not support the 'Fullscreen-API'. Please upgrade to an actual version.";
 		case SAEE_Audio_RequiresWebAudio:	return "This browser does not support 'WebAudio'. Please upgrade to an actual version.";
 		default: return "("+err+")";
 	}
@@ -195,6 +208,7 @@ function setConfig() {
 	setSelect("cfg_ntsc", cfg.chipset.ntsc ? 1 : 0);
 	setRomName();
 	setFloppyName(0);
+	setFloppyName(1);
 	switch (cfg.video.hresolution) {
 		case SAEC_Config_Video_HResolution_LoRes:
 			setSelect("cfg_res", 1);
@@ -272,16 +286,27 @@ function getConfig() {
 	/* Set hooks */
 	cfg.hook.log.error = hook_log_error;
 
-	cfg.hook.event.started = hook_event_started;
-	cfg.hook.event.stopped = hook_event_stopped;
-	cfg.hook.event.reseted = hook_event_reseted;
-	cfg.hook.event.paused = hook_event_paused;
-
 	cfg.hook.led.power = hook_led_power;
 	cfg.hook.led.hd = hook_led_hd;
 	cfg.hook.led.df = hook_led_df;
 	cfg.hook.led.fps = hook_led_fps;
 	cfg.hook.led.cpu = hook_led_cpu;
+
+	cfg.hook.event.started = hook_event_started;
+	cfg.hook.event.stopped = hook_event_stopped;
+	cfg.hook.event.reseted = hook_event_reseted;
+	cfg.hook.event.paused = hook_event_paused;
+	cfg.hook.event.screened = hook_event_screened;
+
+	/* Enable serial */
+	cfg.serial.enabled = true;
+	cfg.hook.serial.get = hook_serial_get;
+	cfg.hook.serial.put = hook_serial_put;
+
+	/* Enable parallel */
+	cfg.parallel.enabled = true;
+	cfg.hook.parallel.get = hook_parallel_get;
+	cfg.hook.parallel.put = hook_parallel_put;
 
 	/* Enable debug-log to developer-console */
 	cfg.debug.level = SAEC_Config_Debug_Level_Log;
@@ -336,6 +361,18 @@ function pause(p) {
 	true == pause, false == resume */
 	var err = sae.pause(p);
 	if (err == SAEE_None) {
+		/* ... */
+	} else
+		alert(saee2text(err));
+}
+
+function screen(s) {
+	/* Fullscreen or window.
+	true == fullscreen, false == window */
+	var err = sae.screen(s);
+	if (err == SAEE_None) {
+		screened = s;
+		switchScreenWindow(screened);
 		/* ... */
 	} else
 		alert(saee2text(err));
@@ -445,7 +482,7 @@ function init() {
 	does occure while the emulator is running. */
 
 function hook_log_error(err, msg) {
-	/* err is a number type. See SAEE_* for the error code. */
+	/* err is a number type. See SAEE_* in amiga.js for the error codes. */
 	running = false;
 	if (msg.length)
 		alert(msg);
@@ -454,12 +491,12 @@ function hook_log_error(err, msg) {
 /*---------------------------------*/
 /* Events (new 0.9.1) */
 
-/* Get call after the emulator has finished the starting-process. */
+/* Get called after the emulator has finished the starting-process. */
 function hook_event_started() {
 	running = true;
 }
 
-/* Get call after the emulator has finished the stopping-process. */
+/* Get called after the emulator has finished the stopping-process. */
 function hook_event_stopped() {
 	running = false;
 
@@ -471,10 +508,14 @@ function hook_event_stopped() {
 		muted = false;
 		switchMutePlay(muted);
 	}
+	if (screened) {
+		screened = false;
+		switchScreenWindow(screened);
+	}
 	resetLEDs();
 }
 
-/* Get call after the emulator has finished the reset-routine. */
+/* Get called after the emulator has finished the reset-routine. */
 function hook_event_reseted(hard) {
 	if (paused) {
 		paused = false;
@@ -484,12 +525,92 @@ function hook_event_reseted(hard) {
 		muted = false;
 		switchMutePlay(muted);
 	}
+	/*if (screened) {
+		screened = false;
+		switchScreenWindow(screened);
+	}*/
 }
 
-/* Get call after the emulator has finished switching between pause-resume. */
+/* Get called after the emulator has finished switching between pause-resume. */
 function hook_event_paused(p) {
 	paused = p;
 	switchPauseResume(p);
+}
+
+/* Get called after the emulator has finished switching between fullscreen-window. */
+function hook_event_screened(s) {
+	screened = s;
+	switchScreenWindow(s);
+}
+
+/*---------------------------------*/
+/* Serial */
+
+var ser_in = null; /* buffer for serial-data to be transmited */
+var in_pos = 0;
+
+/* Put some random-data in the serial-buffer */
+function test_serial_send(bytes) {
+	if (!bytes || bytes > 1024) bytes = 4;
+	ser_in = new Uint8Array(bytes);
+	for (var i = 0; i < bytes; i++)
+		ser_in[i] = 65 + ((Math.random() * 25) >>> 0); /* ASCII 'A'-'Z' */
+}
+
+/* Get ALWAYS called if the serial.device is enabled. */
+function hook_serial_get() {
+	if (ser_in !== null) {
+		if (in_pos < ser_in.length)
+			return ser_in[in_pos++];
+		else {
+			ser_in = null; /* terminate transmission */
+			in_pos = 0;
+		}
+	}
+	return -1; /* return -1 as default */
+}
+
+var ser_out = ""; /* buffer for received serial-data */
+
+/* Get called if the serial.device want to write a byte. */
+function hook_serial_put(charCode) {
+	if (charCode >= 32 && charCode < 127) /* printable? */
+		ser_out += String.fromCharCode(charCode);
+	else
+		ser_out += '.';
+
+	if (ser_out.length == 76 || charCode == 10) { /* line-full or line-feed? */
+		console.log("=== SERIAL DATA START ===");
+		console.log(ser_out);
+		console.log("=== SERIAL DATA END ===");
+		ser_out = "";
+	}
+}
+
+/*---------------------------------*/
+/* Parallel */
+
+/* Get called if the parallel.device want to read a byte. */
+function hook_parallel_get() {
+	/* Must always return a value between 0-255 */
+	return 97 + ((Math.random() * 25) >>> 0); /* ASCII 'a'-'z' */
+}
+
+var par_out = ""; /* buffer for received parallel-data */
+
+/* Get called if the parallel.device want to write a byte. */
+function hook_parallel_put(charCode) {
+	if (charCode >= 32 && charCode < 127) /* printable? */
+		par_out += String.fromCharCode(charCode);
+	else
+		par_out += '.';
+
+	if (par_out.length == 76 || charCode == 10) { /* line-full or line-feed? */
+		console.log("=== PARALLEL DATA START ===");
+		console.log(par_out);
+		console.log("=== PARALLEL DATA END ===");
+		par_out = "";
+	}
 }
 
 /*---------------------------------*/
