@@ -4193,7 +4193,7 @@ function SAEO_Disk() {
 		if (type == SAEC_Disk_Create_Type_35_DD)
 			dst[512 + 0x72] = 0x3f;
 		else
-			dst[512 + 0xdc] = 0x3f;
+			dst[512 + 0xdc] = 0xe0;
 		disk_checksum(dst,512, dst,512);
 	}
 
