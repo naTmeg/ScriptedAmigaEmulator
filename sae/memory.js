@@ -2232,7 +2232,7 @@ function SAEO_Memory() {
 		allocate();
 		chipmem_setindirect();
 
-		if (mem_hardreset > 1 || (a1000_bootrom !== null && hardreset && SAER.cpu.is_hardreset())
+		if (mem_hardreset > 1 || (a1000_bootrom !== null && hardreset && SAER.m68k.is_hardreset())
 			// || _tcscmp (currprefs.romfile, changed_prefs.romfile) != 0
 			// || _tcscmp (currprefs.romextfile, changed_prefs.romextfile) != 0
 		) {

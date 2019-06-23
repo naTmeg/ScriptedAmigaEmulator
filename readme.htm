@@ -431,11 +431,20 @@
 			<ul id="history">
 				<li><span class="label">History</span>
 					<ul>
+						<li><span class="label">0.9.12 (23.06.2019):</span>
+							<ul>
+								<li>Memory
+									<ul>
+										<li>Fixed an invalid function call at reset-state when emulating an A1000. (Thanks 'dirkwhoffmann' for info)</li>
+									</ul>
+								</li>
+							</ul>
+						</li>
 						<li><span class="label">0.9.11 (11.05.2019):</span>
 							<ul>
 								<li>Disk
 									<ul>
-										<li>Fixed wrong bitmap-usage calculation at floppy_get_rootblock() in combination with HD-floopies. (Thanks 'dirkwhoffmann' for commit)</li>
+										<li>Fixed wrong bitmap-usage calculation at floppy_get_rootblock() in combination with HD-floppies. (Thanks 'dirkwhoffmann' for commit)</li>
 									</ul>
 								</li>
 							</ul>
@@ -875,7 +884,7 @@
 								</li>
 								<li>Disk
 									<ul>
-										<li>Ported latest disk-code from WinUAE. Disk-based problems should be gone now, e.g. floopy shown as BAD or read errors.</li>
+										<li>Ported latest disk-code from WinUAE. Disk-based problems should be gone now, e.g. floppy shown as BAD or read errors.</li>
 										<li>Diskchange does now work.</li>
 										<li>Drives can be disabled now.</li>
 										<li>DD/HD types are now supported.</li>
