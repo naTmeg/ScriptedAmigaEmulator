@@ -2,7 +2,7 @@
 | SAE - Scripted Amiga Emulator
 | https://github.com/naTmeg/ScriptedAmigaEmulator
 |
-| Copyright (C) 2012-2016 Rupert Hausberger
+| Copyright (C) 2012 Rupert Hausberger
 |
 | This program is free software; you can redistribute it and/or
 | modify it under the terms of the GNU General Public License
@@ -1442,7 +1442,7 @@ function SAEO_IDE() {
 			return null;
 		var ide = idetable[ch];
 		if (ci !== null) {
-			ide.hdhfd.hfd.ci = ci.clone(); //memcpy(&ide.hdhfd.hfd.ci, ci, sizeof(struct uaedev_config_info)); //ATT
+			ide.hdhfd.hfd.ci = SAEF_CloneObject(ci); //memcpy(&ide.hdhfd.hfd.ci, ci, sizeof(struct uaedev_config_info)); //ATT
 		}
 		/*if (ci.type == UAEDEV_CD && ci.device_emu_unit >= 0) {
 			device_func_init (0);

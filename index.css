@@ -140,6 +140,10 @@ input[type=text] {
 #myVideo {
 	margin:auto;
 }
+#myVideo:-webkit-full-screen {
+  width: 100%;
+  height: 100%;
+}
 
 /*---------------------------------*/
 
@@ -257,7 +261,7 @@ input[type=text] {
 }
 
 #emul button {
-	width:64px;
+	width:75px;
 	font-size:11px;
 	font-weight:bold;
 	color:#888;

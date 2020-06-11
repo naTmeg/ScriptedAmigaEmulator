@@ -2,7 +2,7 @@
 | SAE - Scripted Amiga Emulator
 | https://github.com/naTmeg/ScriptedAmigaEmulator
 |
-| Copyright (C) 2012-2016 Rupert Hausberger
+| Copyright (C) 2012 Rupert Hausberger
 |
 | This program is free software; you can redistribute it and/or
 | modify it under the terms of the GNU General Public License
@@ -194,6 +194,23 @@ function SAEO_Video() {
 		return SAEE_None;
 	}
 
+	function pointerLockChange() {
+		var e = document.webkitPointerLockElement || document.mozPointerLockElement || document.msPointerLockElement || document.pointerLockElement;
+		if (e === hAmigaWnd.canvas)
+			SAER.input.mouse.attach(hAmigaWnd.canvas, true);
+		else
+			SAER.input.mouse.dettach(hAmigaWnd.canvas, true);
+	}
+
+	function fullscreenChange() {
+		var e = document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement || document.fullscreenElement;
+
+		hAmigaWnd.fullscreen = e === hAmigaWnd.canvas;
+
+		if (typeof SAEV_config.hook.event.screened === "function")
+			SAEV_config.hook.event.screened(hAmigaWnd.fullscreen);
+	}
+
 	function CreateWindow(left, top, width, height) {
 		var hWnd = new HWND();
 
@@ -236,27 +253,86 @@ function SAEO_Video() {
 		hWnd.canvas.oncontextmenu = function() {
 			return false;
 		};
+
 		if (SAEV_config.ports[0].type == SAEC_Config_Ports_Type_Mouse) {
-			hWnd.canvas.onmousedown = function(e) {
-				SAER.input.mouse.mousedown(e);
-			};
-			hWnd.canvas.onmouseup = function(e) {
-				SAER.input.mouse.mouseup(e);
-			};
-			hWnd.canvas.onmouseover = function(e) {
-				SAER.input.mouse.mouseover(e);
-			};
-			hWnd.canvas.onmouseout = function(e) {
-				SAER.input.mouse.mouseout(e);
-			};
-			hWnd.canvas.onmousemove = function(e) {
-				SAER.input.mouse.mousemove(e);
-			}
+			if (SAEC_info.video.pointerLock && SAEV_config.video.cursor == SAEC_Config_Video_Cursor_Lock)
+				hWnd.canvas.myRequestPointerLock = hWnd.canvas.webkitRequestPointerLock || hWnd.canvas.mozRequestPointerLock || hWnd.canvas.msRequestPointerLock || hWnd.canvas.requestPointerLock;
+			else
+				hWnd.canvas.myRequestPointerLock = null;
+
+			if (hWnd.canvas.myRequestPointerLock !== null) {
+					  if (typeof document.onwebkitpointerlockchange != "undefined") document.addEventListener("webkitpointerlockchange", pointerLockChange, false);
+				else if (typeof document.onmozpointerlockchange != "undefined") document.addEventListener("mozpointerlockchange", pointerLockChange, false);
+				//else if (typeof document.onmspointerlockchange != "undefined") document.addEventListener("mspointerlockchange", pointerLockChange, false); //ATT ?
+				else if (typeof document.onpointerlockchange != "undefined") document.addEventListener("pointerlockchange", pointerLockChange, false);
+
+				hWnd.canvas.onclick = function(e) {
+					var e = document.webkitPointerLockElement || document.mozPointerLockElement || document.msPointerLockElement || document.pointerLockElement;
+					if (e === null) hWnd.canvas.myRequestPointerLock();
+				};
+			} else
+				SAER.input.mouse.attach(hWnd.canvas, false);
+		}
+		if (SAEV_config.ports[0].type == SAEC_Config_Ports_Type_Joy && SAEV_config.ports[0].device != SAEC_Config_Ports_Device_None)
+			SAER.input.joystick[0].enable();
+		if (SAEV_config.ports[1].type == SAEC_Config_Ports_Type_Joy && SAEV_config.ports[1].device != SAEC_Config_Ports_Device_None)
+			SAER.input.joystick[1].enable();
+
+		if (SAEC_info.video.requestFullScreen) {
+			hWnd.canvas.myRequestFullscreen =
+				hWnd.canvas.webkitRequestFullscreen ||
+				hWnd.canvas.mozRequestFullScreen ||
+				hWnd.canvas.msRequestFullscreen ||
+				hWnd.canvas.requestFullScreen;
+
+			document.myFullscreenEnabled =
+				document.webkitFullscreenEnabled ||
+				document.mozFullScreenEnabled ||
+				document.msFullscreenEnabled ||
+				document.fullscreenEnabled;
+
+			document.myExitFullscreen =
+				document.webkitExitFullscreen ||
+				document.mozCancelFullScreen ||
+				document.msExitFullscreen ||
+				document.exitFullscreen;
+
+				  if (typeof document.onwebkitfullscreenchange != "undefined") document.addEventListener("webkitfullscreenchange", fullscreenChange, false);
+			else if (typeof document.onmozfullscreenchange != "undefined") document.addEventListener("mozfullscreenchange", fullscreenChange, false);
+			else if (typeof document.onMSFullscreenChange != "undefined") document.addEventListener("MSFullscreenChange", fullscreenChange, false);
+			else if (typeof document.onfullscreenchange != "undefined") document.addEventListener("fullscreenchange", fullscreenChange, false);
 		}
 		return hWnd;
 	}
 
 	function DestroyWindow(hWnd) {
+		if (SAEC_info.video.requestFullScreen) {
+				  if (typeof document.onwebkitfullscreenchange != "undefined") document.removeEventListener("webkitfullscreenchange", fullscreenChange, false);
+			else if (typeof document.onmozfullscreenchange != "undefined") document.removeEventListener("mozfullscreenchange", fullscreenChange, false);
+			else if (typeof document.onMSFullscreenChange != "undefined") document.removeEventListener("MSFullscreenChange", fullscreenChange, false);
+			else if (typeof document.onfullscreenchange != "undefined") document.removeEventListener("fullscreenchange", fullscreenChange, false);
+		}
+
+		if (SAEV_config.ports[0].type == SAEC_Config_Ports_Type_Joy && SAEV_config.ports[0].device != SAEC_Config_Ports_Device_None)
+			SAER.input.joystick[0].disable();
+		if (SAEV_config.ports[1].type == SAEC_Config_Ports_Type_Joy && SAEV_config.ports[1].device != SAEC_Config_Ports_Device_None)
+			SAER.input.joystick[1].disable();
+
+		var pl = false;
+		if (SAEV_config.ports[0].type == SAEC_Config_Ports_Type_Mouse) {
+			if (SAEC_info.video.pointerLock && SAEV_config.video.cursor == SAEC_Config_Video_Cursor_Lock) {
+				if (hWnd.canvas.myRequestPointerLock !== null) {
+						  if (typeof document.onwebkitpointerlockchange != "undefined") document.removeEventListener("webkitpointerlockchange", pointerLockChange, false);
+					else if (typeof document.onmozpointerlockchange != "undefined") document.removeEventListener("mozpointerlockchange", pointerLockChange, false);
+					//else if (typeof document.onmspointerlockchange != "undefined") document.removeEventListener("mspointerlockchange", pointerLockChange, false); //ATT ?
+					else if (typeof document.onpointerlockchange != "undefined") document.removeEventListener("pointerlockchange", pointerLockChange, false);
+					hWnd.canvas.myRequestPointerLock = null;
+					pl = true;
+				}
+			}
+			if (!pl)
+				SAER.input.mouse.dettach(hWnd.canvas, false);
+		}
 		if (SAEV_config.video.api == SAEC_Config_Video_API_WebGL)
 			hWnd.texture = null;
 		else if (SAEV_config.video.api == SAEC_Config_Video_API_Canvas)
@@ -278,16 +354,16 @@ function SAEO_Video() {
 				hWnd.div.style.width = String(currentmode.native_width)+"px";
 				hWnd.div.style.height = String(currentmode.native_height)+"px";
 				hWnd.div.appendChild(hWnd.canvas);
-			} else
+			} else {
 				hWnd.div = null;
-
+				hWnd.canvas.style.width = String(currentmode.native_width)+"px";
+				hWnd.canvas.style.height = String(currentmode.native_height)+"px";
+			}
 			hWnd.shown = true;
 		}
 		else if (nCmdShow == SW_HIDE && hWnd.shown) {
-			if (hWnd.div !== null) {
+			if (hWnd.div !== null)
 				hWnd.div.removeChild(hWnd.canvas);
-				hWnd.canvas = null;
-			}
 
 			hWnd.shown = false;
 		}
@@ -828,7 +904,7 @@ function SAEO_Video() {
 			}
 
 			if (fw) {
-				rc = md.rect.clone();
+				rc = SAEF_CloneObject(md.rect);
 				//flags |= WS_EX_TOPMOST;
 				//style = WS_POPUP;
 				currentmode.native_width = rc.right - rc.left;
@@ -1504,9 +1580,9 @@ function SAEO_Video() {
 
 		SAER.config.fixup_prefs_dimensions_ext(p);
 		if (isfullscreen_2(p) != 0)
-			p.video.size = p.video.size_fs.clone();
+			p.video.size = SAEF_CloneObject(p.video.size_fs);
 		else
-			p.video.size = p.video.size_win.clone();
+			p.video.size = SAEF_CloneObject(p.video.size_win);
 
 		//md = getdisplay(p);
 		//set_config_changed();
@@ -1945,7 +2021,7 @@ function SAEO_Video() {
 		return false;
 	}*/
 
-	function toggle_fullscreen(mode) {
+	/*function toggle_fullscreen(mode) {
 		var v = SAEV_config.video.apmode[SAEV_Playfield_picasso_on ? 1 : 0].gfx_fullscreen;
 		var wfw = SAEV_Playfield_picasso_on ? wasfullwindow_p : wasfullwindow_a;
 
@@ -1986,7 +2062,7 @@ function SAEO_Video() {
 		close_windows();
 		toggle_fullscreen(mode);
 		open_windows();
-	}
+	}*/
 
 	/*HDC gethdc (void) {
 		HDC hdc = 0;
@@ -2014,6 +2090,23 @@ function SAEO_Video() {
 		}
 		DirectDraw_ReleaseDC(hdc);
 	}*/
+
+	this.hideCursor = function(hide) {
+		if (hAmigaWnd !== null && hAmigaWnd.shown)
+			hAmigaWnd.canvas.style.cursor = hide ? "none" : "auto";
+	}
+
+	this.screen = function(screen) {
+		if (SAEC_info.video.requestFullScreen && hAmigaWnd !== null) {
+			if (screen && !hAmigaWnd.fullscreen) {
+				if (document.myFullscreenEnabled)
+					hAmigaWnd.canvas.myRequestFullscreen();
+			}
+			else if (!screen && hAmigaWnd.fullscreen) {
+				document.myExitFullscreen();
+			}
+		}
+	}
 
 	/*-----------------------------------------------------------------------*/
 

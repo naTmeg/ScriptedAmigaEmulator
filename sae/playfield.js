@@ -2,7 +2,7 @@
 | SAE - Scripted Amiga Emulator
 | https://github.com/naTmeg/ScriptedAmigaEmulator
 |
-| Copyright (C) 2012-2016 Rupert Hausberger
+| Copyright (C) 2012 Rupert Hausberger
 |
 | This program is free software; you can redistribute it and/or
 | modify it under the terms of the GNU General Public License
@@ -40,6 +40,7 @@ var SAER_Playfield_isvsync_chipset = null;
 var SAER_Playfield_isvsync = null;
 
 var SAER_Playfield_init_row_map = null;
+var SAER_Playfield_current_maxvpos = null;
 
 /*---------------------------------*/
 
@@ -5280,7 +5281,6 @@ function SAEO_Playfield() {
 	/*-----------------------------------------------------------------------*/
 	/* OWN global functions */
 
-
 	this.get_maxhpos = function() { return maxhpos; } //OWN
 	this.get_maxhpos_short = function() { return maxhpos_short; } //OWN
 	this.get_maxvpos = function() { return maxvpos; } //OWN
@@ -8779,6 +8779,7 @@ function SAEO_Playfield() {
 	function current_maxvpos() { //global
 		return maxvpos + (lof_store ? 1 : 0);
 	}
+	SAER_Playfield_current_maxvpos = current_maxvpos;
 
 	/*#if 0
 	function checklacecount(lace) {
@@ -9613,7 +9614,7 @@ function SAEO_Playfield() {
 			}
 		}
 
-		//inputdevice_hsync();
+		SAER.input.hsync(); //EMPTY
 
 		if (!nocustom()) {
 			if (!SAEV_config.chipset.blitter.cycle_exact && SAEV_Blitter_bltstate != SAEC_Blitter_bltstate_DONE && SAEF_Custom_dmaen(SAEC_Custom_DMAF_BPLEN) && diwstate == DIW_WAITING_STOP) {
@@ -11160,28 +11161,26 @@ function SAEO_Playfield() {
 	}
 
 	function reset_all_systems(hardreset) {
-		SAER.events.reset();
+		SAER.events.reset(); //init_eventtab()
 		/*#ifdef PICASSO96
 		picasso_reset();
 		#endif*/
 		//#ifdef FILESYS
-		//SAER.filesys.prepare_reset(); //OWN empty
-		SAER.filesys.reset();
+		//SAER.filesys.prepare_reset(); //filesys_prepare_reset() OWN empty
+		SAER.filesys.reset(); //filesys_reset()
 		//#endif
 		//init_shm();
-		SAER.memory.reset(hardreset);
+		SAER.memory.reset(hardreset); //memory_reset()
 		//#ifdef FILESYS
-		//SAER.filesys.start_threads(); //OWN empty
-		//SAER.hardfile.reset(); //OWN empty
+		//SAER.filesys.start_threads(); //filesys_start_threads() OWN empty
+		//SAER.hardfile.reset(); //hardfile_reset() OWN empty
 		//#endif
-		/*#ifdef PARALLEL_PORT
-		initparallel();
-		#endif
-		native2amiga_reset();
-		dongle_reset();
-		sampler_init();
-		*/
-		SAER.serial.reset(); //OWN
+		//#ifdef PARALLEL_PORT
+		//SAER.parallel.reset(); //OWN empty //initparallel()
+		//#endif
+		//native2amiga_reset();
+		SAER.dongle.reset(); //dongle_reset()
+		//sampler_init();
 	}
 
 	this.custom_reset = function(hardreset, keyboardreset) {
@@ -11306,7 +11305,7 @@ function SAEO_Playfield() {
 		SAER.audio.reset();
 		//must be called after audio_reset
 		SAEV_Custom_adkcon = 0;
-		//serial_uartbreak(0);
+		//SAER.serial.uartbreak(0); /* unused */
 		SAER.audio.update_adkmasks();
 
 		init_hardware_frame();

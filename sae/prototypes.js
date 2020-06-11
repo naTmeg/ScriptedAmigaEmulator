@@ -2,7 +2,7 @@
 | SAE - Scripted Amiga Emulator
 | https://github.com/naTmeg/ScriptedAmigaEmulator
 |
-| Copyright (C) 2012-2016 Rupert Hausberger
+| Copyright (C) 2012 Rupert Hausberger
 |
 | This program is free software; you can redistribute it and/or
 | modify it under the terms of the GNU General Public License
@@ -14,20 +14,6 @@
 | MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 | GNU General Public License for more details.
 -------------------------------------------------------------------------*/
-/* Object */
-
-if (!Object.prototype.clone) {
-	Object.prototype.clone = function() {
-		var copy = {}; //this.constructor();
-		for (var attr in this) {
-			if (this.hasOwnProperty(attr))
-				copy[attr] = this[attr];
-		}
-		return copy;
-	};
-}
-
-/*-----------------------------------------------------------------------*/
 /* Math */
 
 if (!Math.truncate) {
@@ -76,3 +62,27 @@ if (!performance.now) {
 			return Date.now() - this.timing.navigationStart;
 		};
 }
+
+/*-----------------------------------------------------------------------*/
+/* AnimationFrame */
+
+(function() {
+	var lastTime = 0;
+
+	if (!window.requestAnimationFrame) {
+		console.warn("This browser does not support 'window.requestAnimationFrame'. Falling back to 'setTimeout'...");
+		window.requestAnimationFrame = function(callback, element) {
+			var currTime = new Date().getTime();
+			var timeToCall = Math.max(0, 16 - (currTime - lastTime));
+			var id = window.setTimeout(function() { callback(currTime + timeToCall); }, timeToCall);
+			lastTime = currTime + timeToCall;
+			return id;
+		};
+	}
+	if (!window.cancelAnimationFrame) {
+		console.warn("This browser does not support 'window.cancelAnimationFrame'. Falling back to 'clearTimeout'...");
+		window.cancelAnimationFrame = function(id) {
+			clearTimeout(id);
+		};
+	}
+}());

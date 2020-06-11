@@ -2,7 +2,7 @@
 | SAE - Scripted Amiga Emulator
 | https://github.com/naTmeg/ScriptedAmigaEmulator
 |
-| Copyright (C) 2012-2016 Rupert Hausberger
+| Copyright (C) 2012 Rupert Hausberger
 |
 | This program is free software; you can redistribute it and/or
 | modify it under the terms of the GNU General Public License
@@ -1178,7 +1178,7 @@ function SAEO_Disk() {
 
 			//drv.newname = fname;
 			//drv.newnamewriteprotected = forcedwriteprotect;
-			drv.newfile = file.clone(); //ATT
+			drv.newfile = SAEF_CloneObject(file); //ATT
 			//SAER.gui.filename(dnum, file.name); //fname);
 		}
 
@@ -2422,7 +2422,7 @@ function SAEO_Disk() {
 		drv.dskeject = false;
 		//drv.newname = name;
 		//drv.newnamewriteprotected = forcedwriteprotect;
-		drv.newfile = file.clone(); //ATT
+		drv.newfile = SAEF_CloneObject(file); //ATT
 
 		if (file.size == 0)
 			SAER.disk.eject(num);
@@ -4193,7 +4193,7 @@ function SAEO_Disk() {
 		if (type == SAEC_Disk_Create_Type_35_DD)
 			dst[512 + 0x72] = 0x3f;
 		else
-			dst[512 + 0xdc] = 0x3f;
+			dst[512 + 0xdc] = 0xe0;
 		disk_checksum(dst,512, dst,512);
 	}
 

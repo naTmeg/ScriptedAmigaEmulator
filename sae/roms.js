@@ -2,7 +2,7 @@
 | SAE - Scripted Amiga Emulator
 | https://github.com/naTmeg/ScriptedAmigaEmulator
 |
-| Copyright (C) 2012-2016 Rupert Hausberger
+| Copyright (C) 2012 Rupert Hausberger
 |
 | This program is free software; you can redistribute it and/or
 | modify it under the terms of the GNU General Public License
@@ -201,8 +201,8 @@ function SAEO_Roms() {
 
 	const roms = [
 		//new romdata("AROS KS ROM (built-in)", 0, 0, 0, 0, "AROS", K512 * 2, 66, 0, 0, SAEC_RomType_KICK, 0, "", "", 0xffffffff, 0, 0, 0, 0, 0, "AROS"),
-		new romdata("AROS KS ROM (built-in)", 0, 0, 0, 0, "AROS", K512, 66, 0, 0, SAEC_RomType_KICK, 0, "", "", 0xE8A40832, 0, 0, 0, 0, 0, "AROS"),
-		new romdata("AROS extended ROM (built-in)", 0, 0, 0, 0, "AROS", K512, 66, 0, 0, 0, 0, "", "", 0x5C39D820, 0, 0, 0, 0, 0, "AROS"),
+		new romdata("AROS KS ROM (built-in)", 0, 0, 0, 0, "AROS", K512, 66, 0, 0, SAEC_RomType_KICK, 0, "", "", 0x3F4FCC0A, 0, 0, 0, 0, 0, "AROS"),
+		new romdata("AROS extended ROM (built-in)", 0, 0, 0, 0, "AROS", K512, 66, 0, 0, 0, 0, "", "", 0xF2E52B07, 0, 0, 0, 0, 0, "AROS"),
 		//new romdata("ROM Disabled", 0, 0, 0, 0, "NOROM", 0, 87, 0, 0, SAEC_RomType_NONE, 0, "", "", 0xffffffff, 0, 0, 0, 0, 0, "NOROM"),
 		//new romdata("Enabled", 0, 0, 0, 0, "ENABLED", 0, 142, 0, 0, SAEC_RomType_NOT, 0, "", "", 0xffffffff, 0, 0, 0, 0, 0, "ENABLED"),
 
@@ -256,6 +256,8 @@ function SAEO_Roms() {
 		ALTROMPN(17, 1, 1, K256, SAEC_RomType_EVEN, "391657-01", 0x0ca94f70, 0xb3806eda,0xcb3362fc,0x16a154ce,0x1eeec5bf,0x5bc24789),
 		ALTROMPN(17, 1, 2, K256, SAEC_RomType_ODD , "391658-01", 0xdfe03120, 0xcd7a706c,0x431b04d8,0x7814d3a2,0xd8b39710,0x0cf44c0c),
 		new romdata("KS ROM v3.X (A4000)(Cloanto)",		3, 10, 45, 57, "A4000",					K512, 46, 2 | 4, 1, SAEC_RomType_KICK, 0, "", "", 0x3ac99edc, 0x3cbfc9e1,0xfe396360,0x157bd161,0xde74fc90,0x1abee7ec),
+
+		new romdata("KS ROM v3.1.4 (A4000T)(Hyperion)",	3, 1, 46, 143, "A4000T",				K512, 0, 2 | 4, 0, SAEC_RomType_KICK, 0, "", "", 0xd6d0ef3e, 0xcd73aefe,0x9cbfc258,0xe7966cd1,0x4a7b2f46,0x47c9ba45),
 
 		new romdata("CD32 KS ROM v3.1",						3, 1, 40, 60, "CD32",					K512, 18, 1, 0, SAEC_RomType_KICKCD32, 0, "", "", 0x1e62d4a5, 0x3525BE88,0x87F79B59,0x29E017B4,0x2380A79E,0xDFEE542D),
 		new romdata("CD32 extended ROM",						3, 1, 40, 60, "CD32",					K512, 19, 1, 0, SAEC_RomType_EXTCD32, 0, "", "", 0x87746be2, 0x5BEF3D62,0x8CE59CC0,0x2A66E6E4,0xAE0DA48F,0x60E78F7F),
