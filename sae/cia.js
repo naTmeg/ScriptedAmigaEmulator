@@ -71,23 +71,28 @@ function SAEO_CIA() {
 	}*/
 
 	/* delay interrupt after current CIA register access if interrupt would have triggered mid access */
-	var cia_interrupt_disabled = 0; //int
-	var cia_interrupt_delay = 0; //int
+	//var cia_interrupt_disabled = 0; //int
+	//var cia_interrupt_delay = 0; //int
 
 	/*-----------------------------------------------------------------------*/
 
 	function ICR(data) {
-		SAER.custom.INTREQ_0(SAEC_Custom_INTF_SETCLR | data);
+		if (!(SAEV_Custom_intreq & data))
+			SAER.custom.INTREQ_0(SAEC_Custom_INTF_SETCLR | data);
 	}
 
-	function ICRA(data) {
-		ciaaicr |= 0x40;
+	function ICRA() {
+		if (ciaaicr & 0x80)
+			ciaaicr |= 0x40;
+
 		ciaaicr |= 0x20;
 		ICR(0x0008);
 	}
 
-	function ICRB(data) {
-		ciabicr |= 0x40;
+	function ICRB() {
+		if (ciabicr & 0x80)
+			ciabicr |= 0x40;
+
 		ciabicr |= 0x20;
 		if (SAEV_config.chipset.compatible == SAEC_Config_Chipset_Compatible_A1000V)
 			ICR(0x0008); /* Both CIAs in Velvet are connected to level 2 */
@@ -99,7 +104,7 @@ function SAEO_CIA() {
 		if (ciaaicr & ciaaimask) {
 			if (!(ciaaicr & 0x80)) {
 				ciaaicr |= 0x80;
-				ICRA(0x0008);
+				ICRA();
 			}
 		}
 	}
@@ -108,14 +113,14 @@ function SAEO_CIA() {
 		if (ciabicr & ciabimask) {
 			if (!(ciabicr & 0x80)) {
 				ciabicr |= 0x80;
-				ICRB(0);
+				ICRB();
 			}
 		}
 	}
 
 	this.rethink = function() { //rethink_cias()
-		if (ciaaicr & 0x40) ICRA(0);
-		if (ciabicr & 0x40) ICRB(0);
+		if (ciaaicr & 0x40) ICRA();
+		if (ciabicr & 0x40) ICRB();
 	}
 
 	/* Figure out how many CIA timer cycles have passed for each timer since the last call of CIA_calctimers.  */
@@ -1536,12 +1541,12 @@ function SAEO_CIA() {
 	function cia_wait_post(cianummask, value) {
 		SAER.events.do_cycles(6 * SAEC_Events_CYCLE_UNIT >> 1);
 
-		if (cia_interrupt_delay) {
+		/*if (cia_interrupt_delay) {
 			var v = cia_interrupt_delay;
 			cia_interrupt_delay = 0;
 			if (v & 1) ICR(0x0008);
 			if (v & 2) ICR(0x2000);
-		}
+		}*/
 	}
 
 	/*---------------------------------*/

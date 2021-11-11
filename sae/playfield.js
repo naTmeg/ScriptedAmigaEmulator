@@ -8043,10 +8043,12 @@ function SAEO_Playfield() {
 		var hw_diwlast = coord_window_to_diw_x(thisline_decision.diwlastword);
 		var hw_diwfirst = coord_window_to_diw_x(thisline_decision.diwfirstword);
 
-		if (clxcon_bpl_enable == 0) {
-			clxdat |= 0x1FE;
+		if (clxcon_bpl_enable == 0 && !nr_sprites)
 			return;
-		}
+		// all sprite to bitplane collision bits already set?
+		if ((clxdat & 0x1fe) == 0x1fe)
+			return;
+
 
 		for (var i = 0; i < nr_sprites; i++) {
 			//struct sprite_entry *e = curr_sprite_entries + first + i;
@@ -8075,6 +8077,10 @@ function SAEO_Playfield() {
 				var offs = ((j << bplres) >> sprite_buffer_res) - ddf_left;
 				sprpix = sprite_ab_merge[sprpix & 255] | (sprite_ab_merge[sprpix >> 8] << 2);
 				sprpix <<= 1;
+
+				// both odd and even collision bits already set?
+				if ((clxdat & (sprpix << 0)) && (clxdat & (sprpix << 4)))
+					continue;
 
 				var ldata = line_data[next_lineno];
 
@@ -8123,6 +8129,13 @@ function SAEO_Playfield() {
 				}
 			}
 		}
+		/*#if 0
+		{
+			static int olx;
+			if (clxdat != olx) write_log (_T("%d: %04X\n"), vpos, clxdat);
+			olx = clxdat;
+		}
+		#endif*/
 	}
 
 	//static void record_sprite_1 (int sprxp, uae_u16 *buf, uae_u32 datab, int num, int dbl,unsigned int mask, int do_collisions, uae_u32 collision_mask)

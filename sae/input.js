@@ -351,7 +351,7 @@ function SAEO_Keyboard() {
 	const RAWKEY_LAMIGA            = 0x66;
 	const RAWKEY_RAMIGA            = 0x67;
 	const RAWKEY_SCRLOCK           = 0x6B;
-	//const RAWKEY_PRTSCREEN         = 0x6C;*/
+	//const RAWKEY_PRTSCREEN         = 0x6C;
 	const RAWKEY_NUMLOCK           = 0x6D;
 	const RAWKEY_PAUSE             = 0x6E;
 	//const RAWKEY_F12               = 0x6F;
@@ -520,6 +520,7 @@ function SAEO_Keyboard() {
 		  55:RAWKEY_7, //7
 		  56:RAWKEY_8, //8
 		  57:RAWKEY_9, //9
+		  59:RAWKEY_SEMICOLON,
 		  60:RAWKEY_LESSGREATER,
 		  63:RAWKEY_MINUS,
 		  65:RAWKEY_A, //a
