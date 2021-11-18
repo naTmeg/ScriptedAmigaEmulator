@@ -247,10 +247,10 @@ function SAEO_Joystick(port) {
 }
 
 function SAEO_Keyboard() {
-	const DOM_KEY_LOCATION_STANDARD = 0x00;
+	/*const DOM_KEY_LOCATION_STANDARD = 0x00;
 	const DOM_KEY_LOCATION_LEFT     = 0x01;
 	const DOM_KEY_LOCATION_RIGHT    = 0x02;
-	const DOM_KEY_LOCATION_NUMPAD   = 0x03;
+	const DOM_KEY_LOCATION_NUMPAD   = 0x03;*/
 
 	const RAWKEY_TILDE             = 0x00;
 	const RAWKEY_1                 = 0x01;
@@ -265,7 +265,7 @@ function SAEO_Keyboard() {
 	const RAWKEY_0                 = 0x0A;
 	const RAWKEY_MINUS             = 0x0B;
 	const RAWKEY_EQUAL             = 0x0C;
-	//const RAWKEY_BACKSLASH         = 0x0D;
+	const RAWKEY_BACKSLASH         = 0x0D;
 	const RAWKEY_KP_0              = 0x0F;
 	const RAWKEY_Q                 = 0x10;
 	const RAWKEY_W                 = 0x11;
@@ -293,7 +293,7 @@ function SAEO_Keyboard() {
 	const RAWKEY_L                 = 0x28;
 	const RAWKEY_SEMICOLON         = 0x29;
 	const RAWKEY_QUOTE             = 0x2A;
-	const RAWKEY_2B                = 0x2B;
+	//const RAWKEY_2B                = 0x2B;
 	const RAWKEY_KP_4              = 0x2D;
 	const RAWKEY_KP_5              = 0x2E;
 	const RAWKEY_KP_6              = 0x2F;
@@ -351,7 +351,7 @@ function SAEO_Keyboard() {
 	const RAWKEY_LAMIGA            = 0x66;
 	const RAWKEY_RAMIGA            = 0x67;
 	const RAWKEY_SCRLOCK           = 0x6B;
-	//const RAWKEY_PRTSCREEN         = 0x6C;
+	const RAWKEY_PRTSCREEN         = 0x6C;
 	const RAWKEY_NUMLOCK           = 0x6D;
 	const RAWKEY_PAUSE             = 0x6E;
 	//const RAWKEY_F12               = 0x6F;
@@ -362,20 +362,20 @@ function SAEO_Keyboard() {
 	const RAWKEY_MEDIA3            = 0x74;
 	const RAWKEY_MEDIA4            = 0x75;
 	const RAWKEY_MEDIA5            = 0x76;
-	const RAWKEY_MEDIA6            = 0x77;*/
+	const RAWKEY_MEDIA6            = 0x77;
 	const RAWKEY_RESETWARNING      = 0x78;
-	/*const RAWKEY_NM_WHEEL_UP       = 0x7A;
+	const RAWKEY_NM_WHEEL_UP       = 0x7A;
 	const RAWKEY_NM_WHEEL_DOWN     = 0x7B;
 	const RAWKEY_NM_WHEEL_LEFT     = 0x7C;
 	const RAWKEY_NM_WHEEL_RIGHT    = 0x7D;
 	const RAWKEY_NM_BUTTON_FOURTH  = 0x7E;
  	const RAWKEY_BAD_CODE			= 0xF9;
  	const RAWKEY_BUFFER_OVERFLOW	= 0xFA;
- 	const RAWKEY_SELFTEST_FAILED	= 0xFC;*/
+ 	const RAWKEY_SELFTEST_FAILED	= 0xFC;
  	const RAWKEY_INIT_POWER_UP		= 0xFD;
- 	const RAWKEY_TERM_POWER_UP		= 0xFE;
+ 	const RAWKEY_TERM_POWER_UP		= 0xFE;*/
 
-	const defKeyCodeMap = {
+	/*const defKeyCodeMap = {
 			8:RAWKEY_BACKSPACE, //backspace
 			9:RAWKEY_TAB, //tab
 		  13:RAWKEY_RETURN, //enter
@@ -464,18 +464,18 @@ function SAEO_Keyboard() {
 		 //123:RAWKEY_F12, //f12
 		 144:RAWKEY_NUMLOCK, //num lock
 		 145:RAWKEY_SCRLOCK, //scroll lock
-		 /*186:RAWKEY_SEMICOLON, //semi-colon
-		 187:RAWKEY_EQUAL, //equal sign
-		 188:RAWKEY_COMMA, //comma
-		 189:RAWKEY_MINUS, //dash
-		 190:RAWKEY_PERIOD, //period
-		 191:RAWKEY_SLASH, //forward slash
-		 192:RAWKEY_TILDE, //grave accent
-		 219:RAWKEY_LBRACKET, //open bracket
-		 220:RAWKEY_BACKSLASH, //back slash
-		 221:RAWKEY_RBRACKET, //close braket
-		 222:RAWKEY_QUOTE, //single quote
-		 226:RAWKEY_LESSGREATER*/
+		 //186:RAWKEY_SEMICOLON, //semi-colon
+		 //187:RAWKEY_EQUAL, //equal sign
+		 //188:RAWKEY_COMMA, //comma
+		 //189:RAWKEY_MINUS, //dash
+		 //190:RAWKEY_PERIOD, //period
+		 //191:RAWKEY_SLASH, //forward slash
+		 //192:RAWKEY_TILDE, //grave accent
+		 //219:RAWKEY_LBRACKET, //open bracket
+		 //220:RAWKEY_BACKSLASH, //back slash
+		 //221:RAWKEY_RBRACKET, //close braket
+		 //222:RAWKEY_QUOTE, //single quote
+		 //226:RAWKEY_LESSGREATER
 		 186:RAWKEY_LBRACKET,
 		 187:RAWKEY_RBRACKET,
 		 188:RAWKEY_COMMA,
@@ -588,14 +588,15 @@ function SAEO_Keyboard() {
 		 188:RAWKEY_COMMA,
 		 190:RAWKEY_PERIOD,
 		 192:RAWKEY_EQUAL
-	};
-	const MAXKEYS = 256;
+	};*/
+
 	const KEYBUFSIZE = 512;
 	const USECAPTURE = false; /* capturing/bubbling phase */
 
+	/*const MAXKEYS = 256;
 	var keyState = new Array(4);
 	for (var vi = 0; vi < 4; vi++)
-		keyState[vi] = new Uint8Array(MAXKEYS);
+		keyState[vi] = new Uint8Array(MAXKEYS);*/
 
 	var keyBuf = new Uint8Array(KEYBUFSIZE);
 
@@ -605,8 +606,8 @@ function SAEO_Keyboard() {
 	var capsLock = false;
 
 
-	function keydown(e) { handleKey(e, true); }
-	function keyup(e) { handleKey(e, false); }
+	function keydown(e) { newHandleKey(e, true); }
+	function keyup(e) { newHandleKey(e, false); }
 	/*function fullscreenchange(e) {
 		SAEF_log("fullscreenchange()");
 	}*/
@@ -628,10 +629,10 @@ function SAEO_Keyboard() {
 	};
 
 	this.reset = function() {
-		for (var j = 0; j < keyState.length; j++) {
+		/*for (var j = 0; j < keyState.length; j++) {
 			for (var i = 0; i < keyState[j].length; i++)
 				keyState[j][i] = 0;
-		}
+		}*/
 		state = 0;
 		code = 0;
 		first = last = 0;
@@ -661,8 +662,8 @@ function SAEO_Keyboard() {
 		return true;
 	};
 
-	function processKey(loc, code, down) {
-		/* Caps-lock */
+	/*function processKey(loc, code, down) {
+		//Caps-lock
 		if (code == 20) {
 			if (down) {
 				capsLock = !capsLock;
@@ -672,7 +673,7 @@ function SAEO_Keyboard() {
 			}
 		}
 
-		/* joystick emul */
+		//joystick emul
 		if (SAEV_config.ports[0].type == SAEC_Config_Ports_Type_JoyEmu) {
 			var l, u, r, d, f1, f2;
 			switch (SAEV_config.ports[0].move) {
@@ -786,10 +787,10 @@ function SAEO_Keyboard() {
 					if (loc == DOM_KEY_LOCATION_RIGHT) rawkey = RAWKEY_RALT;
 					break;
 				}
-				/*case RAWKEY_LAMIGA: {
-					if (loc == DOM_KEY_LOCATION_RIGHT) rawkey = RAWKEY_RAMIGA;
-					break;
-				}*/
+				//case RAWKEY_LAMIGA: {
+				//	if (loc == DOM_KEY_LOCATION_RIGHT) rawkey = RAWKEY_RAMIGA;
+				//	break;
+				//}
 				case RAWKEY_RETURN: {
 					if (loc == DOM_KEY_LOCATION_NUMPAD) rawkey = RAWKEY_KP_ENTER;
 					break;
@@ -804,9 +805,238 @@ function SAEO_Keyboard() {
 			else
 				recordKey((rawkey << 1) | 1);
 		}
+	};*/
+
+	function code2rawkey(code) {
+		switch (code) {
+			case "Backquote": return RAWKEY_TILDE; //ATT
+			case "Digit1": return RAWKEY_1;
+			case "Digit2": return RAWKEY_2;
+			case "Digit3": return RAWKEY_3;
+			case "Digit4": return RAWKEY_4;
+			case "Digit5": return RAWKEY_5;
+			case "Digit6": return RAWKEY_6;
+			case "Digit7": return RAWKEY_7;
+			case "Digit8": return RAWKEY_8;
+			case "Digit9": return RAWKEY_9;
+			case "Digit0": return RAWKEY_0;
+			case "Minus": return RAWKEY_MINUS;
+			case "Equal": return RAWKEY_EQUAL;
+			case "Backslash": return RAWKEY_BACKSLASH; //ATT maybe RAWKEY_2B
+			case "Numpad0": return RAWKEY_KP_0;
+			case "KeyQ": return RAWKEY_Q;
+			case "KeyW": return RAWKEY_W;
+			case "KeyE": return RAWKEY_E;
+			case "KeyR": return RAWKEY_R;
+			case "KeyT": return RAWKEY_T;
+			case "KeyY": return RAWKEY_Y;
+			case "KeyU": return RAWKEY_U;
+			case "KeyI": return RAWKEY_I;
+			case "KeyO": return RAWKEY_O;
+			case "KeyP": return RAWKEY_P;
+			case "BracketLeft": return RAWKEY_LBRACKET;
+			case "BracketRight": return RAWKEY_RBRACKET;
+			case "Numpad1": return RAWKEY_KP_1;
+			case "Numpad2": return RAWKEY_KP_2;
+			case "Numpad3": return RAWKEY_KP_3;
+			case "KeyA": return RAWKEY_A;
+			case "KeyS": return RAWKEY_S;
+			case "KeyD": return RAWKEY_D;
+			case "KeyF": return RAWKEY_F;
+			case "KeyG": return RAWKEY_G;
+			case "KeyH": return RAWKEY_H;
+			case "KeyJ": return RAWKEY_J;
+			case "KeyK": return RAWKEY_K;
+			case "KeyL": return RAWKEY_L;
+			case "Semicolon": return RAWKEY_SEMICOLON;
+			case "Quote": return RAWKEY_QUOTE;
+			//case "Backslash": return RAWKEY_2B; //ATT maybe RAWKEY_BACKSLASH
+			case "Numpad4": return RAWKEY_KP_4;
+			case "Numpad5": return RAWKEY_KP_5;
+			case "Numpad6": return RAWKEY_KP_6;
+			case "IntlBackslash": return RAWKEY_LESSGREATER; //ATT
+			case "KeyZ": return RAWKEY_Z;
+			case "KeyX": return RAWKEY_X;
+			case "KeyC": return RAWKEY_C;
+			case "KeyV": return RAWKEY_V;
+			case "KeyB": return RAWKEY_B;
+			case "KeyN": return RAWKEY_N;
+			case "KeyM": return RAWKEY_M;
+			case "Comma": return RAWKEY_COMMA;
+			case "Period": return RAWKEY_PERIOD;
+			case "Slash": return RAWKEY_SLASH;
+			case "NumpadDecimal": return RAWKEY_KP_DECIMAL;
+			case "Numpad7": return RAWKEY_KP_7;
+			case "Numpad8": return RAWKEY_KP_8;
+			case "Numpad9": return RAWKEY_KP_9;
+			case "Space": return RAWKEY_SPACE;
+			case "Backspace": return RAWKEY_BACKSPACE;
+			case "Tab": return RAWKEY_TAB;
+			case "NumpadEnter": return RAWKEY_KP_ENTER;
+			case "Enter": return RAWKEY_RETURN;
+			case "Escape": return RAWKEY_ESCAPE;
+			case "Delete": return RAWKEY_DELETE;
+			case "Insert": return RAWKEY_INSERT;
+			case "PageUp": return RAWKEY_PAGEUP;
+			case "PageDown": return RAWKEY_PAGEDOWN;
+			case "NumpadSubtract": return RAWKEY_KP_MINUS;
+			//case "F11": return RAWKEY_F11;
+			case "ArrowUp": return RAWKEY_UP;
+			case "ArrowDown": return RAWKEY_DOWN;
+			case "ArrowRight": return RAWKEY_RIGHT;
+			case "ArrowLeft": return RAWKEY_LEFT;
+			case "F1": return RAWKEY_F1;
+			case "F2": return RAWKEY_F2;
+			case "F3": return RAWKEY_F3;
+			case "F4": return RAWKEY_F4;
+			case "F5": return RAWKEY_F5;
+			case "F6": return RAWKEY_F6;
+			case "F7": return RAWKEY_F7;
+			case "F8": return RAWKEY_F8;
+			case "F9": return RAWKEY_F9;
+			case "F10": return RAWKEY_F10;
+			case "NumpadDivide": return RAWKEY_KP_DIVIDE;
+			case "NumpadMultiply": return RAWKEY_KP_MULTIPLY;
+			case "NumpadAdd": return RAWKEY_KP_PLUS;
+			case "ContextMenu": return RAWKEY_HELP;
+			case "ShiftLeft": return RAWKEY_LSHIFT;
+			case "ShiftRight": return RAWKEY_RSHIFT;
+			case "CapsLock": return RAWKEY_CAPSLOCK;
+			case "ControlLeft":
+			case "ControlRight": return RAWKEY_CONTROL;
+			case "AltLeft": return RAWKEY_LALT;
+			case "AltRight": return RAWKEY_RALT; //ATT under Windows, there's also "ControlLeft" triggered
+			case "OSLeft":
+			case "MetaLeft": return RAWKEY_LAMIGA;
+			case "OSRight":
+			case "MetaRight": return RAWKEY_RAMIGA;
+			case "ScrollLock": return RAWKEY_SCRLOCK;
+			case "PrintScreen": return RAWKEY_PRTSCREEN; //missing on Chrome
+			case "NumLock": return RAWKEY_NUMLOCK;
+			case "Pause": return RAWKEY_PAUSE;
+			//case "F12": return RAWKEY_F12;
+			case "Home": return RAWKEY_HOME;
+			case "End": return RAWKEY_END;
+			default: return false;
+		}
+	}
+	function newProcessKey(code, down) {
+		/* Caps-lock */
+		if (code == "CapsLock") {
+			if (down) {
+				capsLock = !capsLock;
+				if (!capsLock) return;
+			} else {
+				if (capsLock) return;
+			}
+		}
+
+		/* joystick emul */
+		if (SAEV_config.ports[0].type == SAEC_Config_Ports_Type_JoyEmu) {
+			var l, u, r, d, f1, f2;
+			switch (SAEV_config.ports[0].move) {
+				case SAEC_Config_Ports_Move_Arrows:
+					l = "ArrowLeft";
+					u = "ArrowUp";
+					r = "ArrowRight";
+					d = "ArrowDown";
+					break;
+				case SAEC_Config_Ports_Move_Numpad:
+					l = "Numpad4";
+					u = "Numpad8";
+					r = "Numpad6";
+					d = "Numpad5";
+					break;
+				case SAEC_Config_Ports_Move_WASD:
+					l = "KeyA";
+					u = "KeyW";
+					r = "KeyD";
+					d = "KeyS";
+					break;
+			}
+			f1 = SAEV_config.ports[0].fire[0];
+			f2 = SAEV_config.ports[0].fire[1];
+			switch (code) {
+				case f1:
+					SAER.input.registerEvent(0, SAEC_Input_Event_Press, SAEC_Input_Button_1, down);
+					break;
+				case f2:
+					SAER.input.registerEvent(0, SAEC_Input_Event_Press, SAEC_Input_Button_2, down);
+					break;
+				case l:
+					SAER.input.registerEvent(0, SAEC_Input_Event_JoystickMove, SAEC_Input_Direction_Left, down);
+					break;
+				case u:
+					SAER.input.registerEvent(0, SAEC_Input_Event_JoystickMove, SAEC_Input_Direction_Up, down);
+					break;
+				case r:
+					SAER.input.registerEvent(0, SAEC_Input_Event_JoystickMove, SAEC_Input_Direction_Right, down);
+					break;
+				case d:
+					SAER.input.registerEvent(0, SAEC_Input_Event_JoystickMove, SAEC_Input_Direction_Down, down);
+					break;
+			}
+		}
+		if (SAEV_config.ports[1].type == SAEC_Config_Ports_Type_JoyEmu) {
+			var l, u, r, d, f1, f2;
+			switch (SAEV_config.ports[1].move) {
+				case SAEC_Config_Ports_Move_Arrows:
+					l = "ArrowLeft";
+					u = "ArrowUp";
+					r = "ArrowRight";
+					d = "ArrowDown";
+					break;
+				case SAEC_Config_Ports_Move_Numpad:
+					l = "Numpad4";
+					u = "Numpad8";
+					r = "Numpad6";
+					d = "Numpad5";
+					break;
+				case SAEC_Config_Ports_Move_WASD:
+					l = "KeyA";
+					u = "KeyW";
+					r = "KeyD";
+					d = "KeyS";
+					break;
+			}
+			f1 = SAEV_config.ports[1].fire[0];
+			f2 = SAEV_config.ports[1].fire[1];
+			switch (code) {
+				case f1:
+					SAER.input.registerEvent(1, SAEC_Input_Event_Press, SAEC_Input_Button_1, down);
+					break;
+				case f2:
+					SAER.input.registerEvent(1, SAEC_Input_Event_Press, SAEC_Input_Button_2, down);
+					break;
+				case l:
+					SAER.input.registerEvent(1, SAEC_Input_Event_JoystickMove, SAEC_Input_Direction_Left, down);
+					break;
+				case u:
+					SAER.input.registerEvent(1, SAEC_Input_Event_JoystickMove, SAEC_Input_Direction_Up, down);
+					break;
+				case r:
+					SAER.input.registerEvent(1, SAEC_Input_Event_JoystickMove, SAEC_Input_Direction_Right, down);
+					break;
+				case d:
+					SAER.input.registerEvent(1, SAEC_Input_Event_JoystickMove, SAEC_Input_Direction_Down, down);
+					break;
+			}
+		}
+
+		if (!SAEV_config.keyboard.enabled)
+			return;
+
+		var rawkey = code2rawkey(code);
+		if (rawkey !== false) {
+			//if (down) SAEF_log("Keyboard.newProcessKey() code %s, rawkey $%02x", code, rawkey);
+			if (down)
+				recordKey(rawkey << 1);
+			else
+				recordKey((rawkey << 1) | 1);
+		}
 	};
 
-	function handleKey(e, down) {
+	/*function handleKey(e, down) {
 		e = e || window.event;
 		var code = typeof e.keyCode == "undefined" ? e.which : e.keyCode;
 		var loc = typeof e.location == "undefined" ? 0 : e.location;
@@ -816,16 +1046,34 @@ function SAEO_Keyboard() {
 
 		e.preventDefault();
 
-		//SAEF_log("Keyboard.handleKey() down %d, code %d, loc %d, alt %d, shift %d, ctrl %d", down?1:0, code, loc, e.ctrlKey?1:0, e.shiftKey?1:0, e.altKey?1:0, e.metaKey?1:0);
+		//SAEF_log("Keyboard.handleKey() down %d, code %d, loc %d, alt %d, shift %d, ctrl %d, meta %d", down?1:0, code, loc, e.altKey?1:0, e.shiftKey?1:0, e.ctrlKey?1:0, e.metaKey?1:0);
 
 		var oldstate = keyState[loc][code];
 		keyState[loc][code] = down ? 1 : 0;
 		if (keyState[loc][code] != oldstate)
 			processKey(loc, code, keyState[loc][code]);
+	};*/
+	function newHandleKey(e, down) {
+		e = e || window.event;
+
+		if (e.defaultPrevented)
+			return;
+		if (e.repeat) {
+			e.preventDefault();
+			return;
+		}
+		if (e.code == "F11" || e.code == "F12")
+			return;
+
+		//SAEF_log("Keyboard.newHandleKey() down %d, code %s, loc %d, alt %d, shift %d, ctrl %d, meta %d", down?1:0, e.code, e.location, e.altKey?1:0, e.shiftKey?1:0, e.ctrlKey?1:0, e.metaKey?1:0);
+
+		newProcessKey(e.code, down);
+
+		e.preventDefault();
 	};
 
 	this.keyPress = function(e, down) {
-		handleKey(e, down);
+		newHandleKey(e, down);
 	};
 }
 

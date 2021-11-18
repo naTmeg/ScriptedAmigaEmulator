@@ -384,7 +384,8 @@ const SAEC_Config_Ports_Move_Arrows = 1;
 const SAEC_Config_Ports_Move_Numpad = 2;
 const SAEC_Config_Ports_Move_WASD = 3;
 
-const SAEC_Config_Ports_Fire_None = 0;
+//const SAEC_Config_Ports_Fire_None = 0;
+const SAEC_Config_Ports_Fire_None = "None";
 
 const SAEC_Config_Ports_Device_None = -1;
 
@@ -679,12 +680,14 @@ function SAEO_Config() {
 	this.ports = [{
 		type: SAEC_Config_Ports_Type_Mouse,
 		move: SAEC_Config_Ports_Move_WASD,
-		fire: [49,50],
+		//fire: [49,50],
+		fire: ["Digit1","Digit2"],
 		device: SAEC_Config_Ports_Device_None
 	}, {
 		type: SAEC_Config_Ports_Type_JoyEmu,
 		move: SAEC_Config_Ports_Move_Arrows,
-		fire: [16,17],
+		//fire: [16,17],
+		fire: ["ShiftRight","ControlRight"],
 		device: SAEC_Config_Ports_Device_None
 	}];
 
@@ -1182,11 +1185,13 @@ function SAEO_Configuration() {
 
 		p.ports[0].type = SAEC_Config_Ports_Type_Mouse;
 		p.ports[0].move = SAEC_Config_Ports_Move_WASD;
-		p.ports[0].fire = [49,50];
+		//p.ports[0].fire = [49,50];
+		p.ports[0].fire = ["Digit1","Digit2"];
 		p.ports[0].device = SAEC_Config_Ports_Device_None;
 		p.ports[1].type = SAEC_Config_Ports_Type_JoyEmu;
 		p.ports[1].move = SAEC_Config_Ports_Move_Arrows;
-		p.ports[1].fire = [16,17];
+		//p.ports[1].fire = [16,17];
+		p.ports[1].fire = ["ShiftRight","ControlRight"];
 		p.ports[1].device = SAEC_Config_Ports_Device_None;
 		/*memset (&p.jports[0], 0, sizeof (struct jport));
 		memset (&p.jports[1], 0, sizeof (struct jport));

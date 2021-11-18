@@ -47,7 +47,7 @@
 
 const SAEC_Version = 0;
 const SAEC_Revision = 9;
-const SAEC_Patch = 12;
+const SAEC_Patch = 13;
 
 /*---------------------------------*/
 /* errors */

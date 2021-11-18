@@ -477,7 +477,7 @@ function switchBaseEmul(emul) {
 
 /*---------------------------------*/
 
-function fireButtonName(fire) {
+/*function fireButtonName(fire) {
 	switch (fire) {
 		case 0: return "None";
 		case 16: return "Shift";
@@ -502,6 +502,36 @@ function fireButtonName(fire) {
 		case 145: return "Scroll lock";
 		case 49: return "1";
 		case 50: return "2";
+		default: return "ERROR";
+	}
+}*/
+function fireButtonName(fire) {
+	switch (fire) {
+		case "": return "None";
+		case "ShiftLeft": return "Left Shift";
+		case "ShiftRight": return "Right Shift";
+		case "ControlLeft": return "Left Ctrl";
+		case "ControlRight": return "Right Ctrl";
+		case "Enter": return "Enter";
+		case "Space": return "Space";
+		case "Backspace": return "Backspace";
+		case "Numpad0": return "Numpad 0";
+		case "NumpadMultiply": return "Numpad *";
+		case "NumpadAdd": return "Numpad +";
+		case "NumpadSubtract": return "Numpad -";
+		case "NumpadDecimal": return "Numpad .";
+		case "NumpadDivide": return "Numpad /";
+		case "Delete": return "Delete";
+		case "Insert": return "Insert";
+		case "PageDown": return "Page down";
+		case "PageUp": return "Page up";
+		case "End": return "End";
+		case "Home": return "Home";
+		case "Pause": return "Pause";
+		case "NumLock": return "Num lock";
+		case "ScrollLock": return "Scroll lock";
+		case "Digit1": return "1";
+		case "Digit2": return "2";
 		default: return "ERROR";
 	}
 }
@@ -1393,8 +1423,8 @@ function getAdvandedConfig() {
 	cfg.ports[0].type = getSelect("cfg_ports_0");
 	if (cfg.ports[0].type == SAEC_Config_Ports_Type_JoyEmu) {
 		cfg.ports[0].move = getSelect("cfg_ports_0_move");
-		cfg.ports[0].fire[0] = getSelect("cfg_ports_0_fire_1");
-		cfg.ports[0].fire[1] = getSelect("cfg_ports_0_fire_2");
+		cfg.ports[0].fire[0] = getSelect("cfg_ports_0_fire_1", true);
+		cfg.ports[0].fire[1] = getSelect("cfg_ports_0_fire_2", true);
 		if (cfg.ports[0].fire[0] != SAEC_Config_Ports_Fire_None && cfg.ports[0].fire[0] == cfg.ports[0].fire[1]) {
 			alert("Fire-button 1/2 on mouse-port can't be the same.");
 			changePage(PID_Ports);
@@ -1413,8 +1443,8 @@ function getAdvandedConfig() {
 	cfg.ports[1].type = getSelect("cfg_ports_1");
 	if (cfg.ports[1].type == SAEC_Config_Ports_Type_JoyEmu) {
 		cfg.ports[1].move = getSelect("cfg_ports_1_move");
-		cfg.ports[1].fire[0] = getSelect("cfg_ports_1_fire_1");
-		cfg.ports[1].fire[1] = getSelect("cfg_ports_1_fire_2");
+		cfg.ports[1].fire[0] = getSelect("cfg_ports_1_fire_1", true);
+		cfg.ports[1].fire[1] = getSelect("cfg_ports_1_fire_2", true);
 		if (cfg.ports[1].fire[0] != SAEC_Config_Ports_Fire_None && cfg.ports[1].fire[0] == cfg.ports[1].fire[1]) {
 			alert("Fire-button 1/2 on game-port can't be the same.");
 			changePage(PID_Ports);
@@ -1699,10 +1729,15 @@ function preSelect(grp) {
 	}
 
 	if (grp == DBT_GAME) {
-		var keys = [
+		/*var keys = [
 			["Movement","Arrows"],
 			["Fire", fireButtonName(16)],
 			["Alt-fire", fireButtonName(17)]
+		];*/
+		var keys = [
+			["Movement","Arrows"],
+			["Fire", fireButtonName("ShiftRight")],
+			["Alt-fire", fireButtonName("ControlRight")]
 		];
 		var ctrl = "";
 		for (var i = 0; i < keys.length; i++)
