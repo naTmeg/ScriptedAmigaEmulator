@@ -17,7 +17,7 @@
 | Note: This file does not contain any emulator-code.
 -------------------------------------------------------------------------*/
 
-const URL_DATABASE = "http://"+window.location.hostname+"/db";
+const URL_DATABASE = window.location.protocol+"//"+window.location.hostname+"/db";
 const URL_DATABASE_GAMES = URL_DATABASE+"/games";
 const URL_DATABASE_DEMOS = URL_DATABASE+"/demos";
 const URL_DATABASE_DEMOS_AGA = URL_DATABASE+"/demos_aga";
@@ -78,15 +78,15 @@ const DB_URLS = [
 
 function mkA(url, name) { return '<a target="_blank" href="'+url+'">'+name+'</a>'; }
 
-const URL_ENABLE_SOFTWARE = mkA("http://blockyskies.com", "Enable Software");
-const URL_TEAM_HOI = mkA("http://www.sevensheaven.nl", "Team Hoi");
-const URL_RETROGURU = mkA("http://www.retroguru.com", "retroguru");
-const URL_LOEWENSTEIN = mkA("http://www.richard-loewenstein.de", "Richard Löwenstein");
-const URL_HECKMECK = mkA("http://heckmeck.de", "Alexander Grupe");
+const URL_ENABLE_SOFTWARE = mkA("https://blockyskies.com", "Enable Software");
+const URL_TEAM_HOI = mkA("https://www.sevensheaven.nl", "Team Hoi");
+const URL_RETROGURU = mkA("https://www.retroguru.com", "retroguru");
+const URL_LOEWENSTEIN = mkA("https://www.richard-loewenstein.de", "Richard Löwenstein");
+const URL_HECKMECK = mkA("https://heckmeck.de", "Alexander Grupe");
 
-const URL_AROS = mkA("http://aros.org", "aros.org");
-const URL_AROS_LIC = mkA("http://aros.org/license.html", "APL");
-const URL_SYSINFO = mkA("http://sysinfo.d0.se", "Nic Wilson");
+const URL_AROS = mkA("https://aros.sourceforge.io", "aros.sourceforge.io");
+const URL_AROS_LIC = mkA("https://aros.sourceforge.io/license.html", "APL");
+const URL_SYSINFO = mkA("https://sysinfo.d0.se", "Nic Wilson");
 
 const db = [
 	new dbEntry(DBT_GAME,1, "Air Ace II",         "SEUCK","","PD",                 "1989", 0, "Loading takes very long."),
@@ -148,7 +148,7 @@ const db = [
 
 	new dbEntry(DBT_TOOL,1, "AROS Bootdisk",      URL_AROS,"",URL_AROS_LIC,        "2016", 0, "Press 'Cancel' when asked for a Live-CD."),
 	new dbEntry(DBT_TOOL,1, "AIBB 6.5",           "Peter LaMonte Koop","","FW",    "1993", 0, "Type 'aibb' at the console. Be very patient at the 'Evaluating System...' screen."),
-	new dbEntry(DBT_TOOL,1, "SysInfo 4.0",        URL_SYSINFO,"","FW",             "2012", 0, "Type 'sysinfo' (y=z) at the console."),
+	new dbEntry(DBT_TOOL,1, "SysInfo 4.4",        URL_SYSINFO,"","FW",             "2020", 0, ""),
 	new dbEntry(DBT_TOOL,1, "X-Copy 2.0",         "Cachet","","FW",                "1989", 0, "")
 ];
 
@@ -1718,7 +1718,7 @@ function preSelect(grp) {
 		if (tmp == href) break;
 		href = tmp;
 	}
-	href = "http://" + window.location.hostname + "/#" + href;
+	href = window.location.protocol+"//" + window.location.hostname + "/#" + href;
 	var nameLink = dbe.name+" (<a target=\"_blank\" href=\""+href+"\">share</a>)";
 
 	var license = "";

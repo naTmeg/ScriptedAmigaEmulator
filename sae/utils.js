@@ -250,7 +250,7 @@ function SAEF_CompareArrayAfter(array1, start1, array2, end2) {
 }
 
 /*-----------------------------------------------------------------------*/
-/* Javascript sprintf - http://www.webtoolkit.info
+/* Javascript sprintf - https://www.webtoolkit.info
    This is the only function that does not correspond to the global name space
 */
 var sprintfWrapper = {
