@@ -23,8 +23,9 @@
 		<script type="text/javascript" src="sae/ide.js"></script>
 		<script type="text/javascript" src="sae/filesys.js"></script>
 		<script type="text/javascript" src="sae/hardfile.js"></script>
+		<script type="text/javascript" src="sae/dongle.js"></script>
 		<script type="text/javascript" src="sae/input.js"></script>
-		<script type="text/javascript" src="sae/serial.js"></script>
+		<script type="text/javascript" src="sae/serpar.js"></script>
 		<script type="text/javascript" src="sae/custom.js"></script>
 		<script type="text/javascript" src="sae/blitter.js"></script>
 		<script type="text/javascript" src="sae/copper.js"></script>
@@ -38,7 +39,6 @@
 		<script type="text/javascript" src="sae/cpu.js"></script>
 		<script type="text/javascript" src="sae/amiga.js"></script>
 		<script type="text/javascript" src="index.js"></script>
-		<script type="text/javascript" src="ga.js"></script>
 	</head>
 	<body onload="init()">
 		<div id="base">
@@ -59,7 +59,7 @@
 					<br />
 					This site is the home- and demopage of the <a target="_blank" href="https://github.com/naTmeg/ScriptedAmigaEmulator">SAE</a>,
 					an <a target="_blank" href="https://en.wikipedia.org/wiki/Amiga">Amiga</a> emulator in pure HTML5 and JavaScript.<br />
-					It is heavily based on <a target="_blank" href="http://winuae.net">WinUAE</a> and does use the <a target="_blank" href="http://aros.org">AROS</a>-Kickstart replacement.
+					It is heavily based on <a target="_blank" href="https://winuae.net">WinUAE</a> and does use the <a target="_blank" href="https://aros.sourceforge.io">AROS</a>-Kickstart replacement.
 					For more informations,<br />please see the <a target="_blank" href="readme.htm">description.</a><br />
 					<br />
 					Select an item to 'Start' from the database or press 'Config' for an advanced setup...<br />
@@ -622,7 +622,7 @@
 															<td style="width:100%"></td>
 															<td>
 																<input id="cfg_rom_kickshifter" type="checkbox" />Patch for 'ShapeShifter'
-																<a target="_blank" href="http://shapeshifter.cebix.net/">?</a>
+																<a target="_blank" href="https://shapeshifter.cebix.net/">?</a>
 															</td>
 														</tr>
 														<tr>
@@ -1219,11 +1219,13 @@
 										<table>
 											<tr>
 												<td class="arm"><span class="label">Driver</span></td>
-												<td colspan="3"></td>
+												<td></td>
+												<td class="arm"><span class="label">Cursor</span></td>
+												<td></td>
 											</tr>
 											<tr>
 												<td class="arm">Mode</td>
-												<td colspan="3">
+												<td>
 													<select id="cfg_video_api" size="1" onchange="videoUpdateAPI()">
 														<option value="1">WebGL</option>
 														<option value="0">Canvas</option>
@@ -1231,6 +1233,14 @@
 													<select id="cfg_video_color_mode" size="1" onchange="videoUpdateCM()">
 														<option value="2">16 bits per pixel (R5G6B5)</option>
 														<option value="5">32 bits per pixel (RGBA)</option>
+													</select>
+												</td>
+												<td class="arm">Mode</td>
+												<td class="alm">
+													<select id="cfg_video_cursor" size="1">
+														<option value="0">Always shown</option>
+														<option value="1">Hide over display</option>
+														<option value="2">Lock to display</option>
 													</select>
 												</td>
 											</tr>
@@ -1291,7 +1301,7 @@
 												<td class="alm"><input id="cfg_video_brightness" type="text" maxlength="5" onkeypress="return isDecKey(event, true)" /> <span class="info">(-1000 to 1000)</span></td>
 												<td class="arm">Background</td>
 												<td class="alm"><input id="cfg_video_background" type="text" maxlength="6" onkeypress="return isHexKey(event)" />
-													<span class="info">(#rrggbb)</span> <a target="_blank" href="http://www.rapidtables.com/web/color/RGB_Color.htm">?</a>
+													<span class="info">(#rrggbb)</span> <a target="_blank" href="https://www.rapidtables.com/web/color/RGB_Color.htm">?</a>
 												</td>
 											</tr>
 											<tr>
@@ -1493,10 +1503,11 @@
 													<option value="0">Disabled</option>
 													<option value="1">Mouse</option>
 													<option value="2">Joystick</option>
+													<option value="3">Emulated</option>
 												</select>
 											</td>
 											<td>
-												<div id="cfg_ports_0_grp">
+												<div id="cfg_ports_0_joyemu_grp">
 													Move
 													<select id="cfg_ports_0_move" size="1">
 														<option value="1">Arrows</option>
@@ -1504,7 +1515,7 @@
 														<option value="3">WASD</option>
 													</select>
 													Fire 1
-													<select id="cfg_ports_0_fire_1" size="1">
+													<!--<select id="cfg_ports_0_fire_1" size="1">
 														<option value="0">None</option>
 														<option value="16">Shift</option>
 														<option value="17">Ctrl</option>
@@ -1528,9 +1539,36 @@
 														<option value="145">Scroll lock</option>
 														<option value="49">1</option>
 														<option value="50">2</option>
+													</select>-->
+													<select id="cfg_ports_0_fire_1" size="1">
+														<option value="None">None</option>
+														<option value="ShiftLeft">Left Shift</option>
+														<option value="ShiftRight">Right Shift</option>
+														<option value="ControlLeft">Left Ctrl</option>
+														<option value="ControlRight">Right Ctrl</option>
+														<option value="Enter">Enter</option>
+														<option value="Space">Space</option>
+														<option value="Backspace">Backspace</option>
+														<option value="Numpad0">Numpad 0</option>
+														<option value="NumpadMultiply">Numpad *</option>
+														<option value="NumpadAdd">Numpad +</option>
+														<option value="NumpadSubtract">Numpad -</option>
+														<option value="NumpadDecimal">Numpad .</option>
+														<option value="NumpadDivide">Numpad /</option>
+														<option value="Delete">Delete</option>
+														<option value="Insert">Insert</option>
+														<option value="PageDown">Page down</option>
+														<option value="PageUp">Page up</option>
+														<option value="End">End</option>
+														<option value="Home">Home</option>
+														<option value="Pause">Pause</option>
+														<option value="NumLock">Num lock</option>
+														<option value="ScrollLock">Scroll lock</option>
+														<option value="Digit1">1</option>
+														<option value="Digit2">2</option>
 													</select>
 													Fire 2
-													<select id="cfg_ports_0_fire_2" size="1">
+													<!--<select id="cfg_ports_0_fire_2" size="1">
 														<option value="0">None</option>
 														<option value="16">Shift</option>
 														<option value="17">Ctrl</option>
@@ -1554,6 +1592,40 @@
 														<option value="145">Scroll lock</option>
 														<option value="49">1</option>
 														<option value="50">2</option>
+													</select>-->
+													<select id="cfg_ports_0_fire_2" size="1">
+														<option value="None">None</option>
+														<option value="ShiftLeft">Left Shift</option>
+														<option value="ShiftRight">Right Shift</option>
+														<option value="ControlLeft">Left Ctrl</option>
+														<option value="ControlRight">Right Ctrl</option>
+														<option value="Enter">Enter</option>
+														<option value="Space">Space</option>
+														<option value="Backspace">Backspace</option>
+														<option value="Numpad0">Numpad 0</option>
+														<option value="NumpadMultiply">Numpad *</option>
+														<option value="NumpadAdd">Numpad +</option>
+														<option value="NumpadSubtract">Numpad -</option>
+														<option value="NumpadDecimal">Numpad .</option>
+														<option value="NumpadDivide">Numpad /</option>
+														<option value="Delete">Delete</option>
+														<option value="Insert">Insert</option>
+														<option value="PageDown">Page down</option>
+														<option value="PageUp">Page up</option>
+														<option value="End">End</option>
+														<option value="Home">Home</option>
+														<option value="Pause">Pause</option>
+														<option value="NumLock">Num lock</option>
+														<option value="ScrollLock">Scroll lock</option>
+														<option value="Digit1">1</option>
+														<option value="Digit2">2</option>
+													</select>
+												</div>
+												<div id="cfg_ports_0_joy_grp">
+													Device
+													<select id="cfg_ports_0_joy_device" size="1">
+														<option value="-1" disabled="disabled">- please wait -</option>
+														<!-- Populated with connected gamepads via HTML5 Gamepad API -->
 													</select>
 												</div>
 											</td>
@@ -1564,11 +1636,12 @@
 											<td>
 												<select id="cfg_ports_1" size="1" onchange="portUpdate(1)">
 													<option value="0">Disabled</option>
-													<option value="3">Joystick</option>
+													<option value="2">Joystick</option>
+													<option value="3">Emulated</option>
 												</select>
 											</td>
 											<td>
-												<div id="cfg_ports_1_grp">
+												<div id="cfg_ports_1_joyemu_grp">
 													Move
 													<select id="cfg_ports_1_move" size="1">
 														<option value="1">Arrows</option>
@@ -1576,7 +1649,7 @@
 														<option value="3">WASD</option>
 													</select>
 													Fire 1
-													<select id="cfg_ports_1_fire_1" size="1">
+													<!--<select id="cfg_ports_1_fire_1" size="1">
 														<option value="0">None</option>
 														<option value="16">Shift</option>
 														<option value="17">Ctrl</option>
@@ -1600,9 +1673,36 @@
 														<option value="145">Scroll lock</option>
 														<option value="49">1</option>
 														<option value="50">2</option>
+													</select>-->
+													<select id="cfg_ports_1_fire_1" size="1">
+														<option value="None">None</option>
+														<option value="ShiftLeft">Left Shift</option>
+														<option value="ShiftRight">Right Shift</option>
+														<option value="ControlLeft">Left Ctrl</option>
+														<option value="ControlRight">Right Ctrl</option>
+														<option value="Enter">Enter</option>
+														<option value="Space">Space</option>
+														<option value="Backspace">Backspace</option>
+														<option value="Numpad0">Numpad 0</option>
+														<option value="NumpadMultiply">Numpad *</option>
+														<option value="NumpadAdd">Numpad +</option>
+														<option value="NumpadSubtract">Numpad -</option>
+														<option value="NumpadDecimal">Numpad .</option>
+														<option value="NumpadDivide">Numpad /</option>
+														<option value="Delete">Delete</option>
+														<option value="Insert">Insert</option>
+														<option value="PageDown">Page down</option>
+														<option value="PageUp">Page up</option>
+														<option value="End">End</option>
+														<option value="Home">Home</option>
+														<option value="Pause">Pause</option>
+														<option value="NumLock">Num lock</option>
+														<option value="ScrollLock">Scroll lock</option>
+														<option value="Digit1">1</option>
+														<option value="Digit2">2</option>
 													</select>
 													Fire 2
-													<select id="cfg_ports_1_fire_2" size="1">
+													<!--<select id="cfg_ports_1_fire_2" size="1">
 														<option value="0">None</option>
 														<option value="16">Shift</option>
 														<option value="17">Ctrl</option>
@@ -1626,10 +1726,48 @@
 														<option value="145">Scroll lock</option>
 														<option value="49">1</option>
 														<option value="50">2</option>
+													</select>-->
+													<select id="cfg_ports_1_fire_2" size="1">
+														<option value="None">None</option>
+														<option value="ShiftLeft">Left Shift</option>
+														<option value="ShiftRight">Right Shift</option>
+														<option value="ControlLeft">Left Ctrl</option>
+														<option value="ControlRight">Right Ctrl</option>
+														<option value="Enter">Enter</option>
+														<option value="Space">Space</option>
+														<option value="Backspace">Backspace</option>
+														<option value="Numpad0">Numpad 0</option>
+														<option value="NumpadMultiply">Numpad *</option>
+														<option value="NumpadAdd">Numpad +</option>
+														<option value="NumpadSubtract">Numpad -</option>
+														<option value="NumpadDecimal">Numpad .</option>
+														<option value="NumpadDivide">Numpad /</option>
+														<option value="Delete">Delete</option>
+														<option value="Insert">Insert</option>
+														<option value="PageDown">Page down</option>
+														<option value="PageUp">Page up</option>
+														<option value="End">End</option>
+														<option value="Home">Home</option>
+														<option value="Pause">Pause</option>
+														<option value="NumLock">Num lock</option>
+														<option value="ScrollLock">Scroll lock</option>
+														<option value="Digit1">1</option>
+														<option value="Digit2">2</option>
+													</select>
+												</div>
+												<div id="cfg_ports_1_joy_grp">
+													Device
+													<select id="cfg_ports_1_joy_device" size="1">
+														<option value="-1" disabled="disabled">- please wait -</option>
+														<!-- Populated with connected gamepads via HTML5 Gamepad API -->
 													</select>
 												</div>
 											</td>
 											<td style="width:100%"></td>
+										</tr>
+										<tr>
+											<td></td>
+											<td colspan="3"><span class="info">Note: If a joystick-device get not detected, try to press some buttons on it.</span></td>
 										</tr>
 										<tr><td colspan="4"><div style="height:10px"></div></td></tr>
 										<tr>
@@ -1638,16 +1776,29 @@
 										</tr>
 										<tr>
 											<td class="arm"><input id="cfg_keyborad_enabled" type="checkbox" /></td>
-											<td class="alm" colspan="3">Enabled <span class="info">(joystick-emulation does always work)</span></td>
+											<td class="alm" colspan="3">Enabled <span class="info">(emulated joysticks do always work)</span></td>
 										</tr>
 										<tr><td colspan="4"><div style="height:10px"></div></td></tr>
 										<tr>
-											<td class="arm"><span class="label">Serial</span></td>
+											<td class="arm"><span class="label">Hardware dongle</span></td>
 											<td colspan="3"></td>
 										</tr>
 										<tr>
-											<td class="arm"><input id="cfg_serial_enabled" type="checkbox" /></td>
-											<td class="alm" colspan="3">Enabled <span class="info">(output to developer-console)</span></td>
+											<td class="arm">Type</td>
+											<td class="alm" colspan="3">
+												<select id="cfg_dongle" size="1">
+													<option value="0">None</option>
+													<option value="1">RoboCop 3 (J2)</option>
+													<option value="2">Leaderboard (J2)</option>
+													<option value="3">B.A.T. II (Serial)</option>
+													<option value="4">Italy Soccer '90 (J2)</option>
+													<option value="5">Dames Grand Maitre (J2)</option>
+													<option value="6">Rugby Coach (J2)</option>
+													<option value="7">Cricket Captain (J1)</option>
+													<option value="8">Leviathanv (J1)</option>
+													<option value="9">Logistix (J2)</option>
+												</select>
+											</td>
 										</tr>
 									</table>
 								</div>
@@ -1662,7 +1813,7 @@
 			</div>
 			<div style="height:5px"></div>
 			<div id="foot" class="foot" style="line-height:14px">
-				<span class="gray">2012-2016 Rupert Hausberger</span> |
+				<span class="gray">2012-2021 Rupert Hausberger</span> |
 				<a target="_blank" href="readme.htm">Description</a> |
 				<a target="_blank" href="disass.htm">Disassembler</a> |
 				<a target="_blank" href="https://github.com/naTmeg/ScriptedAmigaEmulator">Source-code</a>
@@ -1678,8 +1829,9 @@
 									<td><button onclick="reset()">Reset</button></td>
 									<td><button onclick="stop()">Stop</button></td>
 									<td><button onclick="pause(1)" id="controls_pr">Pause</button></td>
+									<td><button onclick="mute(1)" id="controls_mp">Mute</button></td>
+									<td id="controls_screen"><button onclick="screen(1)" id="controls_sw">Screen</button></td>
 									<td id="controls_disk"><button onclick="dskchgOpen()">Disk</button></td>
-									<!--<td><button onclick="toggleFullScreen()">FS</button></td>-->
 								</tr>
 							</table>
 						</div>

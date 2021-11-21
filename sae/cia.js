@@ -2,7 +2,7 @@
 | SAE - Scripted Amiga Emulator
 | https://github.com/naTmeg/ScriptedAmigaEmulator
 |
-| Copyright (C) 2012-2016 Rupert Hausberger
+| Copyright (C) 2012 Rupert Hausberger
 |
 | This program is free software; you can redistribute it and/or
 | modify it under the terms of the GNU General Public License
@@ -44,7 +44,7 @@ function SAEO_CIA() {
 
 	var ciaatod = 0, ciabtod = 0, ciaatol = 0, ciabtol = 0, ciaaalarm = 0, ciabalarm = 0; //ulong
 	var ciaatlatch = 0, ciabtlatch = 0; //int
-	var oldovl = false, oldcd32mute = false; //bool
+	var oldovl = false; //, oldcd32mute = false; //bool
 	var led = false; //bool
 	var led_old_brightness = 0; //int
 	var led_cycles_on = 0, led_cycles_off = 0, led_cycle = 0; //ulong
@@ -71,23 +71,28 @@ function SAEO_CIA() {
 	}*/
 
 	/* delay interrupt after current CIA register access if interrupt would have triggered mid access */
-	var cia_interrupt_disabled = 0; //int
-	var cia_interrupt_delay = 0; //int
+	//var cia_interrupt_disabled = 0; //int
+	//var cia_interrupt_delay = 0; //int
 
 	/*-----------------------------------------------------------------------*/
 
 	function ICR(data) {
-		SAER.custom.INTREQ_0(SAEC_Custom_INTF_SETCLR | data);
+		if (!(SAEV_Custom_intreq & data))
+			SAER.custom.INTREQ_0(SAEC_Custom_INTF_SETCLR | data);
 	}
 
-	function ICRA(data) {
-		ciaaicr |= 0x40;
+	function ICRA() {
+		if (ciaaicr & 0x80)
+			ciaaicr |= 0x40;
+
 		ciaaicr |= 0x20;
 		ICR(0x0008);
 	}
 
-	function ICRB(data) {
-		ciabicr |= 0x40;
+	function ICRB() {
+		if (ciabicr & 0x80)
+			ciabicr |= 0x40;
+
 		ciabicr |= 0x20;
 		if (SAEV_config.chipset.compatible == SAEC_Config_Chipset_Compatible_A1000V)
 			ICR(0x0008); /* Both CIAs in Velvet are connected to level 2 */
@@ -99,7 +104,7 @@ function SAEO_CIA() {
 		if (ciaaicr & ciaaimask) {
 			if (!(ciaaicr & 0x80)) {
 				ciaaicr |= 0x80;
-				ICRA(0x0008);
+				ICRA();
 			}
 		}
 	}
@@ -108,14 +113,14 @@ function SAEO_CIA() {
 		if (ciabicr & ciabimask) {
 			if (!(ciabicr & 0x80)) {
 				ciabicr |= 0x80;
-				ICRB(0);
+				ICRB();
 			}
 		}
 	}
 
 	this.rethink = function() { //rethink_cias()
-		if (ciaaicr & 0x40) ICRA(0);
-		if (ciabicr & 0x40) ICRB(0);
+		if (ciaaicr & 0x40) ICRA();
+		if (ciabicr & 0x40) ICRB();
 	}
 
 	/* Figure out how many CIA timer cycles have passed for each timer since the last call of CIA_calctimers.  */
@@ -382,14 +387,14 @@ function SAEO_CIA() {
 		CIA_calctimers();
 	}
 
+	this.parallelack = function() { //cia_parallelack()
+		ciaaicr |= 0x10;
+		RethinkICRA();
+	}
 	this.diskindex = function() { //cia_diskindex()
 		ciabicr |= 0x10;
 		RethinkICRB();
 	}
-	/*function cia_parallelack() {
-		ciaaicr |= 0x10;
-		RethinkICRA();
-	}*/
 
 	function checkalarm(tod, alarm, inc, ab) {
 		if (tod == alarm)
@@ -793,8 +798,7 @@ function SAEO_CIA() {
 
 	function check_led() {
 		var v = ciaapra;
-
-		v |= ~ciaadra; /* output is high when pin"s direction is input */
+		v |= ~ciaadra; /* output is high when pin's direction is input */
 		var led2 = (v & 2) ? 0 : 1;
 		if (led2 != led) {
 			calc_led(led);
@@ -817,38 +821,6 @@ function SAEO_CIA() {
 			oldcd32mute = v & 1;
 			akiko_mute (oldcd32mute ? 0 : 1);
 		}*/
-	}
-
-	function handle_joystick_buttons(pra, dra) {
-		var tmp = 0;
-		if (SAEV_config.ports[0].type == SAEC_Config_Ports_Type_Mouse) {
-			if (!SAER.input.mouse.button[0]) tmp |= 0x40;
-			if (dra & 0x40) tmp = (tmp & ~0x40) | (pra & 0x40);
-		} else if (SAEV_config.ports[0].type == SAEC_Config_Ports_Type_Joy0) {
-			if (!SAER.input.joystick[0].button[0]) tmp |= 0x40;
-			if (dra & 0x40) tmp = (tmp & ~0x40) | (pra & 0x40);
-		} else tmp |= 0x40;
-
-		if (SAEV_config.ports[1].type == SAEC_Config_Ports_Type_Joy1) {
-			if (!SAER.input.joystick[1].button[0]) tmp |= 0x80;
-			if (dra & 0x80) tmp = (tmp & ~0x80) | (pra & 0x80);
-		} else tmp |= 0x80;
-
-		return tmp;
-	}
-
-	function handle_parport_joystick (port, pra, dra) {
-		var v;
-		switch (port) {
-			case 0:
-				v = (pra & dra) | (dra ^ 0xff);
-				return v;
-			case 1:
-				v = ((pra & dra) | (dra ^ 0xff)) & 0x7;
-				return v;
-			default:
-				return 0;
-		}
 	}
 
 	function getciatod(tod) {
@@ -901,29 +873,31 @@ function SAEO_CIA() {
 			action_replay_cia_access(false);
 			#endif*/
 			tmp = SAER.disk.status_ciaa() & 0x3c;
-			tmp |= handle_joystick_buttons(ciaapra, ciaadra);
+			tmp |= SAER.input.handle_joystick_buttons(ciaapra, ciaadra);
 			tmp |= (ciaapra | (ciaadra ^ 3)) & 0x03;
-			//tmp = dongle_cia_read(0, reg, tmp);
+			//tmp = SAER.dongle.cia_read(0, reg, tmp); /* unused */
 			return tmp;
 		case 1:
-			/*#ifdef PARALLEL_PORT
-			if (isprinter () > 0) {
-				tmp = ciaaprb;
-			} else if (isprinter () < 0) {
-				uae_u8 v;
-				parallel_direct_read_data (&v);
-				tmp = v;
-			#ifdef ARCADIA
-			} else if (arcadia_bios) {
-				tmp = arcadia_parport (0, ciaaprb, ciaadrb);
-			#endif
-			} else if (currprefs.win32_samplersoundcard >= 0) {
-				tmp = sampler_getsample ((ciabpra & 4) ? 1 : 0);
-			#endif
-			}*/ {
-				tmp = handle_parport_joystick(0, ciaaprb, ciaadrb);
-				//tmp = dongle_cia_read(1, reg, tmp);
-			}
+			//#ifdef PARALLEL_PORT
+			if (SAEV_config.parallel.enabled) {
+				tmp = SAER.parallel.direct_read_data();
+				/*var isp = SAER.parallel.isprinter();
+				if (isp > 0)
+					tmp = ciaaprb;
+				else if (isp < 0)
+					tmp = SAER.parallel.direct_read_data();
+				#ifdef ARCADIA
+				else if (arcadia_bios) tmp = arcadia_parport (0, ciaaprb, ciaadrb);
+				#endif
+				else if (currprefs.win32_samplersoundcard >= 0) tmp = sampler_getsample ((ciabpra & 4) ? 1 : 0);
+				else
+					tmp = SAER.input.handle_parport_joystick(0, ciaaprb, ciaadrb);*/
+			} else
+			//#endif
+				tmp = (ciaaprb & ciaadrb) | (ciaadrb ^ 0xff);
+
+			//tmp = SAER.dongle.cia_read(1, reg, tmp); /* BUG (no effect) */
+			//tmp = SAER.dongle.cia_read(0, reg, tmp); /* unused */
 			if (ciaacrb & 2) {
 				var pb7 = 0;
 				if (ciaacrb & 4)
@@ -1022,25 +996,26 @@ function SAEO_CIA() {
 			#endif*/
 			if (SAEV_config.serial.enabled)
 				tmp = SAER.serial.readstatus(ciabdra);
-			/*#ifdef PARALLEL_PORT
-			if (isprinter () > 0) {
-				//tmp |= ciabpra & (0x04 | 0x02 | 0x01);
-				tmp &= ~3; // clear BUSY and PAPEROUT
-				tmp |= 4; // set SELECT
-			} else if (isprinter () < 0) {
-				uae_u8 v;
-				parallel_direct_read_status (&v);
-				tmp |= v & 7;
-			}*/ {
-				tmp |= handle_parport_joystick(1, ciabpra, ciabdra);
+			//#ifdef PARALLEL_PORT
+			if (SAEV_config.parallel.enabled) {
+				tmp |= SAER.parallel.direct_read_status() & 7;
+				/*var isp = SAER.parallel.isprinter();
+				if (isp > 0) {
+					//tmp |= ciabpra & (0x04 | 0x02 | 0x01);
+					tmp &= ~3; // clear BUSY and PAPEROUT
+					tmp |= 4; // set SELECT
+				} else if (isp < 0)
+					tmp |= SAER.parallel.direct_read_status() & 7;
+				else
+					tmp |= SAER.input.handle_parport_joystick(1, ciabpra, ciabdra);*/
 			}
 			//#endif
-			//tmp = dongle_cia_read(1, reg, tmp);
+			tmp = SAER.dongle.cia_read(1, reg, tmp);
 			return tmp;
 		case 1:
 			tmp = ciabprb;
 			tmp = SAER.disk.status_ciab(tmp);
-			//tmp = dongle_cia_read(1, reg, tmp);
+			//tmp = SAER.dongle.cia_read(1, reg, tmp); /* unused */
 			if (ciabcrb & 2) {
 				var pb7 = 0;
 				if (ciabcrb & 4)
@@ -1138,8 +1113,8 @@ function SAEO_CIA() {
 		case 0:
 			ciaapra = (ciaapra & ~0xc3) | (val & 0xc3);
 			bfe001_change();
-			//handle_cd32_joystick_cia (ciaapra, ciaadra);
-			//dongle_cia_write (0, reg, val);
+			//SAER.input.handle_cd32_joystick_cia(ciaapra, ciaadra);
+			SAER.dongle.cia_write(0, reg, val);
 
 			//if (is_device_rom(SAEV_config, SAEC_RomType_AMAX, 0) > 0)
 			if (SAEV_config.memory.amaxRom.size > 0)
@@ -1148,29 +1123,32 @@ function SAEO_CIA() {
 			break;
 		case 1:
 			ciaaprb = val;
-			//dongle_cia_write (0, reg, val);
-			/*#ifdef PARALLEL_PORT
-			if (isprinter() > 0) {
-				doprinter (val);
-				cia_parallelack ();
-			} else if (isprinter() < 0) {
-				parallel_direct_write_data (val, ciaadrb);
-				cia_parallelack ();
-			#ifdef ARCADIA
-			} else if (arcadia_bios) {
-				arcadia_parport (1, ciaaprb, ciaadrb);
-			#endif
+			//SAER.dongle.cia_write(0, reg, val); /* unused */
+			//#ifdef PARALLEL_PORT
+			if (SAEV_config.parallel.enabled) {
+				SAER.parallel.direct_write_data(ciaaprb, ciaadrb);
+				/*var isp = SAER.parallel.isprinter();
+				if (isp > 0) {
+					SAER.parallel.doprinter(val);
+					SAER.cia.parallelack();
+				} else if (isp < 0) {
+					SAER.parallel.direct_write_data(ciaaprb, ciaadrb);
+					//SAER.cia.parallelack(); //OWN enabled elsewhere
+				}
+				#ifdef ARCADIA
+				else if (arcadia_bios) arcadia_parport (1, ciaaprb, ciaadrb);
+				#endif*/
 			}
-			#endif*/
+			//#endif
 			break;
 		case 2:
 			ciaadra = val;
-			//dongle_cia_write(0, reg, val);
+			//SAER.dongle.cia_write(0, reg, val); /* unused */
 			bfe001_change();
 			break;
 		case 3:
 			ciaadrb = val;
-			//dongle_cia_write(0, reg, val);
+			//SAER.dongle.cia_write(0, reg, val); /* unused */
 			/*#ifdef ARCADIA
 			if (arcadia_bios)
 				arcadia_parport (1, ciaaprb, ciaadrb);
@@ -1304,32 +1282,33 @@ function SAEO_CIA() {
 		#endif*/
 		switch (reg) {
 		case 0:
-			//dongle_cia_write(1, reg, val);
+			SAER.dongle.cia_write(1, reg, val);
 			ciabpra = val;
 			if (SAEV_config.serial.enabled)
 				SAER.serial.writestatus(ciabpra, ciabdra);
-			/*#ifdef PARALLEL_PORT
-			if (isprinter () < 0) {
-				parallel_direct_write_status (val, ciabdra);
+			//#ifdef PARALLEL_PORT
+			if (SAEV_config.parallel.enabled) {
+				//if (SAER.parallel.isprinter() < 0) //OWN always true
+				SAER.parallel.direct_write_status(ciabpra, ciabdra);
 			}
-			#endif*/
+			//#endif
 			break;
 		case 1:
 			/*#ifdef ACTION_REPLAY
 			action_replay_cia_access(true);
 			#endif*/
-			//dongle_cia_write(1, reg, val);
+			//SAER.dongle.cia_write(1, reg, val); /* unused */
 			ciabprb = val;
 			SAER.disk.select(val);
 			break;
 		case 2:
-			//dongle_cia_write(1, reg, val);
+			//SAER.dongle.cia_write(1, reg, val); /* unused */
 			ciabdra = val;
 			if (SAEV_config.serial.enabled)
 				SAER.serial.writestatus(ciabpra, ciabdra);
 			break;
 		case 3:
-			//dongle_cia_write(1, reg, val);
+			//SAER.dongle.cia_write(1, reg, val); /* unused */
 			ciabdrb = val;
 			break;
 		case 4:
@@ -1472,7 +1451,7 @@ function SAEO_CIA() {
 
 		kblostsynccnt = 0;
 		serbits = 0;
-		oldcd32mute = 1;
+		//oldcd32mute = 1;
 		//resetwarning_phase = resetwarning_timer = 0;
 		heartbeat_cnt = 0;
 		ciab_tod_event_state = 0;
@@ -1562,12 +1541,12 @@ function SAEO_CIA() {
 	function cia_wait_post(cianummask, value) {
 		SAER.events.do_cycles(6 * SAEC_Events_CYCLE_UNIT >> 1);
 
-		if (cia_interrupt_delay) {
+		/*if (cia_interrupt_delay) {
 			var v = cia_interrupt_delay;
 			cia_interrupt_delay = 0;
 			if (v & 1) ICR(0x0008);
 			if (v & 2) ICR(0x2000);
-		}
+		}*/
 	}
 
 	/*---------------------------------*/

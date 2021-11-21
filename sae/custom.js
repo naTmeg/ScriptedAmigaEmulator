@@ -2,7 +2,7 @@
 | SAE - Scripted Amiga Emulator
 | https://github.com/naTmeg/ScriptedAmigaEmulator
 |
-| Copyright (C) 2012-2016 Rupert Hausberger
+| Copyright (C) 2012 Rupert Hausberger
 |
 | This program is free software; you can redistribute it and/or
 | modify it under the terms of the GNU General Public License
@@ -157,7 +157,8 @@ function SAEO_Custom() {
 
 		if (v & 0x8000) SAEV_Custom_intreq |= v & 0x7FFF; else SAEV_Custom_intreq &= ~v;
 
-		//if ((old & 0x0800) && !(SAEV_Custom_intreq & 0x0800)) serial_rbf_clear();
+		if ((old & SAEC_Custom_INTF_RBF) && !(SAEV_Custom_intreq & SAEC_Custom_INTF_RBF))
+			SAER.serial.rbf_clear();
 
 		var old2 = intreq_internal;
 		intreq_internal = SAEV_Custom_intreq;
@@ -169,7 +170,9 @@ function SAEO_Custom() {
 	}
 	this.INTREQ = function(v) {
 		if (this.INTREQ_0(v)) {
-			//serial_check_irq();
+			if (SAEV_config.serial.enabled)
+				SAER.serial.check_irq();
+
 			SAER.devices.rethink();
 		}
 	}
@@ -207,7 +210,7 @@ function SAEO_Custom() {
 		if (v & 0x8000) SAEV_Custom_adkcon |= v & 0x7FFF; else SAEV_Custom_adkcon &= ~v;
 
 		SAER.audio.update_adkmasks();
-		//if ((v >> 11) & 1) serial_uartbreak((SAEV_Custom_adkcon >> 11) & 1);
+		//if ((v >> 11) & 1) SAER.serial.uartbreak((SAEV_Custom_adkcon >> 11) & 1); /* unused */
 	}
 
 	/*---------------------------------*/
@@ -811,8 +814,8 @@ function SAEO_Devices() {
 	this.vsync_pre = function() {
 		//SAER.audio.vsync(); empty
 		SAER.cia.vsync();
-		/*inputdevice_vsync();
-		filesys_vsync();
+		SAER.input.vsync(); //inputdevice_vsync() EMPTY
+		/*filesys_vsync();
 		sampler_vsync();
 		clipboard_vsync();
 		#ifdef RETROPLATFORM
@@ -852,7 +855,8 @@ function SAEO_Devices() {
 			SAER.audio.hsync();
 
 		//SAER.cia.hsync(); //OWN empty
-		//serial_hsynchandler();
+		if (SAEV_config.serial.enabled)
+			SAER.serial.hsync();
 		if (SAEV_config.chipset.ide >= 0 || SAEV_config.chipset.pcmcia) //OWN ATT
 			SAER.gayle.hsync();
 		//idecontroller_hsync();

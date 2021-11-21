@@ -2,7 +2,7 @@
 | SAE - Scripted Amiga Emulator
 | https://github.com/naTmeg/ScriptedAmigaEmulator
 |
-| Copyright (C) 2012-2016 Rupert Hausberger
+| Copyright (C) 2012 Rupert Hausberger
 |
 | This program is free software; you can redistribute it and/or
 | modify it under the terms of the GNU General Public License
@@ -6498,19 +6498,19 @@ function SAEO_CPU() {
 	function I_cpRESTORE(p) {
 		//SAEF_warn("I_cpRESTORE not implemented, cid %d, pc %08x", p.cid, regs.instruction_pc);
 		return coreIllegal(p.op);
-		if (regs.s) {
+		/*if (regs.s) {
 			//var data = ldEA32tab[p.ea]();
 			//ccna
 			//return p.cyc;
 		} else {
 			//coreClrPC();
 			return coreException(8);
-		}
+		}*/
 	}
 	function I_cpSAVE(p) {
 		//SAEF_warn("I_cpSAVE not implemented, cid %d, pc %08x", p.cid, regs.instruction_pc);
 		return coreIllegal(p.op);
-		if (regs.s) {
+		/*if (regs.s) {
 			//var data = 12345;
 			//stEA32tab[p.ea](data);
 			//ccna
@@ -6518,7 +6518,7 @@ function SAEO_CPU() {
 		} else {
 			//coreClrPC();
 			return coreException(8);
-		}
+		}*/
 	}
 	function I_cpScc(p) {
 		//SAEF_warn("I_cpScc not implemented, cid %d, pc %08x", p.cid, regs.instruction_pc);
@@ -10229,39 +10229,3 @@ function SAEO_CPU() {
 		return true;
 	}
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -2,7 +2,7 @@
 | SAE - Scripted Amiga Emulator
 | https://github.com/naTmeg/ScriptedAmigaEmulator
 |
-| Copyright (C) 2012-2016 Rupert Hausberger
+| Copyright (C) 2012 Rupert Hausberger
 |
 | This program is free software; you can redistribute it and/or
 | modify it under the terms of the GNU General Public License
@@ -1068,17 +1068,17 @@ function SAEO_Memory() {
 	/* BANK Extended 2nd Kickstart ROM */
 
 	function extendedkickmem2_get32(addr) {
-		addr = (addr & extendedkickmem2_bank.mask) >>> 0;
+		addr = ((addr - extendedkickmem2_bank.start) & extendedkickmem2_bank.mask) >>> 0;
 		//var m = extendedkickmem2_bank.baseaddr + addr; return do_get_mem_long ((uae_u32 *)m);
 		return ((extendedkickmem2_bank.baseaddr[addr] << 24) | (extendedkickmem2_bank.baseaddr[addr+1] << 16) | (extendedkickmem2_bank.baseaddr[addr+2] << 8) | extendedkickmem2_bank.baseaddr[addr+3]) >>> 0;
 	}
 	function extendedkickmem2_get16(addr) {
-		addr = (addr & extendedkickmem2_bank.mask) >>> 0;
+		addr = ((addr - extendedkickmem2_bank.start) & extendedkickmem2_bank.mask) >>> 0;
 		//var m = extendedkickmem2_bank.baseaddr + addr; return do_get_mem_word ((uae_u16 *)m);
 		return (extendedkickmem2_bank.baseaddr[addr] << 8) | extendedkickmem2_bank.baseaddr[addr+1];
 	}
 	function extendedkickmem2_get8(addr) {
-		addr = (addr & extendedkickmem2_bank.mask) >>> 0;
+		addr = ((addr - extendedkickmem2_bank.start) & extendedkickmem2_bank.mask) >>> 0;
 		return extendedkickmem2_bank.baseaddr[addr];
 	}
 	function extendedkickmem2_put32(addr, b) {
@@ -1094,11 +1094,11 @@ function SAEO_Memory() {
 			SAEF_warn("Illegal extendedkickmem2 put32 at %08x", addr);
 	}
 	function extendedkickmem2_check(addr, size) {
-		addr = (addr & extendedkickmem2_bank.mask) >>> 0;
+		addr = ((addr - extendedkickmem2_bank.start) & extendedkickmem2_bank.mask) >>> 0;
 		return (addr + size) <= extendedkickmem2_bank.allocated;
 	}
 	function extendedkickmem2_xlate(addr) {
-		addr = (addr & extendedkickmem2_bank.mask) >>> 0;
+		addr = ((addr - extendedkickmem2_bank.start) & extendedkickmem2_bank.mask) >>> 0;
 		//return extendedkickmem2_bank.baseaddr + addr;
 		return addr;
 	}
@@ -2232,7 +2232,7 @@ function SAEO_Memory() {
 		allocate();
 		chipmem_setindirect();
 
-		if (mem_hardreset > 1 || (a1000_bootrom !== null && hardreset && SAER.cpu.is_hardreset())
+		if (mem_hardreset > 1 || (a1000_bootrom !== null && hardreset && SAER.m68k.is_hardreset())
 			// || _tcscmp (currprefs.romfile, changed_prefs.romfile) != 0
 			// || _tcscmp (currprefs.romextfile, changed_prefs.romextfile) != 0
 		) {

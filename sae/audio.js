@@ -2,7 +2,7 @@
 | SAE - Scripted Amiga Emulator
 | https://github.com/naTmeg/ScriptedAmigaEmulator
 |
-| Copyright (C) 2012-2016 Rupert Hausberger
+| Copyright (C) 2012 Rupert Hausberger
 |
 | This program is free software; you can redistribute it and/or
 | modify it under the terms of the GNU General Public License
@@ -54,6 +54,7 @@ function SAEO_Audio() {
 	const SOUND_SYNC_MULTIPLIER = 1.0;
 	var scaled_sample_evtime_orig = 0.0;
 
+	var muted = false;
 	var paused = false;
 	var have_sound = false;
 	var sound_available = false;
@@ -210,17 +211,28 @@ function SAEO_Audio() {
 
 	/*---------------------------------*/
 
-	const INV32768 = 1.0 / 32768; /* mul is always fasten than div */
+	const INV32768 = 1.0 / 32768; /* mul is always faster than div */
 
 	function scaleplay(e, buffer, frames) {
-		/*if (driver.context.sampleRate != used_freq) {
-		} else*/ {
-			var step = frames / e.outputBuffer.length;
-
-			for (var ch = 0; ch < SAEV_config.audio.channels; ch++) {
+		var chn = SAEV_config.audio.channels;
+		var z = e.outputBuffer.length;
+		if (muted) {
+			for (var ch = 0; ch < chn; ch++) {
 				var data = e.outputBuffer.getChannelData(ch);
-				for (var i = 0, j = 0.0; i < e.outputBuffer.length; i++, j += step)
-					data[i] = buffer[ch][j >>> 0] * INV32768;
+				for (var i = 0; i < z; i++)
+					data[i] = 0.0;
+			}
+			return;
+		}
+		/*if (driver.context.sampleRate != used_freq) {} else*/
+		{
+			var step = frames / z;
+
+			for (var ch = 0; ch < chn; ch++) {
+				var data = e.outputBuffer.getChannelData(ch);
+				var tbuf = buffer[ch];
+				for (var i = 0, j = 0.0; i < z; i++, j += step)
+					data[i] = tbuf[j >>> 0] * INV32768;
 			}
 		}
 	}
@@ -291,7 +303,7 @@ function SAEO_Audio() {
 	function open_sound() {
 		driver.context = null;
 		try {
-			var AudioContextDriver = window.AudioContext || window.webkitAudioContext;
+			var AudioContextDriver = window.webkitAudioContext || window.AudioContext;
 			driver.context = new AudioContextDriver();
 			driver.processor = driver.context.createScriptProcessor(paula.frames, SAEV_config.audio.channels, SAEV_config.audio.channels);
 		} catch (e) {
@@ -359,6 +371,7 @@ function SAEO_Audio() {
 	}
 
 	function setup_sound() { //init_sound()
+		muted = paused = false;
 		//SAER.gui.data.sndbuf_status = 3;
 		//SAER.gui.data.sndbuf = 0;
 		if (!have_sound)
@@ -377,6 +390,10 @@ function SAEO_Audio() {
 		cache.wait = true;
 
 		paula.average.clr();
+	}
+
+	function mute_sound(mute) { //OWN
+		muted = mute;
 	}
 
 	/*-----------------------------------------------------------------------*/
@@ -1457,11 +1474,9 @@ function SAEO_Audio() {
 	}
 
 	this.reset = function() {
-		var i;
-
 		reset_sound();
 
-		for (i = 0; i < sound_filter_state.length; i++)
+		for (var i = 0; i < sound_filter_state.length; i++)
 			sound_filter_state[i].clr();
 
 		for (i = 0; i < AUDIO_CHANNELS_MAX; i++) {
@@ -1487,6 +1502,10 @@ function SAEO_Audio() {
 			resume_sound();
 	}
 
+	this.mute = function(mute) {
+		mute_sound(mute)
+	}
+
 	/*-----------------------------------------------------------------------*/
 
 	var prevcon = -1;
@@ -1498,10 +1517,10 @@ function SAEO_Audio() {
 		audio_channel[1].adk_mask = (((t >> 1) & 1) - 1) >>> 0;
 		audio_channel[2].adk_mask = (((t >> 2) & 1) - 1) >>> 0;
 		audio_channel[3].adk_mask = (((t >> 3) & 1) - 1) >>> 0;*/
-		audio_channel[0].enabled = (t &  1) == 0;
-		audio_channel[1].enabled = (t &  3) == 0;
-		audio_channel[2].enabled = (t &  7) == 0;
-		audio_channel[3].enabled = (t & 15) == 0;
+		audio_channel[0].enabled = (t & 1) == 0;
+		audio_channel[1].enabled = (t & 2) == 0;
+		audio_channel[2].enabled = (t & 4) == 0;
+		audio_channel[3].enabled = (t & 8) == 0;
 
 		if ((prevcon & 0xff) != (SAEV_Custom_adkcon & 0xff)) {
 			audio_activate();

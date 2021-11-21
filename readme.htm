@@ -21,10 +21,12 @@
 						<li><a href="readme.htm#limits">Limits</a></li>
 						<li style="list-style:none"><div style="height:8px"></div></li>
 						<li><a href="readme.htm#usage">Usage</a></li>
+						<li><a href="readme.htm#api">API</a></li>
 						<li><a href="readme.htm#safety">Safety</a></li>
 						<li><a href="readme.htm#privacy">Privacy</a></li>
 						<li style="list-style:none"><div style="height:8px"></div></li>
 						<li><a href="readme.htm#support">Your game or demo</a></li>
+						<li><a href="readme.htm#references">References</a></li>
 						<li style="list-style:none"><div style="height:8px"></div></li>
 						<li><a href="readme.htm#author">Author</a></li>
 						<li><a href="readme.htm#thanks">Thanks</a></li>
@@ -57,6 +59,9 @@
 							<ul>
 								<li>WegGL/Canvas2D- and WebAudio-extensions.</li>
 								<li>Typed-arrays and FileReader-extension.</li>
+								<li>fullscreen-extension. (optional)</li>
+								<li>pointerLock-extension. (optional)</li>
+								<li>gamepad-extension. (optional)</li>
 								<li>The browser should support compilation of javascript-code to native-code. (JIT)</li>
 								<li>The browser should be able to use multiple cpu-cores on a single thread/tab.</li>
 								<li>Memory-requirements are between 200MB to 1.5GB depending on configuration and browser.</li>
@@ -73,24 +78,24 @@
 				</li>
 			</ul>
 			<ul id="features">
-				<li><span class="label">Features</span> <span class="info">(new = new in latest version 0.9.0)</span>
+				<li><span class="label">Features</span> <span class="info">(new = new in version 0.9.10)</span>
 					<ul>
 						<li>Models
 							<ul>
-								<li>A1000/A1000-Velvet <span class="info">(new)</span></li>
+								<li>A1000/A1000-Velvet</li>
 								<li>A500/A2000</li>
 								<li>A500+</li>
-								<li>A600 <span class="info">(new)</span></li>
-								<li>A1200 <span class="info">(new)</span></li>
-								<li>A3000 <span class="info">(partial, new)</span></li>
-								<li>A4000/030 <span class="info">(partial, new)</span></li>
+								<li>A600</li>
+								<li>A1200</li>
+								<li>A3000</li>
+								<li>A4000/030</li>
 							</ul>
 						</li>
 						<li>CPUs
 							<ul>
 								<li>68000</li>
-								<li>68010 <span class="info">(new)</span></li>
-								<li>68020/68030 <span class="info">(new)</span>
+								<li>68010</li>
+								<li>68020/68030
 									<ul>
 										<li>32-bit support.</li>
 										<li>Cache support.</li>
@@ -104,20 +109,20 @@
 							<ul>
 								<li>Original-Chip-Set (OCS)
 									<ul>
-										<li>A1000-Agnus (8361 PAL, 8367 NTSC) emulation. <span class="info">(new)</span></li>
+										<li>A1000-Agnus (8361 PAL, 8367 NTSC) emulation.</li>
 									</ul>
 								</li>
 								<li>Enhanced-Chip-Set (ECS)
 									<ul>
-										<li>Partial (Agnus/Denise only) or full emulation. <span class="info">(new)</span></li>
+										<li>Partial (Agnus/Denise only) or full emulation.</li>
 									</ul>
 								</li>
-								<li>Advanced Graphics Architecture. (AGA) <span class="info">(new)</span></li>
+								<li>Advanced Graphics Architecture. (AGA)</li>
 								<li>PAL/NTSC-regions.</li>
 								<li>Sprites-only or full collision-detection.</li>
 								<li>Full blitter support.</li>
 								<li>Full copper support.</li>
-								<li>Full gayle support (A600/A1200) <span class="info">(new)</span>
+								<li>Full gayle support (A600/A1200)
 									<ul>
 										<li>IDE</li>
 										<li>PCMCIA</li>
@@ -131,9 +136,9 @@
 								</li>
 								<li>Complex-Interlace-Adapter (CIA):
 									<ul>
-										<li>Different Time-Of-Day (TOD) sources. (Vertical Sync/Power Supply) <span class="info">(new)</span></li>
-										<li>ROM overlay emulation. (maps ROM from e.g. 0xf80000 to 0x000000 at reset) <span class="info">(new)</span></li>
-										<li>A1000 Velvet prototype CIA (6526) emulation. <span class="info">(new)</span></li>
+										<li>Different Time-Of-Day (TOD) sources. (Vertical Sync/Power Supply)</li>
+										<li>ROM overlay emulation. (maps ROM from e.g. 0xf80000 to 0x000000 at reset)</li>
+										<li>A1000 Velvet prototype CIA (6526) emulation.</li>
 									</ul>
 								</li>
 							</ul>
@@ -142,24 +147,24 @@
 							<ul>
 								<li>256-2048K Chip-ram. (0x000000)</li>
 								<li>Up to 1536K Slow-/Bogo-ram. (0xC00000)</li>
-								<li>Up to 64M onboard Fast-ram for A3000/A4000. <span class="info">(new)</span></li>
+								<li>Up to 64M onboard Fast-ram for A3000/A4000.</li>
 								<li>Up to 8M Zorro2 expansion Fast-ram. (0x200000)</li>
-								<li>Up to 8M Zorro3 Chip-ram. <span class="info">(new)</span></li>
-								<li>Up to 1024M (1G) Zorro3 expansion Fast-ram. <span class="info">(new)</span></li>
-								<li>512K Chip-/512K Bogo-ram to 1024K Chip-ram aliasing. <span class="info">(new)</span></li>
-								<li>24-/32-bit support. (32-bit memory is required for original A3000/4000-roms and emulation) <span class="info">(new)</span></li>
+								<li>Up to 8M Zorro3 Chip-ram.</li>
+								<li>Up to 1024M (1G) Zorro3 expansion Fast-ram.</li>
+								<li>512K Chip-/512K Bogo-ram to 1024K Chip-ram aliasing.</li>
+								<li>24-/32-bit support. (32-bit memory is required for original A3000/4000-roms and emulation)</li>
 							</ul>
 						</li>
 						<li>ROM
 							<ul>
 								<li>All kinds of standard and extended kickstart roms.</li>
-								<li>Support for encrypted Cloanto-roms. (Amiga Forever) <span class="info">(new)</span></li>
-								<li>Special A1000 kickstart handling. <span class="info">(new)</span></li>
-								<li>ROM-patcher, which does remove unneeded resident libraries. <span class="info">(new)</span></li>
-								<li>ROM-mirroring. (mirrors ROM to 0xA80000 or 0xE00000) <span class="info">(new)</span></li>
-								<li>ShapeShifter-support. <span class="info">(new)</span></li>
-								<li>AMAX-support. (Mac emulator) <span class="info">(new)</span></li>
-								<li>ROM-info from internal database. <span class="info">(new)</span></li>
+								<li>Support for encrypted Cloanto-roms. (Amiga Forever)</li>
+								<li>Special A1000 kickstart handling.</li>
+								<li>ROM-patcher, which does remove unneeded resident libraries.</li>
+								<li>ROM-mirroring. (mirrors ROM to 0xA80000 or 0xE00000)</li>
+								<li>ShapeShifter-support.</li>
+								<li>AMAX-support. (Mac emulator)</li>
+								<li>ROM-info from internal database.</li>
 							</ul>
 						</li>
 						<li>Floppy
@@ -167,20 +172,20 @@
 								<li>Supported diskimage-types
 									<ul>
 										<li>Standard ADF, read/write (*.adf)</li>
-										<li>Extended ADF (EXT1/EXT2), read/write (*.adf) <span class="info">(new)</span></li>
-										<li>PCDOS, read/write (*.img) <span class="info">(new)</span></li>
-										<li>DMS (DiskMasher), read only (*.dms) <span class="info">(new)</span></li>
-										<li>SCP (SuperCardPro), read-only (*.scp) <span class="info">(new)</span></li>
-										<li>EXE, read-only (*.exe) <span class="info">(new)</span></li>
+										<li>Extended ADF (EXT1/EXT2), read/write (*.adf)</li>
+										<li>PCDOS, read/write (*.img)</li>
+										<li>DMS (DiskMasher), read only (*.dms)</li>
+										<li>SCP (SuperCardPro), read-only (*.scp)</li>
+										<li>EXE, read-only (*.exe)</li>
 									</ul>
 								</li>
 								<li>Up to 4 Double-/High-density drives. (DF0-DF3)</li>
 								<li>Variable drive-speeds. (Original-Turbo).</li>
-								<li>Drives are write-protectable. <span class="info">(new)</span></li>
-								<li>Diskimage creation feature. <span class="info">(new)</span></li>
+								<li>Drives are write-protectable.</li>
+								<li>Diskimage creation feature.</li>
 							</ul>
 						</li>
-						<li>Mount <span class="info">(new)</span>
+						<li>Mount
 							<ul>
 								<li>Supported hardfile-types
 									<ul>
@@ -207,11 +212,12 @@
 						<li>Video
 							<ul>
 								<li>HTML5 WegGL- or Canvas2D-rendering.</li>
-								<li>2/4 bits-per-pixel modes. <span class="info">(new)</span></li>
+								<li>2/4 bits-per-pixel modes.</li>
 								<li>Lores-/Hires-/Superhires-types.</li>
 								<li>Doublescan-types.</li>
 								<li>Frameskip. (renders every 2nd frame only)</li>
-								<li>Centering. <span class="info">(new)</span></li>
+								<li>Centering.</li>
+								<li>Fullscreen-extensions support. <span class="info">(new)</span></li>
 							</ul>
 						</li>
 						<li>Audio
@@ -219,9 +225,9 @@
 								<li>HTML5 WegAudio-processing.</li>
 								<li>Samplerates from 11025-48000 Hz.</li>
 								<li>Mono or Stereo.</li>
-								<li>Lowpass filter for A500/A1200. <span class="info">(A1200 new)</span></li>
-								<li>Variable Stereo-channel separation. <span class="info">(new)</span></li>
-								<li>Different interpolation modes (Anti, RH, Crux) <span class="info">(Anti new)</span></li>
+								<li>Lowpass filter for A500/A1200.</li>
+								<li>Variable Stereo-channel separation.</li>
+								<li>Different interpolation modes (Anti, RH, Crux)</li>
 							</ul>
 						</li>
 						<li>Ports
@@ -230,7 +236,8 @@
 								<li>HTML5 keyboard import.</li>
 								<li>Joystick emulation via keyboard.</li>
 								<li>Mapping of some special keys for pinball-games.</li>
-								<li>Serial-port. (output to developer-console)</li>
+								<li>Serial- and parallel-port. <span class="info">(new)</span></li>
+								<li>Gamepad-extensions support. <span class="info">(new)</span></li>
 							</ul>
 						</li>
 					</ul>
@@ -250,13 +257,13 @@
 								<li>68020
 									<ul>
 										<li>CALLM/RTM is not implemented.</li>
-										<li>Execution-times of instruction and interrupts are not fully correct.</li>
+										<li>Execution-time of some instructions and interrupts are not fully correct.</li>
 									</ul>
 								</li>
 								<li>68030
 									<ul>
 										<li>MMU is fake.</li>
-										<li>Execution-times of instruction and interrupts are not fully correct.</li>
+										<li>Execution-time of some instructions and interrupts are not fully correct.</li>
 									</ul>
 								</li>
 								<li>Exceptions 2 and 3 are not fully implemented.</li>
@@ -280,6 +287,13 @@
 								<li>No support for compressed hardfile-images like HDZ.</li>
 							</ul>
 						</li>
+						<li>Input
+							<ul>
+								<li>The 'Amiga-Keys' (left from Alt and right from AltGr) do no work, because they're handled outside of the scope from the Browser.</li>
+								<li>[# '] can't be typed on a German-standard-keyboard, because there's a physical key missing. (left from Backspace)</li>
+								<li>The AltGr-Key (if existing) is mapped as Ctrl+Alt under Windows.</li>
+							</ul>
+						</li>
 					</ul>
 				</li>
 			</ul>
@@ -289,11 +303,10 @@
 			<ul id="usage">
 				<li><span class="label">Usage/Hints</span>
 					<ul>
-						<li>Press F11 for fullscreen. Most browsers support that.</li>
 						<li>If something does crash or freeze
 							<ul>
 								<li>Try another Amiga-model. A500+ for OCS/ECS and A1200 for AGA does work best.</li>
-								<li>Use the right rom. Selecting a wrong rom may freeze the emulation. If possible use original kickstart-roms.</li>
+								<li>Use the right rom. Selecting a wrong rom may freeze the emulation. If possible, use original kickstart-roms.</li>
 								<li>If you are using original A3000/4000 kickstart-roms, make sure to enable &quot;32bit address-space&quot; in the CPU-page.</li>
 								<li>If you are using the AROS kickstart-replacement, you should also give some fast-ram.</li>
 								<li>Try to enable &quot;Compatible&quot; in the CPU-page.</li>
@@ -307,6 +320,21 @@
 								<li>Or, go to &quot;Chipset/Features/Manual&quot; and select &quot;Onboard-IDE&quot; or &quot;PCMCIA-slot&quot; manually.</li>
 							</ul>
 						</li>
+						<li>If gamepads/joysticks did not get recognized
+							<ul>
+								<li>Try to press buttons on the controller.</li>
+								<li>Open a new tab and return to the SAE-tab. (Chrome)</li>
+							</ul>
+						</li>
+					</ul>
+				</li>
+			</ul>
+			<ul id="api">
+				<li><span class="label">API</span>
+					<ul>
+						<li>There's no written documentation about the API yet, blame me. At least there's a commented example:</li>
+						<li><a href="example.htm">example 1</a></li>
+						<li><a href="example2.htm">example 2</a></li>
 					</ul>
 				</li>
 			</ul>
@@ -325,9 +353,9 @@
 			<ul id="privacy">
 				<li><span class="label">Privacy</span>
 					<ul>
-						<li>No files or informations about files, that you are selecting from your computer, are transferred to the internet.<br />
-						<span class="info">(Note that this may not be the case for other sites, which are using this project.)</span></li>
-						<li>This site is using google-analytics for visitor-statistics. Other scripts are not used.</li>
+						<li>This site is completely free of 3rd-party stuff. (analytics, tracking, aids, ...)</li>
+						<li>No files (that you are selecting from your computer or informations about them) are transferred to the Internet.<br />
+						<span class="info">Note that this may not be the case for other sites, which are using this project.</span></li>
 					</ul>
 				</li>
 			</ul>
@@ -339,6 +367,14 @@
 					<ul>
 						<li>If you want to have your game or demo on this site, please contact me.</li>
 						<li>Your contribution would be published under a free license, with a link to your homepage and would be free to play for everyone.</li>
+					</ul>
+				</li>
+			</ul>
+			<ul id="references">
+				<li><span class="label">Some sites using this project</span>
+					<ul>
+						<li><a target="_blank" href="https://archive.org/details/softwarelibrary_amiga">archive.org</a></li>
+						<li><a target="_blank" href="http://retroweb.maclab.org/articles/Amiga-500.html">maclab.org</a></li>
 					</ul>
 				</li>
 			</ul>
@@ -357,10 +393,10 @@
 			<ul id="thanks">
 				<li><span class="label">Thanks</span>
 					<ul>
-						<li><a target="_blank" href="http://winuae.net">WinUAE team</a>, especially Toni Wilen.</li>
-						<li><a target="_blank" href="http://web.archive.org/web/20130812173347/http://www.amigaemulator.org/">Bernd Schmidt</a>, the father of amiga-emulation.</li>
-						<li><a target="_blank" href="http://aros.org">AROS team</a></li>
-						<li>All people who contributed their games. Thanks for your support!</li>
+						<li><a target="_blank" href="https://winuae.net">WinUAE team</a>, especially Toni Wilen.</li>
+						<li><a target="_blank" href="https://web.archive.org/web/20130812173347/http://www.amigaemulator.org/">Bernd Schmidt</a>, the father of amiga-emulation.</li>
+						<li><a target="_blank" href="https://aros.sourceforge.io">AROS team</a></li>
+						<li>All people who contributed their software or helped via github. Thanks for your support!</li>
 					</ul>
 				</li>
 			</ul>
@@ -388,6 +424,11 @@
 								<li>~60.000 lines of code.</li>
 							</ul>
 						</li>
+						<li>Current version (0.9.xx)
+							<ul>
+								<li>~62.000 lines of code.</li>
+							</ul>
+						</li>
 					</ul>
 				</li>
 			</ul>
@@ -397,6 +438,104 @@
 			<ul id="history">
 				<li><span class="label">History</span>
 					<ul>
+						<li><span class="label">0.9.13 (11.11.2021):</span>
+							<ul>
+								<li>Playfield
+									<ul>
+										<li>Fixed bug in CLXDAT in combination with full-collision-detection. (Thanks 'dirkwhoffmann' for info)</li>
+									</ul>
+								</li>
+								<li>Input
+									<ul>
+										<li>Fixed Semi-Colon-Key under Firefox. (Thanks 'goldnchild' for info)</li>
+										<li>Switched from event.keyCode to event.code for better compatibility throughout different keyboards. (Thanks 'steffest' for info)<br>
+										<span class="info">Note: The German-standard-keyboard does miss the key [\ |] (left from Backspace). This key will be mapped to [# '] and therefor [# '] can't be typed.</span></li>
+									</ul>
+								</li>
+								<li>Common
+									<ul>
+										<li>Enabled HTTPS. It should fix the Gamepad-API secure-context problem. (Thanks 'goldnchild' for info)</li>
+									</ul>
+								</li>
+							</ul>
+						</li>
+						<li style="list-style-type:none"><br/></li>
+						<li><span class="label">0.9.12 (23.06.2019):</span>
+							<ul>
+								<li>Memory
+									<ul>
+										<li>Fixed an invalid function call at reset-state when emulating an A1000. (Thanks 'dirkwhoffmann' for info)</li>
+									</ul>
+								</li>
+							</ul>
+						</li>
+						<li style="list-style-type:none"><br/></li>
+						<li><span class="label">0.9.11 (11.05.2019):</span>
+							<ul>
+								<li>Disk
+									<ul>
+										<li>Fixed wrong bitmap-usage calculation at floppy_get_rootblock() in combination with HD-floppies. (Thanks 'dirkwhoffmann' for commit)</li>
+									</ul>
+								</li>
+							</ul>
+						</li>
+						<li style="list-style-type:none"><br/></li>
+						<li><span class="label">0.9.10 (22.02.2019):</span>
+							<ul>
+								<li>Memory/Roms
+									<ul>
+										<li>Fixed wrong $A80000-memory-access in combination with extended-roms > 1mb. (Thanks 'Vesuri' for commit)</li>
+										<li>Updated AROS-ROMs to actual version SVN55696.</li>
+									</ul>
+								</li>
+								<li>Disk
+									<ul>
+										<li>Fixed bug in DMS decompression with DEEP Compression (Thanks 'steffest' for commit)</li>
+									</ul>
+								</li>
+								<li>Video
+									<ul>
+										<li>Added support for the 'fullscreen-API'. There is a new api-function called sae.screen() and the new hook-function<br />
+											 config.hooks.event.screened(). All browsers should support that. See the examples.</li>
+										<li>The mouse-pointer can now be hidden or locked via the 'pointerLock-API'.<br />
+											 The feature is enabled by default. All browsers should support that. See 'Config/Video/Cursor'.</li>
+										<li>A canvas-element can now used directly as output. See <a href="example2.htm">example2.htm</a></li>
+									</ul>
+								</li>
+								<li>Audio
+									<ul>
+										<li>Fixed wrong/multiple audio-channel selection at the ADKCON-register. (Thanks 'Vesuri' for commit)</li>
+										<li>Added mute-support over sae.mute()</li>
+									</ul>
+								</li>
+								<li>Ports
+									<ul>
+										<li>Added experimental support for the 'Gamepad API'. It is disabled by default.<br />
+										    Go to 'Config/Ports' to enable it. (Thanks to 'SpliFF' for the basic implementation)</li>
+										<li>Better handling of buttons and movement. No input-events get lost and also the 3rd mouse-button is now dectected.</li>
+										<li>Added emualtion of various protection-dongles.</li>
+										<li>Finished support for direct-serial communication and added hooks. See the examples.</li>
+										<li>Added support for direct-parallel communication and hooks. Also see the examples.</li>
+										<li>Removed the 'Enable Serial'-checkbox from 'Config/Ports'. Does not made much sense without hooks.</li>
+									</ul>
+								</li>
+								<li>Config
+									<ul>
+										<li>Added hooks that get called after the emulator has been started, stopped, reseted, paused or fullscreened.</li>
+										<li>Fixed invalid access of the config-object. (Thanks 'db48x' for commit)</li>
+									</ul>
+								</li>
+								<li>Common
+									<ul>
+										<li>Removed Google-Analytics. Sorry for the molestation.</li>
+										<li>Added an error if a ZIP-file get detected. Compressed files are not yet supported.</li>
+										<li>Fixed Object.prototype.clone() to a custom function to be compatible with 'jQuery'. (Thanks 'Vesuri' for commit)</li>
+										<li>The patch-version-number has now a 2nd digit and starting at 10.</li>
+									</ul>
+								</li>
+							</ul>
+						</li>
+						<li style="list-style-type:none"><br/></li>
 						<li><span class="label">0.9.0 (15.07.2016)</span>
 							<ul>
 								<li>CPU
@@ -655,7 +794,7 @@
 								<li>Common
 									<ul>
 										<li>Added support for easy URL sharing. E.g. to show the Multica-demo to a friend,<br />
-											one may send the link &quot;http://scriptedamigaemulator.net/#Multica&quot;<br />
+											one may send the link &quot;https://scriptedamigaemulator.net/#Multica&quot;<br />
 											and the demo will start immediately. (thanks mrdoob)</li>
 										<li>Many small optimizations.</li>
 									</ul>
@@ -669,7 +808,7 @@
 									<ul>
 										<li>Chaned the project-name from 'Janus' to 'SAE' (Scripted Amiga Emulator).<br />
 											This step is necessary because i did'nt enough research before the initial release.<br />
-											There is already a project with that name in it. (<a target="_blank" href="http://janus-uae.sourceforge.net">janus-uae</a>)
+											There is already a project with that name in it. (<a target="_blank" href="https://janus-uae.sourceforge.net">janus-uae</a>)
 											I'm sorry for that, that was kinda stupid :)</li>
 										<li>Separated the GUI form the core and rewrote most of it.</li>
 										<li>Simplified the whole code. This means, that functions are called faster.</li>
@@ -776,7 +915,7 @@
 								</li>
 								<li>Disk
 									<ul>
-										<li>Ported latest disk-code from WinUAE. Disk-based problems should be gone now, e.g. floopy shown as BAD or read errors.</li>
+										<li>Ported latest disk-code from WinUAE. Disk-based problems should be gone now, e.g. floppy shown as BAD or read errors.</li>
 										<li>Diskchange does now work.</li>
 										<li>Drives can be disabled now.</li>
 										<li>DD/HD types are now supported.</li>
@@ -833,7 +972,7 @@
 		</div>
 		<div style="height:5px"></div>
 		<div id="foot" class="foot" style="line-height:14px">
-			<span class="gray">2012-2016 Rupert Hausberger</span> |
+			<span class="gray">2012-2021 Rupert Hausberger</span> |
 			<span class="gray">Description</span> |
 			<a target="_blank" href="disass.htm">Disassembler</a> |
 			<a target="_blank" href="https://github.com/naTmeg/ScriptedAmigaEmulator">Source-code</a>

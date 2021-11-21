@@ -2,7 +2,7 @@
 | SAE - Scripted Amiga Emulator
 | https://github.com/naTmeg/ScriptedAmigaEmulator
 |
-| Copyright (C) 2012-2016 Rupert Hausberger
+| Copyright (C) 2012 Rupert Hausberger
 |
 | This program is free software; you can redistribute it and/or
 | modify it under the terms of the GNU General Public License
@@ -47,7 +47,7 @@
 
 const SAEC_Version = 0;
 const SAEC_Revision = 9;
-const SAEC_Patch = 0;
+const SAEC_Patch = 13;
 
 /*---------------------------------*/
 /* errors */
@@ -68,6 +68,7 @@ const SAEE_Assert = 5;
 const SAEE_Internal = 6;
 
 const SAEE_Config_Invalid = 10;
+const SAEE_Config_Compressed = 11;
 
 const SAEE_CPU_Internal = 20;
 const SAEE_CPU_Requires68020 = 21;
@@ -88,8 +89,11 @@ const SAEE_Video_RequiresCanvas = 41;
 const SAEE_Video_RequiresWegGl = 42;
 const SAEE_Video_ComphileShader = 43;
 const SAEE_Video_LinkShader = 44;
+const SAEE_Video_RequiresFullscreen = 45;
 
 const SAEE_Audio_RequiresWebAudio = 50;
+
+const SAEE_Input_GamepadNotReady = 60;
 
 /*-----------------------------------------------------------------------*/
 /* global references */
@@ -146,7 +150,12 @@ const SAEC_info = (function() {
 		},
 		video: {
 			canvas: false,
-			webGL: false
+			webGL: false,
+			pointerLock: false,
+			requestFullScreen: false
+		},
+		input: {
+			gamepad: false
 		}
 	};
 
@@ -191,6 +200,9 @@ const SAEC_info = (function() {
 		info.memory.maxSize = 1073741824; //1G
 
 	/* audio */
+	if (typeof window.webkitAudioContext != "undefined" || typeof window.AudioContext != "undefined" )
+		info.audio.webAudio = true;
+	/* disabled because audioContextDriver() does require user-initiation
 	var audioContext = null;
 	try {
 		var audioContextDriver = window.AudioContext || window.webkitAudioContext;
@@ -206,7 +218,7 @@ const SAEC_info = (function() {
 			if (audioContext.close) audioContext.close().then(function() {});
 			audioContext = null;
 		}
-	}
+	}*/
 
 	/* video */
 	var canvas = document.createElement("canvas");
@@ -215,6 +227,7 @@ const SAEC_info = (function() {
 			var ctx = canvas.getContext("2d");
 			var imageData = ctx.createImageData(16, 16);
 			info.video.canvas = true;
+
 			try {
 				const glParams = {
 					alpha: false,
@@ -228,8 +241,26 @@ const SAEC_info = (function() {
 				ctx = canvas.getContext("webgl", glParams) || canvas.getContext("experimental-webgl", glParams);
 				info.video.webGL = true;
 			} catch(e) {}
+
+			/* pointerLock API */
+			if (canvas.webkitRequestPointerLock !== undefined ||
+				canvas.mozRequestPointerLock !== undefined ||
+				canvas.msRequestPointerLock !== undefined ||
+				canvas.requestPointerLock !== undefined
+			) info.video.pointerLock = true;
+
+			/* fullScreen API */
+			if (canvas.webkitRequestFullscreen !== undefined ||
+				canvas.mozRequestFullScreen !== undefined ||
+				canvas.msRequestFullscreen !== undefined ||
+				canvas.requestFullScreen !== undefined
+			) info.video.requestFullScreen = true;
 		} catch(e) {}
 	}
+
+	/* gamepad API */
+	if (navigator.webkitGetGamepads !== undefined || navigator.getGamepads !== undefined)
+		info.input.gamepad = true;
 
 	return info;
 })();
@@ -306,8 +337,8 @@ function SAEF_assert(cond) {
 function ScriptedAmigaEmulator() {
 	SAER = this;
 
-	this.autoconf = new SAEO_AutoConf();
 	this.audio = new SAEO_Audio();
+	this.autoconf = new SAEO_AutoConf();
 	this.blitter = new SAEO_Blitter();
 	this.cia = new SAEO_CIA();
 	this.config = new SAEO_Configuration();
@@ -316,6 +347,7 @@ function ScriptedAmigaEmulator() {
 	this.custom = new SAEO_Custom();
 	this.devices = new SAEO_Devices();
 	this.disk = new SAEO_Disk();
+	this.dongle = new SAEO_Dongle();
 	this.events = new SAEO_Events();
 	this.expansion = new SAEO_Expansion();
 	this.filesys = new SAEO_Filesys();
@@ -326,6 +358,7 @@ function ScriptedAmigaEmulator() {
 	this.input = new SAEO_Input();
 	this.m68k = new SAEO_M68K();
 	this.memory = new SAEO_Memory();
+	this.parallel = new SAEO_Parallel();
 	this.playfield = new SAEO_Playfield();
 	this.roms = new SAEO_Roms();
 	this.rtc = new SAEO_RTC();
@@ -453,9 +486,8 @@ function ScriptedAmigaEmulator() {
 			return err;
 		if ((err = this.audio.obtain()) != SAEE_None)
 			return err;
-
-		this.input.setup(); //inputdevice_init();
-
+		if ((err = this.input.setup()) != SAEE_None) //inputdevice_init();
+			return err;
 		if ((err = this.gui.setup()) != SAEE_None)
 			return err;
 
@@ -475,7 +507,7 @@ function ScriptedAmigaEmulator() {
 			this.custom.setup(); //OWN
 			this.blitter.setup(); //OWN
 			this.playfield.setup(); //custom_init();
-			this.serial.setup();
+			//this.serial.setup(); //empty
 			this.disk.setup();
 
 			this.events.reset_frame_rate_hack();
@@ -548,6 +580,39 @@ function ScriptedAmigaEmulator() {
 		}
 	};
 
+	this.mute = function(mute) {
+		if (this.running) {
+			this.audio.mute(mute);
+			if (mute)
+				SAEF_log("sae.mute() audio muted");
+			else
+				SAEF_log("sae.mute() playing audio");
+			return SAEE_None;
+		} else {
+			SAEF_warn("sae.mute() emulation not running");
+			return SAEE_NotRunning;
+		}
+	};
+
+	this.screen = function(screen) {
+		if (this.running) {
+			if (SAEC_info.video.requestFullScreen) {
+				this.video.screen(screen);
+				if (screen)
+					SAEF_log("sae.screen() screen-mode");
+				else
+					SAEF_log("sae.screen() window-mode");
+				return SAEE_None;
+			} else {
+				SAEF_error("sae.screen() screen-api not supported");
+				return SAEE_Video_RequiresFullscreen;
+			}
+		} else {
+			SAEF_warn("sae.screen() emulation not running");
+			return SAEE_NotRunning;
+		}
+	};
+
 	this.insert = function(unit) {
 		if (this.running) {
 			var file = SAEV_config.floppy.drive[unit].file;
@@ -587,7 +652,8 @@ function ScriptedAmigaEmulator() {
 
 	this.keyPress = function(e, down) {
 		this.input.keyPress(e, down);
-	}
+		return SAEE_None;
+	};
 
 	/*---------------------------------*/
 

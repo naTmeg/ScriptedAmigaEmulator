@@ -20,8 +20,9 @@
 		<script type="text/javascript" src="sae/ide.js"></script>
 		<script type="text/javascript" src="sae/filesys.js"></script>
 		<script type="text/javascript" src="sae/hardfile.js"></script>
+		<script type="text/javascript" src="sae/dongle.js"></script>
 		<script type="text/javascript" src="sae/input.js"></script>
-		<script type="text/javascript" src="sae/serial.js"></script>
+		<script type="text/javascript" src="sae/serpar.js"></script>
 		<script type="text/javascript" src="sae/custom.js"></script>
 		<script type="text/javascript" src="sae/blitter.js"></script>
 		<script type="text/javascript" src="sae/copper.js"></script>
@@ -120,6 +121,15 @@
 									<button class="button" id="cfg_df0_eject" onclick="floppyEject(0)">Eject</button>
 								</td>
 							</tr>
+							<tr>
+								<td class="arm">Floppy (DF1)</td>
+								<td>
+									<input id="cfg_df1_file" type="file" style="position:absolute;left:-10000px;top:-10000px;" onchange="floppyInsert(1)" />
+									<span id="cfg_df1_name" class="gray">&lt;empty&gt;</span>
+									<button class="button" onclick="document.getElementById('cfg_df1_file').click()">Insert</button>
+									<button class="button" id="cfg_df1_eject" onclick="floppyEject(1)">Eject</button>
+								</td>
+							</tr>
 						</table>
 					</td>
 				</tr>
@@ -133,6 +143,8 @@
 								<td><button onclick="stop()">Stop</button></td>
 								<td><button onclick="reset()">Reset</button></td>
 								<td><button onclick="pause(1)" id="controls_pr">Pause</button></td>
+								<td><button onclick="mute(1)" id="controls_mp">Mute</button></td>
+								<td><button onclick="screen(1)" id="controls_sw">Screen</button></td>
 							</tr>
 						</table>
 					</td>
@@ -141,8 +153,12 @@
 				<tr>
 					<td class="arm">Output</td>
 					<td class="alm">
-						<!-- Method 1: SAE will create a canvas and add it into the div-element below -->
+						<!-- Method 1: SAE will create a canvas and add it into the div-element below
+
+						See example2.htm -->
+
 						<!--<div id="myVideo" style="margin:auto"></div>-->
+
 
 						<!-- Method 2: The canvas is already defined. SAE will output to the element below.
 						The size of the canvas is set by SAE according your settings -->

@@ -2,7 +2,7 @@
 | SAE - Scripted Amiga Emulator
 | https://github.com/naTmeg/ScriptedAmigaEmulator
 |
-| Copyright (C) 2012-2016 Rupert Hausberger
+| Copyright (C) 2012 Rupert Hausberger
 |
 | This program is free software; you can redistribute it and/or
 | modify it under the terms of the GNU General Public License
@@ -266,6 +266,10 @@ function SAEO_Config_Mount_Data() { //uaedev_config_data
 const SAEC_Config_Video_API_Canvas = 0;
 const SAEC_Config_Video_API_WebGL = 1;
 
+const SAEC_Config_Video_Cursor_Show = 0;
+const SAEC_Config_Video_Cursor_Hide = 1;
+const SAEC_Config_Video_Cursor_Lock = 2;
+
 const SAEC_Config_Video_HResolution_LoRes = 0;
 const SAEC_Config_Video_HResolution_HiRes = 1;
 const SAEC_Config_Video_HResolution_SuperHiRes = 2;
@@ -372,15 +376,18 @@ const SAEC_Config_Audio_Interpol_Crux = 3;
 
 const SAEC_Config_Ports_Type_None = 0;
 const SAEC_Config_Ports_Type_Mouse = 1;
-const SAEC_Config_Ports_Type_Joy0 = 2;
-const SAEC_Config_Ports_Type_Joy1 = 3;
+const SAEC_Config_Ports_Type_Joy = 2;
+const SAEC_Config_Ports_Type_JoyEmu = 3;
 
 const SAEC_Config_Ports_Move_None = 0;
 const SAEC_Config_Ports_Move_Arrows = 1;
 const SAEC_Config_Ports_Move_Numpad = 2;
 const SAEC_Config_Ports_Move_WASD = 3;
 
-const SAEC_Config_Ports_Fire_None = 0;
+//const SAEC_Config_Ports_Fire_None = 0;
+const SAEC_Config_Ports_Fire_None = "None";
+
+const SAEC_Config_Ports_Device_None = -1;
 
 /*---------------------------------*/
 /* debug */
@@ -574,7 +581,7 @@ function SAEO_Config() {
 	this.video = {
 		id: "",
 		enabled: false,
-		//driver: 0,
+		cursor: 0,
 
 		scandoubler: false, //gfx_scandoubler
 		framerate: 0, //gfx_framerate
@@ -666,17 +673,22 @@ function SAEO_Config() {
 	struct uae_input_device keyboard_settings[MAX_INPUT_SETTINGS][MAX_INPUT_DEVICES];
 	struct uae_input_device internalevent_settings[MAX_INPUT_SETTINGS][INTERNALEVENT_COUNT];
 	TCHAR input_config_name[GAMEPORT_INPUT_SETTINGS][256];
-	int dongle;
 	int input_contact_bounce;*/
+
+	this.dongle = 0;
 
 	this.ports = [{
 		type: SAEC_Config_Ports_Type_Mouse,
 		move: SAEC_Config_Ports_Move_WASD,
-		fire: [49,50]
+		//fire: [49,50],
+		fire: ["Digit1","Digit2"],
+		device: SAEC_Config_Ports_Device_None
 	}, {
-		type: SAEC_Config_Ports_Type_Joy1,
+		type: SAEC_Config_Ports_Type_JoyEmu,
 		move: SAEC_Config_Ports_Move_Arrows,
-		fire: [16,17]
+		//fire: [16,17],
+		fire: ["ShiftRight","ControlRight"],
+		device: SAEC_Config_Ports_Device_None
 	}];
 
 	this.keyboard = {
@@ -685,22 +697,25 @@ function SAEO_Config() {
 	};
 
 	this.serial = {
-		enabled: false, //use_serial
-		demand: false //serial_demand
-		/*bool serial_hwctsrts;
+		enabled: false //use_serial
+		/*bool serial_demand;
+		bool serial_hwctsrts;
 		bool serial_direct;
 		int serial_stopbits;
 		int serial_crlf;
 		TCHAR sername[256];*/
 	};
 
-	/*bool parallel_demand;
-	int parallel_matrix_emulation;
-	bool parallel_postscript_emulation;
-	bool parallel_postscript_detection;
-	int parallel_autoflush_time;
-	TCHAR ghostscript_parameters[256];
-	TCHAR prtname[256];*/
+	this.parallel = {
+		enabled: false //OWN
+		/*bool parallel_demand;
+		int parallel_matrix_emulation;
+		bool parallel_postscript_emulation;
+		bool parallel_postscript_detection;
+		int parallel_autoflush_time;
+		TCHAR ghostscript_parameters[256];
+		TCHAR prtname[256];*/
+	};
 
 	/*int leds_on_screen;
 	int leds_on_screen_mask[2];
@@ -723,7 +738,16 @@ function SAEO_Config() {
 			started: function() {},
 			stopped: function() {},
 			reseted: function(hard) {},
-			paused: function(paused) {}
+			paused: function(paused) {},
+			screened: function(screened) {}
+		},
+		serial: {
+			get: function() { return -1; },
+			put: function(charCode) {}
+		},
+		parallel: {
+			get: function() { return 0; },
+			put: function(charCode) {}
 		}
 	};
 
@@ -1075,6 +1099,7 @@ function SAEO_Configuration() {
 
 		p.video.id = "video";
 		p.video.enabled = true;
+		p.video.cursor = SAEC_Config_Video_Cursor_Lock;
 		p.video.scandoubler = false;
 		p.video.framerate = 1;
 		p.video.hresolution = SAEC_Config_Video_HResolution_HiRes;
@@ -1156,12 +1181,18 @@ function SAEO_Configuration() {
 		p.sound_auto = 1;
 		p.sound_cdaudio = false;*/
 
+		p.dongle = 0;
+
 		p.ports[0].type = SAEC_Config_Ports_Type_Mouse;
 		p.ports[0].move = SAEC_Config_Ports_Move_WASD;
-		p.ports[0].fire = [49,50];
-		p.ports[1].type = SAEC_Config_Ports_Type_Joy1;
+		//p.ports[0].fire = [49,50];
+		p.ports[0].fire = ["Digit1","Digit2"];
+		p.ports[0].device = SAEC_Config_Ports_Device_None;
+		p.ports[1].type = SAEC_Config_Ports_Type_JoyEmu;
 		p.ports[1].move = SAEC_Config_Ports_Move_Arrows;
-		p.ports[1].fire = [16,17];
+		//p.ports[1].fire = [16,17];
+		p.ports[1].fire = ["ShiftRight","ControlRight"];
+		p.ports[1].device = SAEC_Config_Ports_Device_None;
 		/*memset (&p.jports[0], 0, sizeof (struct jport));
 		memset (&p.jports[1], 0, sizeof (struct jport));
 		memset (&p.jports[2], 0, sizeof (struct jport));
@@ -1180,11 +1211,12 @@ function SAEO_Configuration() {
 		//p.keyboard_lang = KBD_LANG_US;
 
 		p.serial.enabled = false;
-		p.serial.demand = false;
+		//p.serial_demand = false;
 		//p.serial_hwctsrts = 1;
 		//p.serial_stopbits = 0;
 		//p.sername[0] = 0;
 
+		p.parallel.enabled = false;
 		/*p.parallel_demand = 0;
 		p.parallel_matrix_emulation = 0;
 		p.parallel_postscript_emulation = 0;
@@ -2398,7 +2430,17 @@ function SAEO_Configuration() {
 			p.chipset.cia.tod = p.chipset.ntsc ? SAEC_Config_Chipset_CIA_TOD_60Hz : SAEC_Config_Chipset_CIA_TOD_50Hz;
 
 		built_in_chipset_prefs(p);
+
 		//inputdevice_fix_prefs(p);
+		if (p.ports[0].type == SAEC_Config_Ports_Type_Joy && p.ports[0].device == SAEC_Config_Ports_Device_None) {
+			p.ports[0].type = SAEC_Config_Ports_Type_JoyEmu;
+			SAEF_warn("config.fixup_prefs() p.ports[0].device is invalid. (falling back to joystick-emulation)");
+		}
+		if (p.ports[1].type == SAEC_Config_Ports_Type_Joy && p.ports[1].device == SAEC_Config_Ports_Device_None) {
+			p.ports[1].type = SAEC_Config_Ports_Type_JoyEmu;
+			SAEF_warn("config.fixup_prefs() p.ports[1].device is invalid. (falling back to joystick-emulation)");
+		}
+
 		return true; //err == 0;
 	}
 }

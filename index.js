@@ -2,7 +2,7 @@
 | SAE - Scripted Amiga Emulator
 | https://github.com/naTmeg/ScriptedAmigaEmulator
 |
-| Copyright (C) 2012-2016 Rupert Hausberger
+| Copyright (C) 2012 Rupert Hausberger
 |
 | This program is free software; you can redistribute it and/or
 | modify it under the terms of the GNU General Public License
@@ -17,7 +17,7 @@
 | Note: This file does not contain any emulator-code.
 -------------------------------------------------------------------------*/
 
-const URL_DATABASE = "http://"+window.location.hostname+"/db";
+const URL_DATABASE = window.location.protocol+"//"+window.location.hostname+"/db";
 const URL_DATABASE_GAMES = URL_DATABASE+"/games";
 const URL_DATABASE_DEMOS = URL_DATABASE+"/demos";
 const URL_DATABASE_DEMOS_AGA = URL_DATABASE+"/demos_aga";
@@ -78,15 +78,15 @@ const DB_URLS = [
 
 function mkA(url, name) { return '<a target="_blank" href="'+url+'">'+name+'</a>'; }
 
-const URL_ENABLE_SOFTWARE = mkA("http://blockyskies.com", "Enable Software");
-const URL_TEAM_HOI = mkA("http://www.sevensheaven.nl", "Team Hoi");
-const URL_RETROGURU = mkA("http://www.retroguru.com", "retroguru");
-const URL_LOEWENSTEIN = mkA("http://www.richard-loewenstein.de", "Richard Löwenstein");
-const URL_HECKMECK = mkA("http://heckmeck.de", "Alexander Grupe");
+const URL_ENABLE_SOFTWARE = mkA("https://blockyskies.com", "Enable Software");
+const URL_TEAM_HOI = mkA("https://www.sevensheaven.nl", "Team Hoi");
+const URL_RETROGURU = mkA("https://www.retroguru.com", "retroguru");
+const URL_LOEWENSTEIN = mkA("https://www.richard-loewenstein.de", "Richard Löwenstein");
+const URL_HECKMECK = mkA("https://heckmeck.de", "Alexander Grupe");
 
-const URL_AROS = mkA("http://aros.org", "aros.org");
-const URL_AROS_LIC = mkA("http://aros.org/license.html", "APL");
-const URL_SYSINFO = mkA("http://sysinfo.d0.se", "Nic Wilson");
+const URL_AROS = mkA("https://aros.sourceforge.io", "aros.sourceforge.io");
+const URL_AROS_LIC = mkA("https://aros.sourceforge.io/license.html", "APL");
+const URL_SYSINFO = mkA("https://sysinfo.d0.se", "Nic Wilson");
 
 const db = [
 	new dbEntry(DBT_GAME,1, "Air Ace II",         "SEUCK","","PD",                 "1989", 0, "Loading takes very long."),
@@ -148,7 +148,7 @@ const db = [
 
 	new dbEntry(DBT_TOOL,1, "AROS Bootdisk",      URL_AROS,"",URL_AROS_LIC,        "2016", 0, "Press 'Cancel' when asked for a Live-CD."),
 	new dbEntry(DBT_TOOL,1, "AIBB 6.5",           "Peter LaMonte Koop","","FW",    "1993", 0, "Type 'aibb' at the console. Be very patient at the 'Evaluating System...' screen."),
-	new dbEntry(DBT_TOOL,1, "SysInfo 4.0",        URL_SYSINFO,"","FW",             "2012", 0, "Type 'sysinfo' (y=z) at the console."),
+	new dbEntry(DBT_TOOL,1, "SysInfo 4.4",        URL_SYSINFO,"","FW",             "2020", 0, ""),
 	new dbEntry(DBT_TOOL,1, "X-Copy 2.0",         "Cachet","","FW",                "1989", 0, "")
 ];
 
@@ -159,9 +159,9 @@ var dbNum = 0;
 /*---------------------------------*/
 
 const AROS_ROM_FILE = "aros-amiga-m68k-rom.bin";
-const AROS_ROM_CRC = 0xE8A40832; /* also edit roms.js on change */
+const AROS_ROM_CRC = 0x3F4FCC0A; /* also edit roms.js on change */
 const AROS_EXT_FILE = "aros-amiga-m68k-ext.bin";
-const AROS_EXT_CRC = 0x5C39D820;
+const AROS_EXT_CRC = 0xF2E52B07;
 
 /*---------------------------------*/
 
@@ -199,6 +199,8 @@ var amaxInfo = null; /* amax rom-info */
 var floppyNum = -1; /* current floppy-unit if floppy-info is shown  */
 var mountConfigNum = -1; /* current mount-unit if mount-info is shown  */
 var paused = false; /* is the emualtion currently paused? */
+var screened = false; /* is the video-output currently fullscreen? */
+var muted = false; /* is the audio-output currently muted? */
 
 var dskchg = false; /* disk-change requester in database-mode */
 var dskchgList = []; /* list of floppies to change, created dynamicaly */
@@ -439,6 +441,28 @@ function switchPauseResume(p) {
 	}
 }
 
+function switchScreenWindow(s) {
+	var e = document.getElementById("controls_sw");
+	if (s) {
+		e.innerHTML = "Window";
+		e.onclick = function() { screen(false); };
+	} else {
+		e.innerHTML = "Screen";
+		e.onclick = function() { screen(true); };
+	}
+}
+
+function switchMutePlay(m) {
+	var e = document.getElementById("controls_mp");
+	if (m) {
+		e.innerHTML = "Play";
+		e.onclick = function() { mute(false); };
+	} else {
+		e.innerHTML = "Mute";
+		e.onclick = function() { mute(true); };
+	}
+}
+
 function switchBaseEmul(emul) {
 	if (emul) {
 		document.body.style.backgroundColor = "#000000";
@@ -453,7 +477,7 @@ function switchBaseEmul(emul) {
 
 /*---------------------------------*/
 
-function fireButtonName(fire) {
+/*function fireButtonName(fire) {
 	switch (fire) {
 		case 0: return "None";
 		case 16: return "Shift";
@@ -480,6 +504,36 @@ function fireButtonName(fire) {
 		case 50: return "2";
 		default: return "ERROR";
 	}
+}*/
+function fireButtonName(fire) {
+	switch (fire) {
+		case "": return "None";
+		case "ShiftLeft": return "Left Shift";
+		case "ShiftRight": return "Right Shift";
+		case "ControlLeft": return "Left Ctrl";
+		case "ControlRight": return "Right Ctrl";
+		case "Enter": return "Enter";
+		case "Space": return "Space";
+		case "Backspace": return "Backspace";
+		case "Numpad0": return "Numpad 0";
+		case "NumpadMultiply": return "Numpad *";
+		case "NumpadAdd": return "Numpad +";
+		case "NumpadSubtract": return "Numpad -";
+		case "NumpadDecimal": return "Numpad .";
+		case "NumpadDivide": return "Numpad /";
+		case "Delete": return "Delete";
+		case "Insert": return "Insert";
+		case "PageDown": return "Page down";
+		case "PageUp": return "Page up";
+		case "End": return "End";
+		case "Home": return "Home";
+		case "Pause": return "Pause";
+		case "NumLock": return "Num lock";
+		case "ScrollLock": return "Scroll lock";
+		case "Digit1": return "1";
+		case "Digit2": return "2";
+		default: return "ERROR";
+	}
 }
 
 /*---------------------------------*/
@@ -489,8 +543,10 @@ function saee2text(err) {
 		case SAEE_NotRunning:					return "The emulator is not running.";
 		case SAEE_NoTimer:						return "No timing-functions avail. Please upgrade your browser.";
 		case SAEE_NoMemory:						return "Out of memory.";
+		case SAEE_Assert:							return "Assertiation failed.";
 		case SAEE_Internal:						return "Internal emulator error.";
 		case SAEE_Config_Invalid:				return "Invalid configuration.";
+		case SAEE_Config_Compressed:			return "A ZIP file was detected. Compressed files are not yet supported.";
 		case SAEE_CPU_Internal:					return "Internal CPU-error.";
 		case SAEE_CPU_Requires68020:			return "The selected kickstart-rom does require a 68020 and 32bit address-space";
 		case SAEE_CPU_Requires680EC20:		return "The selected kickstart-rom does require a 68020.";
@@ -508,7 +564,9 @@ function saee2text(err) {
 		case SAEE_Video_RequiresWegGl:		return "This browser does not support 'WebGL'. Please upgrade to an actual version.";
 		case SAEE_Video_ComphileShader:		return "Can not compile the required shader-program.";
 		case SAEE_Video_LinkShader:			return "Can not link the required shader-program.";
+		case SAEE_Video_RequiresFullscreen:	return "This browser does not support the 'Fullscreen-API'. Please upgrade to an actual version.";
 		case SAEE_Audio_RequiresWebAudio:	return "This browser does not support 'WebAudio'. Please upgrade to an actual version.";
+		case SAEE_Input_GamepadNotReady:		return "The selected joystick-/gamepad-device is not ready.\n\nTry to press some buttons after closing this window...";
 		default: return "("+err+")";
 	}
 }
@@ -683,6 +741,7 @@ function setDatabaseConfig() {
 
 	styleDisplayBlock("config_database", 1);
 	styleDisplayTableCell("controls_disk", 0);
+	styleDisplayTableCell("controls_screen", inf.video.requestFullScreen ? 1:0);
 }
 
 function getDatabaseEntryFilename(dbe, disk, adf) {
@@ -980,11 +1039,21 @@ function fixAdvandedConfig() {
 			cfg.video.enabled = false;
 		else if (SAEV_config.video.api == SAEC_Config_Video_API_WebGL && !inf.video.webGL)
 			SAEV_config.video.api = SAEC_Config_Video_API_Canvas;
+
+		if (SAEV_config.video.cursor == SAEC_Config_Video_Cursor_Lock && !inf.video.pointerLock)
+			SAEV_config.video.cursor = SAEC_Config_Video_Cursor_Show;
 	}
 	/* audio */
 	if (cfg.audio.mode >= SAEC_Config_Audio_Mode_On) {
 		if (!inf.audio.webAudio)
 			cfg.audio.mode = SAEC_Config_Audio_Mode_Off_Emul;
+	}
+	/* input */
+	if (!inf.input.gamepad) {
+		if (cfg.ports[0].type == SAEC_Config_Ports_Type_Joy)
+			cfg.ports[0].type = SAEC_Config_Ports_Type_JoyEmu;
+		if (cfg.ports[1].type == SAEC_Config_Ports_Type_Joy)
+			cfg.ports[1].type = SAEC_Config_Ports_Type_JoyEmu;
 	}
 }
 
@@ -1096,6 +1165,7 @@ function setAdvandedConfig() {
 	{
 		setSelect("cfg_video_api", cfg.video.api);
 		setDisabled("cfg_video_api", inf.video.webGL == false);
+		setSelect("cfg_video_cursor", cfg.video.cursor);
 		setSelect("cfg_video_color_mode", cfg.video.colorMode);
 		setCheckbox("cfg_video_antialias", cfg.video.antialias);
 		//setRadio("cfg_video_fs", cfg.video.apmode[0].gfx_fullscreen);
@@ -1144,19 +1214,23 @@ function setAdvandedConfig() {
 	setSelect("cfg_ports_0_move", cfg.ports[0].move);
 	setSelect("cfg_ports_0_fire_1", cfg.ports[0].fire[0]);
 	setSelect("cfg_ports_0_fire_2", cfg.ports[0].fire[1]);
-	styleDisplayInline("cfg_ports_0_grp", cfg.ports[0].type == SAEC_Config_Ports_Type_Joy0);
+	styleDisplayInline("cfg_ports_0_joyemu_grp", cfg.ports[0].type == SAEC_Config_Ports_Type_JoyEmu);
+	styleDisplayInline("cfg_ports_0_joy_grp", cfg.ports[0].type == SAEC_Config_Ports_Type_Joy);
+	setSelect("cfg_ports_0_joy_device", cfg.ports[0].device);
 
 	setSelect("cfg_ports_1", cfg.ports[1].type);
 	setSelect("cfg_ports_1_move", cfg.ports[1].move);
 	setSelect("cfg_ports_1_fire_1", cfg.ports[1].fire[0]);
 	setSelect("cfg_ports_1_fire_2", cfg.ports[1].fire[1]);
-	styleDisplayInline("cfg_ports_1_grp", cfg.ports[1].type == SAEC_Config_Ports_Type_Joy1);
+	styleDisplayInline("cfg_ports_1_joyemu_grp", cfg.ports[1].type == SAEC_Config_Ports_Type_JoyEmu);
+	styleDisplayInline("cfg_ports_1_joy_grp", cfg.ports[1].type == SAEC_Config_Ports_Type_Joy);
+	setSelect("cfg_ports_1_joy_device", cfg.ports[1].device);
 
 	setCheckbox("cfg_keyborad_enabled", cfg.keyboard.enabled);
-
-	setCheckbox("cfg_serial_enabled", cfg.serial.enabled);
+	setSelect("cfg_dongle", cfg.dongle);
 
 	styleDisplayTableCell("controls_disk", 1);
+	styleDisplayTableCell("controls_screen", inf.video.requestFullScreen ? 1:0);
 }
 
 function getAdvandedFloppy() {
@@ -1288,6 +1362,7 @@ function getAdvandedConfig() {
 	cfg.video.enabled = getCheckbox("cfg_video_enabled");
 	if (cfg.video.enabled) {
 		cfg.video.api = getSelect("cfg_video_api");
+		cfg.video.cursor = getSelect("cfg_video_cursor");
 		cfg.video.colorMode = getSelect("cfg_video_color_mode");
 		cfg.video.antialias = getCheckbox("cfg_video_antialias");
 		//cfg.video.apmode[0].gfx_fullscreen = getRadio("cfg_video_fs");
@@ -1346,29 +1421,51 @@ function getAdvandedConfig() {
 
 	/* ports */
 	cfg.ports[0].type = getSelect("cfg_ports_0");
-	if (cfg.ports[0].type == SAEC_Config_Ports_Type_Joy0) {
+	if (cfg.ports[0].type == SAEC_Config_Ports_Type_JoyEmu) {
 		cfg.ports[0].move = getSelect("cfg_ports_0_move");
-		cfg.ports[0].fire[0] = getSelect("cfg_ports_0_fire_1");
-		cfg.ports[0].fire[1] = getSelect("cfg_ports_0_fire_2");
+		cfg.ports[0].fire[0] = getSelect("cfg_ports_0_fire_1", true);
+		cfg.ports[0].fire[1] = getSelect("cfg_ports_0_fire_2", true);
 		if (cfg.ports[0].fire[0] != SAEC_Config_Ports_Fire_None && cfg.ports[0].fire[0] == cfg.ports[0].fire[1]) {
-			alert("Fire-button 1/2 on port 0 can\"t be the same.");
+			alert("Fire-button 1/2 on mouse-port can't be the same.");
+			changePage(PID_Ports);
 			return false;
 		}
 	}
+	if (cfg.ports[0].type == SAEC_Config_Ports_Type_Joy) {
+		cfg.ports[0].device = getSelect("cfg_ports_0_joy_device");
+		if (cfg.ports[0].device == SAEC_Config_Ports_Device_None) {
+			alert("Joystick-device on mouse-port not found.");
+			changePage(PID_Ports);
+			return false;
+		}
+	}
+
 	cfg.ports[1].type = getSelect("cfg_ports_1");
-	if (cfg.ports[1].type == SAEC_Config_Ports_Type_Joy1) {
+	if (cfg.ports[1].type == SAEC_Config_Ports_Type_JoyEmu) {
 		cfg.ports[1].move = getSelect("cfg_ports_1_move");
-		cfg.ports[1].fire[0] = getSelect("cfg_ports_1_fire_1");
-		cfg.ports[1].fire[1] = getSelect("cfg_ports_1_fire_2");
+		cfg.ports[1].fire[0] = getSelect("cfg_ports_1_fire_1", true);
+		cfg.ports[1].fire[1] = getSelect("cfg_ports_1_fire_2", true);
 		if (cfg.ports[1].fire[0] != SAEC_Config_Ports_Fire_None && cfg.ports[1].fire[0] == cfg.ports[1].fire[1]) {
-			alert("Fire-button 1/2 on port 1 can\"t be the same.");
+			alert("Fire-button 1/2 on game-port can't be the same.");
+			changePage(PID_Ports);
 			return false;
 		}
 	}
-
+	if (cfg.ports[1].type == SAEC_Config_Ports_Type_Joy) {
+		cfg.ports[1].device = getSelect("cfg_ports_1_joy_device");
+		if (cfg.ports[1].device == SAEC_Config_Ports_Device_None) {
+			alert("Joystick-device on game-port not found.");
+			changePage(PID_Ports);
+			return false;
+		}
+		if (cfg.ports[0].type == SAEC_Config_Ports_Type_Joy && cfg.ports[1].device == cfg.ports[0].device) {
+			alert("Joystick device on mouse-port can't be the same as on game-port.");
+			changePage(PID_Ports);
+			return false;
+		}
+	}
 	cfg.keyboard.enabled = getCheckbox("cfg_keyborad_enabled");
-
-	cfg.serial.enabled = getCheckbox("cfg_serial_enabled");
+	cfg.dongle = getSelect("cfg_dongle");
 
 	/* hooks */
 	setHooks();
@@ -1383,7 +1480,7 @@ function start() {
 	if (s == S_VALID) { /* all files are downloaded or cached, go! */
 		freezeButtons(false, true);
 
-		var err = sae.start(); /* this does start the emulator */
+		var err = sae.start(); /* send start-request */
 		if (err != SAEE_None)
 			alert(saee2text(err));
 	}
@@ -1431,6 +1528,20 @@ function reset() {
 	sae.reset(false, false);
 }
 
+function screen(s) {
+	sae.screen(s);
+
+	screened = s;
+	switchScreenWindow(s);
+}
+
+function mute(m) {
+	sae.mute(m);
+
+	muted = m;
+	switchMutePlay(m);
+}
+
 /*---------------------------------*/
 
 function init() {
@@ -1444,6 +1555,7 @@ function init() {
 	//console.log(cfg);
 
 	initHooks();
+	initGamepads();
 
 	dbInit();
 	setDatabaseConfig();
@@ -1606,7 +1718,7 @@ function preSelect(grp) {
 		if (tmp == href) break;
 		href = tmp;
 	}
-	href = "http://" + window.location.hostname + "/#" + href;
+	href = window.location.protocol+"//" + window.location.hostname + "/#" + href;
 	var nameLink = dbe.name+" (<a target=\"_blank\" href=\""+href+"\">share</a>)";
 
 	var license = "";
@@ -1617,10 +1729,15 @@ function preSelect(grp) {
 	}
 
 	if (grp == DBT_GAME) {
-		var keys = [
+		/*var keys = [
 			["Movement","Arrows"],
 			["Fire", fireButtonName(16)],
 			["Alt-fire", fireButtonName(17)]
+		];*/
+		var keys = [
+			["Movement","Arrows"],
+			["Fire", fireButtonName("ShiftRight")],
+			["Alt-fire", fireButtonName("ControlRight")]
 		];
 		var ctrl = "";
 		for (var i = 0; i < keys.length; i++)
@@ -2439,11 +2556,14 @@ function channelsUpdate() {
 /*---------------------------------*/
 
 function portUpdate(n) {
-	var v = getSelect("cfg_ports_"+n);
-	if (n == 0)
-		styleDisplayInline("cfg_ports_0_grp", v == SAEC_Config_Ports_Type_Joy0);
-	else
-		styleDisplayInline("cfg_ports_1_grp", v == SAEC_Config_Ports_Type_Joy1);
+	var v = getSelect("cfg_ports_" + n);
+	if (n == 0) {
+		styleDisplayInline("cfg_ports_0_joyemu_grp", v == SAEC_Config_Ports_Type_JoyEmu);
+		styleDisplayInline("cfg_ports_0_joy_grp", v == SAEC_Config_Ports_Type_Joy);
+	} else {
+		styleDisplayInline("cfg_ports_1_joyemu_grp", v == SAEC_Config_Ports_Type_JoyEmu);
+		styleDisplayInline("cfg_ports_1_joy_grp", v == SAEC_Config_Ports_Type_Joy);
+	}
 }
 
 /*-----------------------------------------------------------------------*/
@@ -2466,6 +2586,14 @@ function hook_event_stopped() {
 		paused = false;
 		switchPauseResume(paused);
 	}
+	if (screened) {
+		screened = false;
+		switchScreenWindow(screened);
+	}
+	if (muted) {
+		muted = false;
+		switchMutePlay(muted);
+	}
 	if (dskchg)
 		dskchgClose();
 
@@ -2480,6 +2608,14 @@ function hook_event_reseted(hard) {
 		paused = false;
 		switchPauseResume(paused);
 	}
+	if (screened) {
+		screened = false;
+		switchScreenWindow(screened);
+	}
+	if (muted) {
+		muted = false;
+		switchMutePlay(muted);
+	}
 	if (dskchg)
 		dskchgClose();
 }
@@ -2487,6 +2623,11 @@ function hook_event_reseted(hard) {
 function hook_event_paused(p) {
 	paused = p;
 	switchPauseResume(p);
+}
+
+function hook_event_screened(s) {
+	screened = s;
+	switchScreenWindow(s);
 }
 
 /*---------------------------------*/
@@ -2545,6 +2686,8 @@ function hook_led_cpu(usage, paused) {
 	}
 }
 
+/*---------------------------------*/
+
 function initHooks() {
 	e_led_power = document.getElementById("status_led_power");
 	e_led_hd = document.getElementById("status_led_hd");
@@ -2562,6 +2705,7 @@ function setHooks() {
 	cfg.hook.event.stopped = hook_event_stopped;
 	cfg.hook.event.reseted = hook_event_reseted;
 	cfg.hook.event.paused = hook_event_paused;
+	cfg.hook.event.screened = hook_event_screened;
 
 	cfg.hook.led.power = hook_led_power;
 	cfg.hook.led.hd = hook_led_hd;
@@ -2648,5 +2792,83 @@ function dskchgSelect() {
 
 		if (cache.req(dbUrl, filename, 0xdc000, false, cfg.floppy.drive[n].file))
 			sae.insert(n);
+	}
+}
+
+/*-----------------------------------------------------------------------*/
+/* Detect changes in connected gamepads/joysticks */
+
+function setAvailableGamepads(select_id, gamepads) {
+	var sel = document.getElementById(select_id);
+	if (sel) {
+		/* Clear list */
+		for (var i = sel.options.length - 1; i >= 0; i--)
+			sel.remove(i);
+
+		/* Add gamepads */
+		for (i = 0; i < gamepads.length; i++) {
+			if (gamepads[i]) {
+				var id = gamepads[i].id, idx;
+				if ((idx = id.lastIndexOf(" (")) != -1 && idx >= 4)
+					id = id.substr(0, idx);
+
+				var opt = document.createElement("option");
+				opt.value = gamepads[i].index;
+				opt.innerHTML = "#" + i + ": " + id;
+				sel.appendChild(opt);
+			}
+		}
+		/* Add placeholder if no devices found */
+		if (sel.options.length == 0) {
+			var opt = document.createElement("option");
+			opt.value = "-1";
+			opt.innerHTML = "- no device detected (try to press a joystick-button) -";
+			sel.appendChild(opt);
+		}
+	}
+}
+function noGamepadAPI(select_id) {
+	var sel = document.getElementById(select_id);
+	if (sel) {
+		/* Clear list */
+		for (var i = sel.options.length - 1; i >= 0; i--)
+			sel.remove(i);
+
+		/* Add placeholder if no devices found */
+		if (sel.options.length == 0) {
+			var opt = document.createElement("option");
+			opt.value = "-1";
+			opt.innerHTML = "- gamepad API not found (browser-update required) -";
+			sel.appendChild(opt);
+		}
+	}
+}
+
+function initGamepads() {
+	if (inf.input.gamepad) {
+		/* first query */
+		var gamepads = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads() : []);
+		setAvailableGamepads("cfg_ports_0_joy_device", gamepads);
+		setAvailableGamepads("cfg_ports_1_joy_device", gamepads);
+
+		window.addEventListener("gamepadconnected", function(e) {
+			var gamepads = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads() : []);
+			setAvailableGamepads("cfg_ports_0_joy_device", gamepads);
+			setAvailableGamepads("cfg_ports_1_joy_device", gamepads);
+
+			SAEF_info("sae.initGamepads() device '" + e.gamepad.id + "' connected.");
+		});
+		window.addEventListener("gamepaddisconnected", function(e) {
+			window.setTimeout(function() {
+				var gamepads = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads() : []);
+				setAvailableGamepads("cfg_ports_0_joy_device", gamepads);
+				setAvailableGamepads("cfg_ports_1_joy_device", gamepads);
+
+				SAEF_info("sae.initGamepads() device '" + e.gamepad.id + "' disconnected.");
+			}, 100);
+		});
+	} else {
+		noGamepadAPI("cfg_ports_0_joy_device");
+		noGamepadAPI("cfg_ports_1_joy_device");
 	}
 }

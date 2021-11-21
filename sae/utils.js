@@ -2,7 +2,7 @@
 | SAE - Scripted Amiga Emulator
 | https://github.com/naTmeg/ScriptedAmigaEmulator
 |
-| Copyright (C) 2012-2016 Rupert Hausberger
+| Copyright (C) 2012 Rupert Hausberger
 |
 | This program is free software; you can redistribute it and/or
 | modify it under the terms of the GNU General Public License
@@ -196,6 +196,10 @@ function SAEF_memcpy(dst,dsto, src,srco, length) {
 
 /*-----------------------------------------------------------------------*/
 
+function SAEF_CloneObject(object) {
+	return Object.assign({}, object);
+}
+
 function SAEF_Array2String(array, start, end) {
 	if (typeof end == "undefined") end = array.length;
 	if (typeof start == "undefined") start = 0;
@@ -217,7 +221,7 @@ function SAEF_String2Array(string, start, end) {
 /*function SAEF_CopyArray(dst_array, src_array, src_end) {
 	if (typeof src_end == "undefined") src_end = src_array.length;
 	for (var i = 0; i < src_end; i++) {
-		if (typeof dst_array[i] === 'undefined' || typeof src_array[i] === 'undefined')
+		if (typeof dst_array[i] == "undefined" || typeof src_array[i] == "undefined")
 			return 1;
 		dst_array[i] = src_array[i];
 	}
@@ -227,7 +231,7 @@ function SAEF_String2Array(string, start, end) {
 function SAEF_CompareArray(array1, array2, end2) {
 	if (typeof end2 == "undefined") end2 = array2.length;
 	for (var i = 0; i < end2; i++) {
-		if (typeof array1[i] === 'undefined' || typeof array2[i] === 'undefined')
+		if (typeof array1[i] == "undefined" || typeof array2[i] == "undefined")
 			return 1;
 		if (array1[i] != array2[i])
 			return 1;
@@ -237,7 +241,7 @@ function SAEF_CompareArray(array1, array2, end2) {
 function SAEF_CompareArrayAfter(array1, start1, array2, end2) {
 	if (typeof end2 == "undefined") end2 = array2.length;
 	for (var i = 0; i < end2; i++) {
-		if (typeof array1[start1 + i] === 'undefined' || typeof array2[i] === 'undefined')
+		if (typeof array1[start1 + i] == "undefined" || typeof array2[i] == "undefined")
 			return 1;
 		if (array1[start1 + i] != array2[i])
 			return 1;
@@ -246,7 +250,7 @@ function SAEF_CompareArrayAfter(array1, start1, array2, end2) {
 }
 
 /*-----------------------------------------------------------------------*/
-/* Javascript sprintf - http://www.webtoolkit.info
+/* Javascript sprintf - https://www.webtoolkit.info
    This is the only function that does not correspond to the global name space
 */
 var sprintfWrapper = {
@@ -479,7 +483,7 @@ function SAEF_ZFile_fopen_file(file) {
 		var l = SAEF_ZFile_create(null, file.name);
 		l.name = file.name.length ? file.name : "";
 
-		if (0) { /* ptr-mode. do not enable */
+		if (0) { /* reference-mode. do not enable */
 			l.data = file.data;
 		} else {
 			l.data = new Uint8Array(file.size);
@@ -492,6 +496,13 @@ function SAEF_ZFile_fopen_file(file) {
 		l.size = file.size;
 		l.datasize = file.size;
 		l.allocsize = file.size; //OWN
+
+		var magic = ((l.data[0] << 24) | (l.data[1] << 16) | (l.data[2] << 8) | (l.data[3])) >>> 0;
+
+		//SAEF_log("SAEF_ZFile_fopen_file() opening '%s', %d/%d bytes, crc32 0x%08x, magic %08x", l.name, l.size, l.data.length, file.crc32 !== false ? file.crc32 : 0, magic);
+
+		if (magic == 0x504B0304 || magic == 0x04034B50)
+			SAEF_fatal(SAEE_Config_Compressed, "A ZIP file was detected. Compressed files are not yet supported.");
 
 		//if (l.data[0] == 68 && l.data[1] == 77 && l.data[2] == 83 && l.data[3] == 33) { /* DMS! */
 		if (SAEF_CompareArray(l.data, SAEF_String2Array("DMS!"), 4) == 0) {
