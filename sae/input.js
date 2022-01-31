@@ -157,7 +157,10 @@ function SAEO_Joystick(port) {
 		if (pad && pad.connected) {
 			for (var i = 0; i < Math.min(numButtons, 10); i++) {
 				if (pad.buttons[i].pressed != buttons[i]) {
-					SAER.input.registerEvent(prt, SAEC_Input_Event_Press, 1 << i, pad.buttons[i].pressed);
+					var arg1 = 1 << i;
+					// For Competition Pro USB (left fire button).
+					if (i == 3 && pad.id.includes("SPEEDLINK COMPETITION PRO")) arg1 = 1;
+					SAER.input.registerEvent(prt, SAEC_Input_Event_Press, arg1, pad.buttons[i].pressed);
 					buttons[i] = pad.buttons[i].pressed;
 				}
 			}
