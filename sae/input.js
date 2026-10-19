@@ -144,63 +144,94 @@ function SAEO_Joystick(port) {
 
 	/*---------------------------------*/
 
-	/* the gamepad API only supports polling not events */
-	function pollGamepad() {
+	var enabled = false;
+
+	function getPad() {
 		var dev = SAEV_config.ports[prt].device;
+		var pads = null;
 		if (navigator.getGamepads)
-			var pad = navigator.getGamepads()[dev];
+			pads = navigator.getGamepads();
 		else if (navigator.webkitGetGamepads)
-			var pad = navigator.webkitGetGamepads()[dev];
-		else
-			var pad = null;
+			pads = navigator.webkitGetGamepads();
+		var pad = pads ? pads[dev] : null;
+		return (pad && pad.connected) ? pad : null;
+	}
 
-		if (pad && pad.connected) {
-			for (var i = 0; i < Math.min(numButtons, 10); i++) {
-				if (pad.buttons[i].pressed != buttons[i]) {
-					SAER.input.registerEvent(prt, SAEC_Input_Event_Press, 1 << i, pad.buttons[i].pressed);
-					buttons[i] = pad.buttons[i].pressed;
-				}
-			}
-
-			const trigger = 0.5;
-			//var pressed = (numAxes == 4 ? pad.axes[2] : pad.axes[0]) < -trigger;
-			var pressed = pad.axes[0] < -trigger;
-			if (pressed != direction[0]) {
-				SAER.input.registerEvent(prt, SAEC_Input_Event_JoystickMove, SAEC_Input_Direction_Left, pressed);
-				direction[0] = pressed;
-			}
-			if (!pressed) {
-				//pressed = (numAxes == 4 ? pad.axes[2] : pad.axes[0]) > trigger;
-				pressed = pad.axes[0] > trigger;
-				if (pressed != direction[1]) {
-					SAER.input.registerEvent(prt, SAEC_Input_Event_JoystickMove, SAEC_Input_Direction_Right, pressed);
-					direction[1] = pressed;
-				}
-			}
-			//pressed = (numAxes == 4 ? pad.axes[3] : pad.axes[1]) < -trigger;
-			pressed = pad.axes[1] < -trigger;
-			if (pressed != direction[2]) {
-				SAER.input.registerEvent(prt, SAEC_Input_Event_JoystickMove, SAEC_Input_Direction_Up, pressed);
-				direction[2] = pressed;
-			}
-			if (!pressed) {
-				//pressed = (numAxes == 4 ? pad.axes[3] : pad.axes[1]) > trigger;
-				pressed = pad.axes[1] > trigger;
-				if (pressed != direction[3]) {
-					SAER.input.registerEvent(prt, SAEC_Input_Event_JoystickMove, SAEC_Input_Direction_Down, pressed);
-					direction[3] = pressed;
-				}
-			}
-
-			requestID = window.requestAnimationFrame(pollGamepad); /* next request */
+	function setButton(i, pressed) {
+		if (pressed != buttons[i]) {
+			SAER.input.registerEvent(prt, SAEC_Input_Event_Press, 1 << i, pressed);
+			buttons[i] = pressed;
 		}
 	}
 
+	function setDirection(i, dir, pressed) {
+		if (pressed != direction[i]) {
+			SAER.input.registerEvent(prt, SAEC_Input_Event_JoystickMove, dir, pressed);
+			direction[i] = pressed;
+		}
+	}
+
+	function releaseAll() {
+		for (var i = 0; i < buttons.length; i++)
+			setButton(i, false);
+		setDirection(0, SAEC_Input_Direction_Left, false);
+		setDirection(1, SAEC_Input_Direction_Right, false);
+		setDirection(2, SAEC_Input_Direction_Up, false);
+		setDirection(3, SAEC_Input_Direction_Down, false);
+	}
+
+	/* The gamepad API only supports polling, not events. Keep polling while
+	 * enabled, even if the pad is missing for a frame (it may come back), and
+	 * release everything while it is gone so no input gets stuck. (Issue #39) */
+	function pollGamepad() {
+		if (!enabled)
+			return;
+
+		var pad = getPad();
+		if (pad) {
+			var nb = Math.min(pad.buttons.length, 10);
+			for (var i = 0; i < nb; i++)
+				setButton(i, pad.buttons[i].pressed);
+
+			/* Directions come from the left stick (axes 0/1) OR the d-pad, which
+			 * the standard mapping reports as buttons 12-15 (up/down/left/right).
+			 * Arcade sticks like the Hori Fighting Stick show up as an "Xbox 360
+			 * controller" and report their stick as the d-pad only. (Issue #40) */
+			const trigger = 0.5;
+			var left = false, right = false, up = false, down = false;
+			if (pad.axes.length >= 2) {
+				left = pad.axes[0] < -trigger;
+				right = pad.axes[0] > trigger;
+				up = pad.axes[1] < -trigger;
+				down = pad.axes[1] > trigger;
+			}
+			if (pad.buttons.length >= 16) {
+				up = up || pad.buttons[12].pressed;
+				down = down || pad.buttons[13].pressed;
+				left = left || pad.buttons[14].pressed;
+				right = right || pad.buttons[15].pressed;
+			}
+			if (left) right = false; /* a real joystick can not do both */
+			if (up) down = false;
+
+			setDirection(0, SAEC_Input_Direction_Left, left);
+			setDirection(1, SAEC_Input_Direction_Right, right);
+			setDirection(2, SAEC_Input_Direction_Up, up);
+			setDirection(3, SAEC_Input_Direction_Down, down);
+		} else
+			releaseAll();
+
+		requestID = window.requestAnimationFrame(pollGamepad); /* next request */
+	}
+
 	this.enable = function() {
-		requestID = window.requestAnimationFrame(pollGamepad); /* initial request */
+		enabled = true;
+		if (requestID === null)
+			requestID = window.requestAnimationFrame(pollGamepad); /* initial request */
 	}
 
 	this.disable = function() {
+		enabled = false;
 		if (requestID !== null) {
 			window.cancelAnimationFrame(requestID);
 			requestID = null;
