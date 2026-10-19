@@ -635,10 +635,22 @@ function SAEO_Keyboard() {
 	var code = 0;
 	var first = 0, last = 0;
 	var capsLock = false;
+	var pressed = {}; /* e.code of every key currently held down (CapsLock excluded) */
 
 
 	function keydown(e) { newHandleKey(e, true); }
 	function keyup(e) { newHandleKey(e, false); }
+
+	/* The browser does not deliver a keyup for keys that are still held when
+	 * the page loses focus (Alt+Tab, clicking outside, switching tabs). Without
+	 * this, the Amiga keeps seeing the key or the emulated joystick direction
+	 * until it is pressed again. (Issue #39) */
+	function releaseAll() {
+		for (var c in pressed)
+			newProcessKey(c, false);
+	}
+	function blur(e) { releaseAll(); }
+	function visibilitychange(e) { if (document.hidden) releaseAll(); }
 	/*function fullscreenchange(e) {
 		SAEF_log("fullscreenchange()");
 	}*/
@@ -647,14 +659,19 @@ function SAEO_Keyboard() {
 		if (SAEV_config.keyboard.enabled) {
 			document.addEventListener("keydown", keydown, USECAPTURE);
 			document.addEventListener("keyup", keyup, USECAPTURE);
+			window.addEventListener("blur", blur);
+			document.addEventListener("visibilitychange", visibilitychange);
 			//document.addEventListener("webkitfullscreenchange", fullscreenchange);
 		}
 	};
 
 	this.cleanup = function() {
 		if (SAEV_config.keyboard.enabled) {
+			releaseAll();
 			document.removeEventListener("keydown", keydown, USECAPTURE);
 			document.removeEventListener("keyup", keyup, USECAPTURE);
+			window.removeEventListener("blur", blur);
+			document.removeEventListener("visibilitychange", visibilitychange);
 			//document.removeEventListener("webkitfullscreenchange", fullscreenchange);
 		}
 	};
@@ -667,6 +684,7 @@ function SAEO_Keyboard() {
 		state = 0;
 		code = 0;
 		first = last = 0;
+		pressed = {};
 	};
 
 	this.keysAvail = function() {
@@ -960,6 +978,9 @@ function SAEO_Keyboard() {
 			} else {
 				if (capsLock) return;
 			}
+		} else {
+			if (down == (code in pressed)) return; /* ignore repeats and stray releases */
+			if (down) pressed[code] = true; else delete pressed[code];
 		}
 
 		/* joystick emul */
