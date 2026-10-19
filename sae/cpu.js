@@ -3218,7 +3218,7 @@ function SAEO_CPU() {
 	function I_MOVEP_M2R_16(p) {
 		var dp = coreNext16();
 		var a = add32(regs.a[p.An], extWord(dp));
-		var d = (coreGet8(a) << 8) | corePut8(a+2);
+		var d = (coreGet8(a) << 8) | coreGet8(a+2);
 		//SAEF_log("I_MOVEP_M2R_16 A%d D%d addr $%08x -> $%04x", p.An, p.Dn, a, d);
 		regs.d[p.Dn] = (regs.d[p.Dn] & 0xffff0000) | d;
 		//ccna
@@ -3228,7 +3228,7 @@ function SAEO_CPU() {
 	function I_MOVEP_M2R_32(p) {
 		var dp = coreNext16();
 		var a = add32(regs.a[p.An], extWord(dp));
-		var d = ((coreGet8(a) << 24) | (coreGet8(a+2) << 16) | (coreGet8(a+4) << 8) | corePut8(a+6)) >>> 0;
+		var d = ((coreGet8(a) << 24) | (coreGet8(a+2) << 16) | (coreGet8(a+4) << 8) | coreGet8(a+6)) >>> 0;
 		//SAEF_log("I_MOVEP_M2R_32 A%d D%d addr $%08x -> $%08x", p.An, p.Dn, a, d);
 		regs.d[p.Dn] = d;
 		//ccna
