@@ -324,6 +324,21 @@
 							<ul>
 								<li>Try to press buttons on the controller.</li>
 								<li>Open a new tab and return to the SAE-tab. (Chrome)</li>
+								<li>Directions are taken from the left stick and from the d-pad. Arcade-sticks that report their stick as d-pad do work. (new)</li>
+							</ul>
+						</li>
+						<li>Keyboard-mapping
+							<ul>
+								<li>Keys are mapped by their physical position (<span class="info">event.code</span>), not by the character printed on them. Which character a key produces is decided by the Amiga keymap. Use <span class="info">SetMap</span> (Workbench) or an alternate keymap if the layout does not match your keyboard.</li>
+								<li>Letters, digits, cursor-keys, Space, Return, Backspace, Tab, Esc, Del and the numeric keypad map to the same keys on the Amiga. Both Ctrl-keys act as the Amiga Ctrl-key.</li>
+								<li>F1-F10 map to the Amiga F1-F10. F11 and F12 are left to the browser (fullscreen, developer-tools) and do not reach the Amiga.</li>
+								<li>Help: the Menu-key (right from AltGr/right Alt, if present).</li>
+								<li>Left/Right Amiga: the left/right Windows- or Cmd-key. Most browsers and operating systems grab these keys, so they rarely work. See &quot;Limits&quot;.</li>
+								<li>Caps Lock toggles the Amiga Caps Lock, the key-state is tracked by the browser.</li>
+								<li>Keys left from <span class="info">1</span> (Backquote), left from <span class="info">Backspace</span> (Backslash) and left from <span class="info">Z</span> (the extra key on international keyboards) map to the Amiga keys at the same position.</li>
+								<li>Insert, Home, End, Page Up/Down, Num Lock, Scroll Lock, Print Screen and Pause send the raw-key-codes $47-$49 and $6B-$6E (<span class="info">Insert</span>, <span class="info">Page Up</span>, <span class="info">Page Down</span>, <span class="info">Scroll Lock</span>, <span class="info">Print Screen</span>, <span class="info">Num Lock</span>, <span class="info">Pause</span>) which only some Amiga keymaps and programs know.</li>
+								<li>Joystick-emulation: a port set to &quot;Joystick emulation&quot; on the Ports-page takes the direction from the cursor-keys, the numeric-keypad (8/4/5/6) or W/A/S/D, and the two fire-buttons from the keys selected there. Default for port 1: cursor-keys with Right Shift and Right Ctrl. These keys are not passed to the Amiga keyboard while the emulation is active.</li>
+								<li>Keys that are still held when the page loses focus (Alt+Tab, click outside, tab-switch) are released automatically. (new)</li>
 							</ul>
 						</li>
 					</ul>
