@@ -1,0 +1,101 @@
+{
+  "disass.js": {
+    "no-useless-catch": {
+      "count": 2
+    }
+  },
+  "index.js": {
+    "no-undef": {
+      "count": 13
+    }
+  },
+  "sae/amiga.js": {
+    "no-delete-var": {
+      "count": 1
+    }
+  },
+  "sae/autoconf.js": {
+    "no-undef": {
+      "count": 8
+    }
+  },
+  "sae/cia.js": {
+    "no-unreachable": {
+      "count": 1
+    }
+  },
+  "sae/cpu.js": {
+    "no-undef": {
+      "count": 57
+    }
+  },
+  "sae/disk.js": {
+    "no-dupe-else-if": {
+      "count": 1
+    },
+    "no-undef": {
+      "count": 9
+    }
+  },
+  "sae/dms.js": {
+    "no-delete-var": {
+      "count": 1
+    },
+    "no-undef": {
+      "count": 44
+    }
+  },
+  "sae/events.js": {
+    "no-undef": {
+      "count": 8
+    }
+  },
+  "sae/expansion.js": {
+    "no-undef": {
+      "count": 2
+    }
+  },
+  "sae/hardfile.js": {
+    "no-delete-var": {
+      "count": 1
+    },
+    "no-undef": {
+      "count": 3
+    }
+  },
+  "sae/ide.js": {
+    "no-undef": {
+      "count": 9
+    }
+  },
+  "sae/m68k.js": {
+    "no-undef": {
+      "count": 2
+    }
+  },
+  "sae/memory.js": {
+    "no-undef": {
+      "count": 2
+    }
+  },
+  "sae/playfield.js": {
+    "no-undef": {
+      "count": 48
+    }
+  },
+  "sae/rtc.js": {
+    "no-undef": {
+      "count": 6
+    }
+  },
+  "sae/utils.js": {
+    "no-cond-assign": {
+      "count": 1
+    }
+  },
+  "sae/video.js": {
+    "no-undef": {
+      "count": 27
+    }
+  }
+}
