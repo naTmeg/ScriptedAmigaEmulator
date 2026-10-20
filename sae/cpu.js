@@ -4870,93 +4870,70 @@ function SAEO_CPU() {
 		return p.cyc;
 	}
 
-	function I_LSL_32(p) {
-		var d = regs.d[p.Dy], _d = d;
-		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.x = regs.c = (d & (1 << (32-n))) != 0;
-			d = ((d << n) & 0xffffffff) >>> 0;
-			regs.d[p.Dy] = d;
-		} else regs.c = false;
-		regs.n = (d & 0x80000000) != 0;
+	/* Register shifts and rotates bit by bit: JS shifts modulo 32, and counts up to 63 must
+	 * shift everything out (LSL.L #32 gives 0, C = last bit shifted out). Rare enough that
+	 * the loop does not matter. N and Z from the result, V = 0. */
+	function shiftFlags(d, bits) {
+		regs.n = ((d >>> (bits - 1)) & 1) != 0;
 		regs.z = d == 0;
 		regs.v = false;
-		//SAEF_log(("I_LSL.L %08x << %d = %08x", _d, n, d));
+	}
+	/* LSL/LSR: C and X get the last bit shifted out; a count of 0 clears C and keeps X */
+	function lsl(d, n, bits) {
+		var c = 0;
+		for (var i = 0; i < n; i++) {
+			c = (d >>> (bits - 1)) & 1;
+			d = bits == 32 ? (d << 1) >>> 0 : (d << 1) & ((1 << bits) - 1);
+		}
+		regs.c = c != 0;
+		if (n) regs.x = regs.c;
+		shiftFlags(d, bits);
+		return d;
+	}
+	function lsr(d, n, bits) {
+		var c = 0;
+		for (var i = 0; i < n; i++) {
+			c = d & 1;
+			d = d >>> 1;
+		}
+		regs.c = c != 0;
+		if (n) regs.x = regs.c;
+		shiftFlags(d, bits);
+		return d;
+	}
+	function I_LSL_32(p) {
+		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
+		regs.d[p.Dy] = lsl(regs.d[p.Dy] >>> 0, n, 32);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_LSL_16(p) {
-		var d = regs.d[p.Dy] & 0xffff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.x = regs.c = (d & (1 << (16-n))) != 0;
-			d = ((d << n) & 0xffff) >>> 0;
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | d;
-		} else regs.c = false;
-		regs.n = (d & 0x8000) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_LSL.W %08x << %d = %08x", _d, n, d));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | lsl(regs.d[p.Dy] & 0xffff, n, 16);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_LSL_8(p) {
-		var d = regs.d[p.Dy] & 0xff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.x = regs.c = (d & (1 << (8-n))) != 0;
-			d = ((d << n) & 0xff) >>> 0;
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | d;
-		} else regs.c = false;
-		regs.n = (d & 0x80) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_LSL.B %08x << %d = %08x", _d, n, d));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | lsl(regs.d[p.Dy] & 0xff, n, 8);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_LSR_32(p) {
-		var d = regs.d[p.Dy], _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.x = regs.c = (d & (1 << (n-1))) != 0;
-			d = d >>> n;
-			regs.d[p.Dy] = d;
-		} else regs.c = false;
-		regs.n = (d & 0x80000000) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_LSR.L %08x >> %d = %08x", _d, n, d));
+		regs.d[p.Dy] = lsr(regs.d[p.Dy] >>> 0, n, 32);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_LSR_16(p) {
-		var d = regs.d[p.Dy] & 0xffff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.x = regs.c = (d & (1 << (n-1))) != 0;
-			d >>= n;
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | d;
-		} else regs.c = false;
-		regs.n = (d & 0x8000) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_LSR.W %08x >> %d = %08x", _d, n, d));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | lsr(regs.d[p.Dy] & 0xffff, n, 16);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_LSR_8(p) {
-		var d = regs.d[p.Dy] & 0xff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.x = regs.c = (d & (1 << (n-1))) != 0;
-			d >>= n;
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | d;
-		} else regs.c = false;
-		regs.n = (d & 0x80) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_LSR.B %08x >> %d = %08x", _d, n, d));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | lsr(regs.d[p.Dy] & 0xff, n, 8);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
