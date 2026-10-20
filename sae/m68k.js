@@ -268,7 +268,10 @@ function SAEO_M68K() {
 			//if (SAEV_config.cpu.speed >= 0)
 			prevtime = SAEF_now();
 
-			setTimeout(function() { SAER.m68k.m68k_cycle(hardboot, startup); }, 0);
+			/* framewait() leaves the time until the next frame (in us) in SAEV_Events_frameDelay */
+			var delay = SAEV_Events_frameDelay;
+			SAEV_Events_frameDelay = 0;
+			setTimeout(function() { SAER.m68k.m68k_cycle(hardboot, startup); }, delay >= 1000 ? Math.floor(delay / 1000) : 0); /* us -> ms */
 		} catch(e) {
 			this.m68k_gone();
 			if (e instanceof SAEO_Error) {
