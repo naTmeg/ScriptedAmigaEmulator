@@ -469,7 +469,7 @@
  },
  "TAS": {
   "limit": 200,
-  "fail": 139
+  "fail": 0
  },
  "TRAP": {
   "limit": 200,

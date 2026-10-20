@@ -6446,8 +6446,17 @@ function SAEO_CPU() {
 	}
 
 	function I_TAS(p) {
-		var d = ldEA8tab[p.ea]();
-		stEA8tab[p.ea](0x80 | d);
+		/* compute a memory address once: reading through ldEA8tab and writing through
+		   stEA8tab evaluated (An)+/-(An) twice and read d16/d8/abs extension words twice */
+		var d;
+		if (p.ea < 8) {
+			d = regs.d[p.ea] & 0xff;
+			regs.d[p.ea] = (regs.d[p.ea] & 0xffffff00) | 0x80 | d;
+		} else {
+			var a = exEAtab[p.ea](1);
+			d = coreGet8(a);
+			corePut8(a, 0x80 | d);
+		}
 		regs.n = (d & 0x80) != 0;
 		regs.z = d == 0;
 		regs.v = false;
