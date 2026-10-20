@@ -5530,108 +5530,92 @@ function SAEO_CPU() {
 	/*-----------------------------------------------------------------------*/
 	/* Binary-Coded Decimal */
 
-	function I_ABCD_D(p) {
-		var s = regs.d[p.Ry] & 0xff;
-		var d = regs.d[p.Rx] & 0xff;
-		var lo = (s & 0x0f) + (d & 0x0f) + (regs.x?1:0);
-		var hi = (s & 0xf0) + (d & 0xf0);
-		var r = hi + lo;
-		if (lo > 9) r += 6;
-		if ((r & 0x3f0) > 0x90) {
-			r = (r + 0x60) & 0xff;
-			regs.x = regs.c = true;
-		} else regs.x = regs.c = false;
+	/* BCD arithmetic as in WinUAE's gencpu (uae_u16 intermediates, masked here because JS
+	 * keeps negative values). N and V are "undefined" in the manual but well defined:
+	 * 68000/68010 set N from the result and V from the decimal correction, 68020/68030
+	 * set N and clear V, 68040/060 leave both alone. Z is only cleared, never set. */
+	function bcdFlags(r, v) {
 		if (r) regs.z = false;
-		//n,v undef
+		if (SAEV_config.cpu.model >= SAEC_Config_CPU_Model_68040)
+			return;
+		regs.n = (r & 0x80) != 0;
+		regs.v = SAEV_config.cpu.model < SAEC_Config_CPU_Model_68020 ? v : false;
+	}
+	function bcdAdd(s, d) { /* d + s + X */
+		var x = regs.x ? 1 : 0;
+		var lo = (s & 0x0f) + (d & 0x0f) + x;
+		var hi = (s & 0xf0) + (d & 0xf0);
+		var t = hi + lo, r = t;
+		if (lo > 9) r += 6;
+		var c = (r & 0x3f0) > 0x90;
+		if (c) r += 0x60;
+		regs.x = regs.c = c;
+		bcdFlags(r & 0xff, (t & 0x80) == 0 && (r & 0x80) != 0);
+		return r & 0xff;
+	}
+	function bcdSub(s, d) { /* d - s - X */
+		var x = regs.x ? 1 : 0;
+		var lo = ((d & 0x0f) - (s & 0x0f) - x) & 0xffff;
+		var hi = ((d & 0xf0) - (s & 0xf0)) & 0xffff;
+		var t = (hi + lo) & 0xffff, r = t, bcd = 0;
+		if (lo & 0xf0) { r = (r - 6) & 0xffff; bcd = 6; }
+		if ((((d & 0xff) - (s & 0xff) - x) & 0x100) > 0xff) r = (r - 0x60) & 0xffff;
+		var c = (((d & 0xff) - (s & 0xff) - bcd - x) & 0x300) > 0xff;
+		regs.x = regs.c = c;
+		bcdFlags(r & 0xff, (t & 0x80) != 0 && (r & 0x80) == 0);
+		return r & 0xff;
+	}
+	function bcdNeg(d) { /* 0 - d - X */
+		var x = regs.x ? 1 : 0;
+		var lo = (-(d & 0x0f) - x) & 0xffff;
+		var hi = (-(d & 0xf0)) & 0xffff;
+		var t = hi + lo;
+		if (lo > 9) lo -= 6;
+		var r = (hi + lo) & 0xffff;
+		var c = (r & 0x1f0) > 0x90;
+		if (c) r = (r - 0x60) & 0xffff;
+		regs.x = regs.c = c;
+		bcdFlags(r & 0xff, (t & 0x80) != 0 && (r & 0x80) == 0);
+		return r & 0xff;
+	}
+
+	function I_ABCD_D(p) {
+		var r = bcdAdd(regs.d[p.Ry] & 0xff, regs.d[p.Rx] & 0xff);
 		regs.d[p.Rx] = (regs.d[p.Rx] & 0xffffff00) | r;
-		//SAEF_log(("I_ABCD_D.B %02x + %02x = %02x carry %d", s,d,r,regs.c?1:0));
 		coreSyncPC();
 		return p.cyc;
 	}
 	function I_ABCD_A(p) {
 		regs.a[p.Ry] -= aIncDec[1][p.Ry]; var s = coreGet8(regs.a[p.Ry]);
 		regs.a[p.Rx] -= aIncDec[1][p.Rx]; var d = coreGet8(regs.a[p.Rx]);
-		var lo = (s & 0x0f) + (d & 0x0f) + (regs.x?1:0);
-		var hi = (s & 0xf0) + (d & 0xf0);
-		var r = hi + lo;
-		if (lo > 9) r += 6;
-		if ((r & 0x3f0) > 0x90) {
-			r = (r + 0x60) & 0xff;
-			regs.x = regs.c = true;
-		} else regs.x = regs.c = false;
-		if (r) regs.z = false;
-		//n,v undef
-		corePut8(regs.a[p.Rx], r);
-		//SAEF_log(("I_ABCD_A.B %02x + %02x = %02x carry %d", s,d,r,regs.c?1:0));
+		corePut8(regs.a[p.Rx], bcdAdd(s, d));
 		coreSyncPC();
 		return p.cyc;
 	}
 
 	function I_SBCD_D(p) {
-		var s = regs.d[p.Rx] & 0xff;
-		var d = regs.d[p.Ry] & 0xff;
-		var lo = (d & 0x0f) - (s & 0x0f) - (regs.x?1:0);
-		var hi = (d & 0xf0) - (s & 0xf0);
-		var r = hi + lo, bcd = 0;
-		if (lo & 0xf0) { r -= 6; bcd = 6; };
-		if ((((d & 0xff) - (s & 0xff) - (regs.x?1:0)) & 0x100) > 0xff) r = (r - 0x60) & 0xff;
-		regs.x = regs.c = (((d & 0xff) - (s & 0xff) - bcd - (regs.x?1:0)) & 0x300) > 0xff;
-		if (r) regs.z = false;
-		//n,v undef
+		var r = bcdSub(regs.d[p.Rx] & 0xff, regs.d[p.Ry] & 0xff);
 		regs.d[p.Ry] = (regs.d[p.Ry] & 0xffffff00) | r;
-		//SAEF_log(("I_SBCD_D.B %02x - %02x = %02x carry %d", d,s,r,regs.c?1:0));
 		coreSyncPC();
 		return p.cyc;
 	}
 	function I_SBCD_A(p) {
 		regs.a[p.Rx] -= aIncDec[1][p.Rx]; var s = coreGet8(regs.a[p.Rx]);
 		regs.a[p.Ry] -= aIncDec[1][p.Ry]; var d = coreGet8(regs.a[p.Ry]);
-		var lo = (d & 0x0f) - (s & 0x0f) - (regs.x?1:0);
-		var hi = (d & 0xf0) - (s & 0xf0);
-		var r = hi + lo, bcd = 0;
-		if (lo & 0xf0) { r -= 6; bcd = 6; };
-		if ((((d & 0xff) - (s & 0xff) - (regs.x?1:0)) & 0x100) > 0xff) r = (r - 0x60) & 0xff;
-		regs.x = regs.c = (((d & 0xff) - (s & 0xff) - bcd - (regs.x?1:0)) & 0x300) > 0xff;
-		if (r) regs.z = false;
-		//n,v undef
-		corePut8(regs.a[p.Ry], r);
-		//SAEF_log(("I_SBCD_A.B %02x - %02x = %02x carry %d", d,s,r,regs.c?1:0));
+		corePut8(regs.a[p.Ry], bcdSub(s, d));
 		coreSyncPC();
 		return p.cyc;
 	}
 
 	function I_NBCD_D(p) {
-		var d = regs.d[p.Dd] & 0xff;
-		var lo = -(d & 0x0f) - (regs.x?1:0);
-		var hi = -(d & 0xf0);
-		if (lo > 9) { lo -= 6; }
-		var r = hi + lo;
-		if ((r & 0x1f0) > 0x90) {
-			r = (r - 0x60) & 0xff;
-			regs.x = regs.c = true;
-		} else regs.x = regs.c = false;
-		if (r) regs.z = false;
-		//n,v undef
+		var r = bcdNeg(regs.d[p.Dd] & 0xff);
 		regs.d[p.Dd] = (regs.d[p.Dd] & 0xffffff00) | r;
-		//SAEF_log(("I_NBCD_D.B 0 - %02x = %02x carry %d", d,r,regs.c?1:0));
 		coreSyncPC();
 		return p.cyc;
 	}
 	function I_NBCD_E(p) {
 		var a = exEAtab[p.ea](1);
-		var d = coreGet8(a);
-		var lo = -(d & 0x0f) - (regs.x?1:0);
-		var hi = -(d & 0xf0);
-		if (lo > 9) { lo -= 6; }
-		var r = hi + lo;
-		if ((r & 0x1f0) > 0x90) {
-			r = (r - 0x60) & 0xff;
-			regs.x = regs.c = true;
-		} else regs.x = regs.c = false;
-		if (r) regs.z = false;
-		//n,v undef
-		corePut8(a, r);
-		//SAEF_log(("I_NBCD_E.B 0 - %02x = %02x carry %d", d,r,regs.c?1:0));
+		corePut8(a, bcdNeg(coreGet8(a)));
 		coreSyncPC();
 		return p.cyc;
 	}

@@ -1,7 +1,7 @@
 {
  "ABCD": {
   "limit": 200,
-  "fail": 160
+  "fail": 0
  },
  "ADD.b": {
   "limit": 200,
@@ -293,7 +293,7 @@
  },
  "NBCD": {
   "limit": 200,
-  "fail": 199
+  "fail": 0
  },
  "NEG.b": {
   "limit": 200,
@@ -425,7 +425,7 @@
  },
  "SBCD": {
   "limit": 200,
-  "fail": 148
+  "fail": 0
  },
  "SUB.b": {
   "limit": 200,
