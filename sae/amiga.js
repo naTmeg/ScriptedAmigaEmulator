@@ -675,6 +675,11 @@ function ScriptedAmigaEmulator() {
 	this.isDiskModified = function(unit) {
 		return this.running ? this.disk.isModified(unit) : false;
 	};
+	/* call after the image from getDisk() was saved */
+	this.markDiskSaved = function(unit) {
+		if (this.running)
+			this.disk.clearModified(unit);
+	};
 
 	this.getDiskInfo = function(di, unit) {
 		return this.disk.examine(di, unit);

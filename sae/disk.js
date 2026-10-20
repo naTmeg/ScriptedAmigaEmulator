@@ -2477,6 +2477,11 @@ function SAEO_Disk() {
 	this.isModified = function(num) {
 		return floppy[num] ? floppy[num].modified && floppy[num].filetype != ADF_NONE : false;
 	}
+	/* the frontend saved the image: the next write marks it (and calls the hook) again */
+	this.clearModified = function(num) {
+		if (floppy[num])
+			floppy[num].modified = false;
+	}
 
 	this.eject = function(num) { //disk_eject()
 		//set_config_changed();

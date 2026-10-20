@@ -2774,6 +2774,7 @@ function dskchgSave() {
 			return;
 		}
 		saveBlob(d.data, d.name);
+		sae.markDiskSaved(n);
 	}
 }
 function saveBlob(data, name) {
