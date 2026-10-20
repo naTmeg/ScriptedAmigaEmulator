@@ -136,12 +136,21 @@ function step(tracedAtStart) {
 	 * An instruction that only sets T (MOVE to SR, RTE) is not traced itself. */
 	if (tracedAtStart && (ctx.SAEV_spcflags & C.DOTRACE)) { ctx.SAEV_spcflags |= C.BRK; m68k.do_specialties(0); }
 }
+/* A test expects an address error if it ends at the address-error vector (long at $0C).
+ * Comparing stack pointers is not enough: RTS/RTE/RTR pop before the frame is pushed and
+ * BSR pushes its return address first. */
+function expectsAe(t) {
+	const m = new Map(t.initial.ram.map(([a, v]) => [a & 0xffffff, v]));
+	if (![12, 13, 14, 15].every((a) => m.has(a))) return false;
+	const vec = ((m.get(12) << 24) | (m.get(13) << 16) | (m.get(14) << 8) | m.get(15)) >>> 0;
+	return t.final.pc >>> 0 === vec && (t.final.sr & 0x2000) !== 0;
+}
 function compare(t) {
 	const got = getState(), exp = t.final, diffs = [];
 	const keys = ["d0","d1","d2","d3","d4","d5","d6","d7","a0","a1","a2","a3","a4","a5","a6","usp","ssp","sr","pc"];
 	for (const k of keys) if ((got[k] >>> 0) !== (exp[k] >>> 0)) diffs.push(`${k} ${hex(got[k])} != ${hex(exp[k])}`);
 	/* stacked PC of an expected address-error frame: bytes 10-13 of the 14-byte frame */
-	const pcLo = aeIgnorePc && t.initial.ssp - exp.ssp === 14 ? (exp.ssp + 10) & 0xffffff : -1;
+	const pcLo = aeIgnorePc && expectsAe(t) ? (exp.ssp + 10) & 0xffffff : -1;
 	for (const [a, v] of exp.ram) {
 		const a24 = a & 0xffffff;
 		if (a24 >= pcLo && a24 < pcLo + 4) continue;
@@ -171,14 +180,14 @@ for (const name of FILES.filter((n) => !only || n.includes(only))) {
 		let diffs;
 		try {
 			setState(t.initial); step((t.initial.sr & 0x8000) != 0); diffs = compare(t);
-			if (aeReport && t.initial.ssp - t.final.ssp === 14) recordAe(name, t);
+			if (aeReport && expectsAe(t)) recordAe(name, t);
 		}
 		catch (e) { crash++; diffs = ["exception: " + (e && e.message)]; }
 		if (diffs.length) {
 			fail++;
 			/* a group-0 exception was expected: address error, 14-byte frame on the supervisor stack */
-			if (t.initial.ssp - t.final.ssp === 14) failAe++;
-			const isAe = t.initial.ssp - t.final.ssp === 14;
+			const isAe = expectsAe(t);
+			if (isAe) failAe++;
 			if (shown < show && (!kind || (kind === "ae") === isAe)) {
 				shown++;
 				console.log(`  ${name} | ${t.name}\n      ${diffs.slice(0, 6).join("\n      ")}`);
