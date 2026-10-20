@@ -6138,6 +6138,10 @@ function SAEO_CPU() {
 		var s = castWord(ldEA16tab[p.ea]());
 		var d = castWord(regs.d[p.Dn] & 0xffff);
 
+		if (SAEV_config.cpu.model < SAEC_Config_CPU_Model_68020) {
+			/* "undefined" on paper, but the 68000/68010 always do this (vAmigaTS stackframe4) */
+			regs.c = false; regs.v = false; regs.z = d == 0; regs.n = false;
+		}
 		if (d < 0) {
 			//SAEF_log(("I_CHK.W YES (%d < 0)", d));
 			regs.n = true;
@@ -6160,6 +6164,9 @@ function SAEO_CPU() {
 		var s = castLong(ldEA32tab[p.ea]());
 		var d = castLong(regs.d[p.Dn]);
 
+		if (SAEV_config.cpu.model < SAEC_Config_CPU_Model_68020) {
+			regs.c = false; regs.v = false; regs.z = d == 0; regs.n = false;
+		}
 		if (d < 0) {
 			//SAEF_log(("I_CHK.L YES (%d < 0)", d));
 			regs.n = true;
