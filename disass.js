@@ -88,26 +88,15 @@ function result2text() {
 /*---------------------------------*/
 
 function init() {
-	try {
-		sda = new ScriptedDisAssembler();
-		cfg = sda.getConfig(); /* reference to config */
-		//console.log(cfg);
-	} catch(e) {
-		throw e;
-	}
+	sda = new ScriptedDisAssembler();
+	cfg = sda.getConfig(); /* reference to config */
 }
 
 function disass() {
-	try {
-		result = sda.disassemble();
-		//console.log(result);
-
-		document.getElementById("disass_code").value = result2text();
-		document.getElementById("disass_cfg").style.display = "table";
-		document.getElementById("disass_code").style.display = "inline";
-	} catch(e) {
-		throw e;
-	}
+	result = sda.disassemble();
+	document.getElementById("disass_code").value = result2text();
+	document.getElementById("disass_cfg").style.display = "table";
+	document.getElementById("disass_code").style.display = "inline";
 }
 
 /*---------------------------------*/

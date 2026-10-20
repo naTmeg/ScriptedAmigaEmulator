@@ -970,7 +970,7 @@ function SAEO_DMS() {
 				SAEF_ZFile_fread(p,0, 512 * 22, 1, fo);
 				addextra("BigFakeBootBlock", extra, p, 512 * 22);
 				//xfree(p);
-				delete p;
+				p = null;
 			}
 			SAEF_ZFile_fseek(fo, number * 512 * 22 * ((dmsflags & DMSFLAG_HD) ? 2 : 1), SEEK_SET);
 			if (SAEF_ZFile_fwrite(b2,0, 1, unpklen, fo) != unpklen)

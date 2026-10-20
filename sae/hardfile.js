@@ -647,7 +647,7 @@ function SAEO_Hardfile() {
 		SAEF_memset(buf,0, 0, len - 512); //OWN
 		buf.set(hfd.vhd_header.subarray(0, 512), len - 512); //memcpy (buf + len - 512, hfd->vhd_header, 512);
 		var v = hdf_write_target(hfd, buf,0, hfd.vhd_footerblock, len);
-		delete buf;
+		buf = null;
 		if (v != len) {
 			SAEF_warn("hardfile.vhd_write_enlarge() footer write error");
 			return false;
