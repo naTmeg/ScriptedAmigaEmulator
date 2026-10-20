@@ -1170,7 +1170,7 @@ function SAEO_Expansion() {
 		if (!SAEV_config.cpu.addressSpace24) {
 			if (z3fastmem_bank.baseaddr !== null) {
 				var alwaysmapz3 = SAEV_config.memory.z3Mapping != SAEC_Config_Memory_z3Mapping_Real;
-				z3num = 0;
+				var z3num = 0;
 				cards[cardno].flags = 2 | 1;
 				cards[cardno].name = "Z3Fast";
 				cards[cardno].initnum = expamem_init_z3fastmem;

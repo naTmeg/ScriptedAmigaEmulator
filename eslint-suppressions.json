@@ -4,11 +4,6 @@
       "count": 2
     }
   },
-  "index.js": {
-    "no-undef": {
-      "count": 13
-    }
-  },
   "sae/amiga.js": {
     "no-delete-var": {
       "count": 1
@@ -26,46 +21,32 @@
   },
   "sae/cpu.js": {
     "no-undef": {
-      "count": 57
+      "count": 1
     }
   },
   "sae/disk.js": {
     "no-dupe-else-if": {
       "count": 1
-    },
-    "no-undef": {
-      "count": 9
     }
   },
   "sae/dms.js": {
     "no-delete-var": {
       "count": 1
-    },
-    "no-undef": {
-      "count": 44
-    }
-  },
-  "sae/events.js": {
-    "no-undef": {
-      "count": 8
     }
   },
   "sae/expansion.js": {
     "no-undef": {
-      "count": 2
+      "count": 1
     }
   },
   "sae/hardfile.js": {
     "no-delete-var": {
       "count": 1
-    },
-    "no-undef": {
-      "count": 3
     }
   },
   "sae/ide.js": {
     "no-undef": {
-      "count": 9
+      "count": 3
     }
   },
   "sae/m68k.js": {
@@ -83,11 +64,6 @@
       "count": 48
     }
   },
-  "sae/rtc.js": {
-    "no-undef": {
-      "count": 6
-    }
-  },
   "sae/utils.js": {
     "no-cond-assign": {
       "count": 1
@@ -95,7 +71,7 @@
   },
   "sae/video.js": {
     "no-undef": {
-      "count": 27
+      "count": 26
     }
   }
 }

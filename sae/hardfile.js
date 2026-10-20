@@ -172,7 +172,7 @@ function SAEO_Hardfile() {
 	}*/
 
 	function getchspgeometry(total, ptr, idegeometry) { //, int *pcyl, int *phead, int *psectorspertrack, bool idegeometry)
-		blocks = Math.floor(total / 512);
+		var blocks = Math.floor(total / 512);
 
 		if (blocks > 16515072) {
 			/* >8G, CHS=16383/16/63 */

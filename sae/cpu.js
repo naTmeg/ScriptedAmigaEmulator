@@ -2007,7 +2007,7 @@ function SAEO_CPU() {
 		var tmp, res, mask;
 		var data = [0,0];
 
-		offs = offset & 7;
+		var offs = offset & 7;
 		mask = (0xffffffff << (32 - width)) >>> 0;
 
 		switch ((offs + width + 7) >> 3) {
@@ -2057,7 +2057,7 @@ function SAEO_CPU() {
 	function putBitfield(addr, offset, width, data, val) {
 		var out8, out16, out32;
 
-		offs = (offset & 7) + width;
+		var offs = (offset & 7) + width;
 		switch ((offs + 7) >> 3) {
 			case 1:
 				out8 = ((data[0] | (val << (8 - offs))) >>> 0) & 0xff;
@@ -2495,7 +2495,7 @@ function SAEO_CPU() {
 		this.width = 0;
 		this.reloc = true;
 	}
-	config_da = new config_da_def();
+	var config_da = new config_da_def();
 
 	function setPC_da(pc) {
 		regs_da.pc = pc;
@@ -5338,7 +5338,7 @@ function SAEO_CPU() {
 			bdata[0] = (tmp & ((1 << (32 - width)) - 1)) >>> 0;
 		} else {
 			if (offset & 0x80000000) offset -= 0x100000000;
-			addr = exEAtab[p.ea](1);
+			var addr = exEAtab[p.ea](1);
 			if (offset) addr += Math.truncate(offset / 8);
 			var bf = getBitfield(addr, Math.abs(offset), width);
 			tmp = bf[0];
