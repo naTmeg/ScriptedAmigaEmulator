@@ -1669,7 +1669,12 @@ function SAEO_CPU() {
 		return false;
 	}
 	function coreIllegal(op) {
+		/* coreSyncPC() ends in setPC(), which also overwrites regs.instruction_pc with
+		 * the fetch address (opcode + 2). Exceptions 4, 10 and 11 must stack the
+		 * address of the illegal opcode itself, so keep it. (vAmigaTS stackframe1/3) */
+		var ipc = regs.instruction_pc;
 		coreSyncPC();
+		regs.instruction_pc = ipc;
 		if (illegal(op))
 			return [4,0,0]; /* no exception */
 		else
