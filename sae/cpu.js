@@ -5628,7 +5628,13 @@ function SAEO_CPU() {
 		else if (p.dp == 255 && SAEV_config.cpu.model >= SAEC_Config_CPU_Model_68020) dp = coreNext32(); /* 68000/010: -1 */
 		else dp = extByte(p.dp);
 		pc = add32(pc, dp);
-		if (pc & 1) return coreException3i(p.op, pc);
+		if (pc & 1) {
+			/* 68000: the return address is pushed before the prefetch from the odd target
+			   faults (WinUAE gencpu i_BSR, SingleStepTests) */
+			if (SAEV_config.cpu.model == SAEC_Config_CPU_Model_68000)
+				stackPut32(coreGetPC());
+			return coreException3i(p.op, pc);
+		}
 		//SAEF_log(("I_BSR $%08x -> $%08x", coreGetPC(), pc));
 		stackPut32(coreGetPC());
 		coreSetPC(pc);
