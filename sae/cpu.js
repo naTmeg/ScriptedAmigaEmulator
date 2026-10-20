@@ -4948,93 +4948,60 @@ function SAEO_CPU() {
 		return p.cyc;
 	}
 
+	/* ROL/ROR: C gets the last bit rotated out, X is not affected; a count of 0 clears C */
+	function rol(d, n, bits) {
+		var c = 0;
+		for (var i = 0; i < n; i++) {
+			c = (d >>> (bits - 1)) & 1;
+			d = bits == 32 ? ((d << 1) | c) >>> 0 : ((d << 1) | c) & ((1 << bits) - 1);
+		}
+		regs.c = c != 0;
+		shiftFlags(d, bits);
+		return d;
+	}
+	function ror(d, n, bits) {
+		var c = 0;
+		for (var i = 0; i < n; i++) {
+			c = d & 1;
+			d = ((d >>> 1) | (c << (bits - 1))) >>> 0;
+		}
+		regs.c = c != 0;
+		shiftFlags(d, bits);
+		return d;
+	}
 	function I_ROL_32(p) {
-		var d = regs.d[p.Dy], _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.c = (d & (1 << (32-n))) != 0;
-			d = (((d << n) | (d >>> (32-n))) & 0xffffffff) >>> 0;
-			regs.d[p.Dy] = d;
-		} else regs.c = false;
-		regs.n = (d & 0x80000000) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_ROL.L %08x << %d = %08x", _d, n, d));
+		regs.d[p.Dy] = rol(regs.d[p.Dy] >>> 0, n, 32);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_ROL_16(p) {
-		var d = regs.d[p.Dy] & 0xffff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.c = (d & (1 << (16-n))) != 0;
-			d = (((d << n) | (d >> (16-n))) & 0xffff) >>> 0;
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | d;
-		} else regs.c = false;
-		regs.n = (d & 0x8000) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_ROL.W %08x << %d = %08x", _d, n, d));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | rol(regs.d[p.Dy] & 0xffff, n, 16);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_ROL_8(p) {
-		var d = regs.d[p.Dy] & 0xff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.c = (d & (1 << (8-n))) != 0;
-			d = (((d << n) | (d >> (8-n))) & 0xff) >>> 0;
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | d;
-		} else regs.c = false;
-		regs.n = (d & 0x80) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_ROL.B %08x << %d = %08x", _d, n, d));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | rol(regs.d[p.Dy] & 0xff, n, 8);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_ROR_32(p) {
-		var d = regs.d[p.Dy], _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.c = (d & (1 << (n-1))) != 0;
-			d = (((d << (32-n)) | (d >>> n)) & 0xffffffff) >>> 0;
-			regs.d[p.Dy] = d;
-		} else regs.c = false;
-		regs.n = (d & 0x80000000) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_ROR.L %08x >> %d = %08x", _d, n, d));
+		regs.d[p.Dy] = ror(regs.d[p.Dy] >>> 0, n, 32);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_ROR_16(p) {
-		var d = regs.d[p.Dy] & 0xffff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.c = (d & (1 << (n-1))) != 0;
-			d = (((d << (16-n)) | (d >>> n)) & 0xffff) >>> 0;
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | d;
-		} else regs.c = false;
-		regs.n = (d & 0x8000) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_ROR.W %08x >> %d = %08x", _d, n, d));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | ror(regs.d[p.Dy] & 0xffff, n, 16);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_ROR_8(p) {
-		var d = regs.d[p.Dy] & 0xff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.c = (d & (1 << (n-1))) != 0;
-			d = (((d << (8-n)) | (d >>> n)) & 0xff) >>> 0;
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | d;
-		} else regs.c = false;
-		regs.n = (d & 0x80) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_ROR.B %08x >> %d = %08x", _d, n, d));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | ror(regs.d[p.Dy] & 0xff, n, 8);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
