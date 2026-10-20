@@ -57,15 +57,15 @@
  },
  "ASL.b": {
   "limit": 200,
-  "fail": 100
+  "fail": 0
  },
  "ASL.l": {
   "limit": 200,
-  "fail": 61
+  "fail": 0
  },
  "ASL.w": {
   "limit": 200,
-  "fail": 85
+  "fail": 23
  },
  "ASR.b": {
   "limit": 200,

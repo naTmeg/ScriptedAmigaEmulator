@@ -4759,60 +4759,39 @@ function SAEO_CPU() {
 	/*-----------------------------------------------------------------------*/
 	/* Shift and Rotate */
 
-	function I_ASL_32(p) {
-		var d = regs.d[p.Dy], _d = d;
-		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			var sign = (d & 0x80000000) != 0;
-			var mask = ~((1 << (32 - n)) - 1) >>> 0;
-			//var mask = (0xffffffff << (31 - n)) >>> 0;
-			regs.x = regs.c = (d & (1 << (32-n))) != 0;
-			regs.v = sign ? (((d & mask) >>> 0) != mask) : (((d & mask) >>> 0) != 0);
-			//regs.v = ((d & mask) >>> 0) != mask && ((d & mask) >>> 0) != 0;
-			d = ((d << n) & 0xffffffff) >>> 0;
-			regs.d[p.Dy] = d;
-		} else regs.v = regs.c = false;
-		regs.n = (d & 0x80000000) != 0;
+	/* ASL Dn: V is set if the most significant bit changes at any time during the shift,
+	 * i.e. if the top n+1 bits were not all equal; counts up to 63 shift everything out
+	 * (C and X get the last bit shifted out, 0 beyond the operand width). With a count
+	 * of 0, C and V are cleared and X is unchanged. Bit by bit, like ROXL/ROXR. */
+	function asl(d, n, bits) {
+		var c = 0, v = false;
+		for (var i = 0; i < n; i++) {
+			c = (d >>> (bits - 1)) & 1;
+			d = bits == 32 ? (d << 1) >>> 0 : (d << 1) & ((1 << bits) - 1);
+			if (((d >>> (bits - 1)) & 1) != c) v = true;
+		}
+		regs.c = c != 0;
+		if (n) regs.x = regs.c;
+		regs.v = v;
+		regs.n = ((d >>> (bits - 1)) & 1) != 0;
 		regs.z = d == 0;
-		//if (sign) SAEF_log(("I_ASL.L %08x << %d = %08x, sign %d, mask %x, V %d -> %08x", _d, n, d, sign?1:0, mask, regs.v?1:0, (_d & mask)>>>0));
+		return d;
+	}
+	function I_ASL_32(p) {
+		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
+		regs.d[p.Dy] = asl(regs.d[p.Dy] >>> 0, n, 32);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_ASL_16(p) {
-		var d = regs.d[p.Dy] & 0xffff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			var sign = (d & 0x8000) != 0;
-			var mask = ~((1 << (16 - n)) - 1) & 0xffff;
-			//var mask = (0xffff << (15 - n)) & 0xffff;
-			regs.x = regs.c = (d & (1 << (16-n))) != 0;
-			regs.v = sign ? (d & mask) != mask : (d & mask) != 0;
-			//regs.v = (d & mask) != mask && (d & mask) != 0;
-			d = ((d << n) & 0xffff) >>> 0;
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | d;
-		} else regs.v = regs.c = false;
-		regs.n = (d & 0x8000) != 0;
-		regs.z = d == 0;
-		//if (sign) SAEF_log(("I_ASL.W %08x << %d = %08x, sign %d, mask %x, V %d", _d, n, d, sign?1:0, mask, regs.v?1:0));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | asl(regs.d[p.Dy] & 0xffff, n, 16);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_ASL_8(p) {
-		var d = regs.d[p.Dy] & 0xff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			var sign = (d & 0x80) != 0;
-			var mask = ~((1 << (8 - n)) - 1) & 0xff;
-			//var mask = (0xff << (7 - n)) & 0xff;
-			regs.x = regs.c = (d & (1 << (8-n))) != 0;
-			regs.v = sign ? (d & mask) != mask : (d & mask) != 0;
-			//regs.v = (d & mask) != mask && (d & mask) != 0;
-			d = ((d << n) & 0xff) >>> 0;
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | d;
-		} else regs.v = regs.c = false;
-		regs.n = (d & 0x80) != 0;
-		regs.z = d == 0;
-		//if (sign) SAEF_log(("I_ASL.B %08x << %d = %08x, sign %d, mask %x, V %d", _d, n, d, sign?1:0, mask, regs.v?1:0));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | asl(regs.d[p.Dy] & 0xff, n, 8);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
