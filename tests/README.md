@@ -31,6 +31,15 @@ The first run downloads the corpus (about 193 MB). `tests/cpu/sst-baseline.json`
 failure count per file. When a fix makes tests pass, update it with
 `node tests/cpu/run-sst.mjs --write-baseline`.
 
+Address errors need care. For the cases that vAmigaTS checks against photos of a real A500
+(`CPU/Exceptions/StackFrame/addrerr1-10`), the corpus expects a different stacked PC (2 or 4
+less) and, for MOVE to -(An), a different IR word than the hardware shows; SAE follows the
+hardware. Most address-error failures are therefore not SAE bugs. To look at the rest:
+
+    node tests/cpu/run-sst.mjs --ae-ignore-pc                     # leave the stacked PC out
+    node tests/cpu/run-sst.mjs --ae-ignore-pc --show 5 --kind ae  # print expected and actual frames
+    node tests/cpu/run-sst.mjs --limit 0 --ae-report              # stacked PC per instruction and mode
+
 ## vAmigaTS screenshot tests (browser)
 
 [vAmigaTS](https://github.com/dirkwhoffmann/vAmigaTS) contains small Amiga programs with a
