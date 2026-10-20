@@ -9,3 +9,7 @@ db/demos/index.htm
 !db/aros-amiga-m68k-ext.bin
 scriptedamigaemulator.js
 scriptedamigaemulator.js.map
+node_modules/
+tests/.cache/
+tests/results/
+tests/browser/suite.json

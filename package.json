@@ -1,0 +1,26 @@
+{
+  "name": "scripted-amiga-emulator",
+  "private": true,
+  "description": "Development tooling for SAE: lint and tests. The emulator itself has no build-time dependencies.",
+  "license": "GPL-2.0-or-later",
+  "type": "module",
+  "scripts": {
+    "lint": "eslint .",
+    "test": "npm run lint && npm run test:cpu:check",
+    "test:cpu": "node tests/cpu/run-sst.mjs",
+    "test:cpu:check": "node tests/cpu/run-sst.mjs --check",
+    "test:cpu:full": "node tests/cpu/run-sst.mjs --limit 0",
+    "fetch:vamigats": "node tests/tools/fetch-vamigats.mjs",
+    "test:browser": "node tests/run-suite.mjs",
+    "test:browser:check": "node tests/run-suite.mjs --check"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "eslint": "^9.39.0",
+    "globals": "^16.5.0",
+    "playwright": "^1.56.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
