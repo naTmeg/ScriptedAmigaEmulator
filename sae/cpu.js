@@ -5545,12 +5545,15 @@ function SAEO_CPU() {
 		var pc = coreGetPC();
 		var dp;
 
+		/* displacement $FF selects a 32-bit displacement only from the 68020 on;
+		   the 68000/68010 take it as the 8-bit displacement -1 (odd target) */
+		var dl = p.dp == 255 && SAEV_config.cpu.model >= SAEC_Config_CPU_Model_68020;
 		if (p.dp == 0) dp = coreNext16();
-		else if (p.dp == 255) dp = coreNext32(); /* 68020 only*/
+		else if (dl) dp = coreNext32();
 
 		if (ccTab[p.cc]()) {
 			if (p.dp == 0) pc = add32(pc, extWord(dp));
-			else if (p.dp == 255) pc = add32(pc, dp);
+			else if (dl) pc = add32(pc, dp);
 			else pc = add32(pc, extByte(p.dp));
 			//SAEF_log(("I_Bcc pc $%08x", pc));
 			if (pc & 1) return coreException3i(p.op, pc);
@@ -5609,7 +5612,7 @@ function SAEO_CPU() {
 		var dp, pc = coreGetPC();
 
 		if (p.dp == 0) dp = extWord(coreNext16());
-		else if (p.dp == 255) dp = coreNext32(); /* 68020 only */
+		else if (p.dp == 255 && SAEV_config.cpu.model >= SAEC_Config_CPU_Model_68020) dp = coreNext32(); /* 68000/010: -1 */
 		else dp = extByte(p.dp);
 		pc = add32(pc, dp);
 		if (pc & 1) return coreException3i(p.op, pc);
@@ -5622,7 +5625,7 @@ function SAEO_CPU() {
 		var dp, pc = coreGetPC();
 
 		if (p.dp == 0) dp = extWord(coreNext16());
-		else if (p.dp == 255) dp = coreNext32(); /* 68020 only */
+		else if (p.dp == 255 && SAEV_config.cpu.model >= SAEC_Config_CPU_Model_68020) dp = coreNext32(); /* 68000/010: -1 */
 		else dp = extByte(p.dp);
 		pc = add32(pc, dp);
 		if (pc & 1) return coreException3i(p.op, pc);
@@ -9205,15 +9208,15 @@ function SAEO_CPU() {
 		//Bcc
 		{
 			for (var cc = 2; cc < 16; cc++) {
-				for (var dp = 0; dp < (model >= 68020 ? 256 : 255); dp++) { /* 0xff = long, 68020 only */
+				for (var dp = 0; dp < 256; dp++) { /* 0xff: 32-bit displacement from the 68020 on, -1 before */
 					op = (6 << 12) | (cc << 8) | dp;
 					if (iTab[op].op === -1) {
-						iTab[op] = mkI(op, "B"+ccNames[cc], dp == 255 ? [12,1,0] : [8,1,0]);
+						iTab[op] = mkI(op, "B"+ccNames[cc], (dp == 255 && model >= 68020) ? [12,1,0] : [8,1,0]);
 						iTab[op].p.cc = cc;
 						iTab[op].p.dp = dp;
 						iTab[op].p.cycTaken = [10,2,2];
 						iTab[op].f = I_Bcc;
-						iTab[op].d = mkDiss(0, false,false, D_IME_DP,dp, dp == 255 ? 2 : 1,0);
+						iTab[op].d = mkDiss(0, false,false, D_IME_DP,dp, (dp == 255 && model >= 68020) ? 2 : 1,0);
 						cnt++;
 					} else {
 						SAEF_error("cpu.mkITab() op exists B"+ccNames[cc]+" "+op);
@@ -9270,13 +9273,13 @@ function SAEO_CPU() {
 		}
 		//BRA
 		{
-			for (var dp = 0; dp < (model >= 68020 ? 256 : 255); dp++) { /* 0xff = 68020 only */
+			for (var dp = 0; dp < 256; dp++) { /* 0xff: 32-bit displacement from the 68020 on, -1 before */
 				op = (96 << 8) | dp;
 				if (iTab[op].op === -1) {
 					iTab[op] = mkI(op, "BRA", [10,2,0]);
 					iTab[op].p.dp = dp;
 					iTab[op].f = I_BRA;
-					iTab[op].d = mkDiss(0, false,false, D_IME_DP,dp, dp == 0 ? 2 : (dp == 255 ? 4 : 1),0);
+					iTab[op].d = mkDiss(0, false,false, D_IME_DP,dp, dp == 0 ? 2 : ((dp == 255 && model >= 68020) ? 4 : 1),0);
 					cnt++;
 				} else {
 					SAEF_error("cpu.mkITab() op exists BRA "+op);
@@ -9286,13 +9289,13 @@ function SAEO_CPU() {
 		}
 		//BSR
 		{
-			for (var dp = 0; dp < (model >= 68020 ? 256 : 255); dp++) { /* 0xff = 68020 only */
+			for (var dp = 0; dp < 256; dp++) { /* 0xff: 32-bit displacement from the 68020 on, -1 before */
 				op = (97 << 8) | dp;
 				if (iTab[op].op === -1) {
 					iTab[op] = mkI(op, "BSR", [18,2,2]);
 					iTab[op].p.dp = dp;
 					iTab[op].f = I_BSR;
-					iTab[op].d = mkDiss(0, false,false, D_IME_DP,dp, dp == 0 ? 2 : (dp == 255 ? 4 : 1),0);
+					iTab[op].d = mkDiss(0, false,false, D_IME_DP,dp, dp == 0 ? 2 : ((dp == 255 && model >= 68020) ? 4 : 1),0);
 					cnt++;
 				} else {
 					SAEF_error("cpu.mkITab() op exists BSR " + op);
