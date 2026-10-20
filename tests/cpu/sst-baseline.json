@@ -69,15 +69,15 @@
  },
  "ASR.b": {
   "limit": 200,
-  "fail": 14
+  "fail": 25
  },
  "ASR.l": {
   "limit": 200,
-  "fail": 54
+  "fail": 28
  },
  "ASR.w": {
   "limit": 200,
-  "fail": 39
+  "fail": 47
  },
  "BCHG": {
   "limit": 200,
@@ -101,7 +101,7 @@
  },
  "Bcc": {
   "limit": 200,
-  "fail": 52
+  "fail": 51
  },
  "CHK": {
   "limit": 200,
@@ -201,27 +201,27 @@
  },
  "LSL.b": {
   "limit": 200,
-  "fail": 12
+  "fail": 0
  },
  "LSL.l": {
   "limit": 200,
-  "fail": 42
+  "fail": 0
  },
  "LSL.w": {
   "limit": 200,
-  "fail": 44
+  "fail": 26
  },
  "LSR.b": {
   "limit": 200,
-  "fail": 16
+  "fail": 0
  },
  "LSR.l": {
   "limit": 200,
-  "fail": 44
+  "fail": 0
  },
  "LSR.w": {
   "limit": 200,
-  "fail": 42
+  "fail": 28
  },
  "MOVE.b": {
   "limit": 200,
@@ -365,7 +365,7 @@
  },
  "ROL.b": {
   "limit": 200,
-  "fail": 76
+  "fail": 0
  },
  "ROL.l": {
   "limit": 200,
@@ -373,11 +373,11 @@
  },
  "ROL.w": {
   "limit": 200,
-  "fail": 53
+  "fail": 23
  },
  "ROR.b": {
   "limit": 200,
-  "fail": 74
+  "fail": 0
  },
  "ROR.l": {
   "limit": 200,
@@ -385,7 +385,7 @@
  },
  "ROR.w": {
   "limit": 200,
-  "fail": 56
+  "fail": 24
  },
  "ROXL.b": {
   "limit": 200,

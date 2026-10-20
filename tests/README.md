@@ -40,6 +40,18 @@ hardware. Most address-error failures are therefore not SAE bugs. To look at the
     node tests/cpu/run-sst.mjs --ae-ignore-pc --show 5 --kind ae  # print expected and actual frames
     node tests/cpu/run-sst.mjs --limit 0 --ae-report              # stacked PC per instruction and mode
 
+The same holds for jumps to odd addresses (Bcc, BSR, DBcc, JMP, JSR, RTS, RTE, RTR): SAE
+raises the address error with the right stack layout, but the corpus expects the branch
+target minus 4 as stacked PC and the I/N bit set in the SSW, while WinUAE stacks the target
+and leaves I/N clear. Without hardware evidence SAE keeps its frame.
+
+Other known deviations from the corpus, all deliberate:
+
+- ASR with a count above the operand width and a negative operand: the corpus expects C = 0,
+  WinUAE (checked on real CPUs with its cputester) and Musashi set C = X = sign. SAE follows
+  WinUAE (3736 tests).
+- Two ASL.b tests expect a register value that no byte shift can produce.
+
 ## vAmigaTS screenshot tests (browser)
 
 [vAmigaTS](https://github.com/dirkwhoffmann/vAmigaTS) contains small Amiga programs with a
