@@ -742,6 +742,7 @@ function SAEO_Config() {
 			stopped: function() {},
 			reseted: function(hard) {},
 			paused: function(paused) {},
+			diskModified: function(unit) {}, /* first write to the disk in a drive */
 			screened: function(screened) {}
 		},
 		serial: {

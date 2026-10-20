@@ -667,6 +667,15 @@ function ScriptedAmigaEmulator() {
 		return this.roms.examine(ri, file);
 	};
 
+	/* image of a floppy drive including all writes: { name, data, modified } or null */
+	this.getDisk = function(unit) {
+		return this.running ? this.disk.getData(unit) : null;
+	};
+	/* true if the disk in the drive was written to since it was inserted */
+	this.isDiskModified = function(unit) {
+		return this.running ? this.disk.isModified(unit) : false;
+	};
+
 	this.getDiskInfo = function(di, unit) {
 		return this.disk.examine(di, unit);
 	};
