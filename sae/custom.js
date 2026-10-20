@@ -166,7 +166,7 @@ function SAEO_Custom() {
 		if (old == SAEV_Custom_intreq && old2 == intreq_internal)
 			return false;
 		if (v & 0x8000)
-			SAER.m68k.doint();
+			SAER.m68k.doint_delayed();
 		return true;
 	}
 	this.INTREQ = function(v) {
@@ -193,7 +193,7 @@ function SAEO_Custom() {
 
 		intena_internal = SAEV_Custom_intena;
 		if (v & 0x8000)
-			SAER.m68k.doint();
+			SAER.m68k.doint_delayed();
 	}
 
 	/*---------------------------------*/

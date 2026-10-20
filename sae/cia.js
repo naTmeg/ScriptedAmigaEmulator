@@ -84,7 +84,7 @@ function SAEO_CIA() {
 	 * custom.INTREQR() and custom.intlev() OR in this.irqbits() instead, and
 	 * here we only ask the CPU to re-evaluate the interrupt level. (Issue #32) */
 	function ICR(data) {
-		SAER.m68k.doint();
+		SAER.m68k.doint_delayed();
 	}
 
 	function ICRA() {

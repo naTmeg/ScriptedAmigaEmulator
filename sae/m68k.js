@@ -327,6 +327,14 @@ function SAEO_M68K() {
 			SAEF_setSpcFlags(SAEC_spcflag_DOINT);
 	}
 
+	/* A change of INTREQ or INTENA reaches the 68000's IPL pins too late for the
+	 * instruction that caused it: the interrupt is recognised at the end of the
+	 * following instruction. The normal core already behaves like this through
+	 * DOINT; the compatible core took the interrupt at once. (vAmigaTS trace4/5) */
+	this.doint_delayed = function() {
+		SAEF_setSpcFlags(SAEC_spcflag_DOINT);
+	}
+
 	this.doint_trace = function(t) { //OWN cpu.setSR()
 		//this.doint();
 		if (SAEV_config.cpu.compatible && SAEV_config.cpu.model < SAEC_Config_CPU_Model_68020)
