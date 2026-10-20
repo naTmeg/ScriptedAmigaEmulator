@@ -92,6 +92,7 @@ await Promise.all(Array.from({ length: Math.ceil(list.length / chunk) }, async (
 	const context = await browser.newContext();
 	const page = await context.newPage();
 	page.on("pageerror", (e) => console.error(`[page ${j}] ${e.message}`));
+	page.on("requestfailed", (r) => console.error(`[page ${j}] request failed: ${r.url().replace(/^https?:\/\/[^/]+/, "")} ${r.failure() ? r.failure().errorText : ""}`));
 	const url = `${base}?filter=${encodeURIComponent(filter)}&from=${from}&count=${count}&frames=${frames}&turbo=1&det=1${extra}`;
 	await page.goto(url);
 	let seen = 0;

@@ -173,7 +173,10 @@ async function main() {
 	for (let i = 0; i < list.length; i++) {
 		const t = list[i];
 		status(`running ${i + 1}/${list.length}: ${t.id}`);
-		const r = await runOne(t, opts);
+		let r = await runOne(t, opts);
+		/* under heavy parallel load a page occasionally misses one of its scripts; one retry
+		   keeps that from looking like a regression (the note says so) */
+		if (r.note == "did not start") { r = await runOne(t, opts); r.note = (r.note ? r.note + ", " : "") + "retried"; }
 		r.when = new Date().toISOString();
 		results[t.id] = r;
 		try { localStorage.setItem("suite_results", JSON.stringify(results)); } catch (e) {}
