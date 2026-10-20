@@ -51,16 +51,27 @@ const filters = filter.split("|").filter(Boolean);
 const list = suite.filter((t) => !filters.length || filters.some((f) => (t.adf + " " + t.group).includes(f)));
 if (!list.length) { console.error("no tests match " + JSON.stringify(filter)); process.exit(2); }
 
-/* minimal static file server for the repository */
+/* minimal static file server for the repository. Shared files are read once and kept in memory:
+   with many pages loading the same scripts at once, reading them again for every request
+   occasionally failed (a missing prototypes.js then showed up as "Math.truncate is not a
+   function" and a test that did not start). Failed requests are logged. */
 const types = { ".htm": "text/html", ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript", ".json": "application/json", ".css": "text/css" };
+const fileCache = new Map();
 const server = http.createServer((req, res) => {
 	const p = path.normalize(path.join(root, decodeURIComponent(new URL(req.url, "http://x").pathname)));
 	if (!p.startsWith(root)) { res.writeHead(403).end(); return; }
-	fs.readFile(p, (err, data) => {
-		if (err) { res.writeHead(404).end(); return; }
-		res.writeHead(200, { "Content-Type": types[path.extname(p)] || "application/octet-stream", "Cache-Control": "no-store" });
-		res.end(data);
-	});
+	let data = fileCache.get(p);
+	if (!data) {
+		try { data = fs.readFileSync(p); } catch (err) {
+			console.error(`[server] ${req.url}: ${err.code || err.message}`);
+			res.writeHead(err.code === "ENOENT" ? 404 : 500).end();
+			return;
+		}
+		/* only what every test loads: scripts, pages, the ROMs (not the 507 disk images) */
+		if (types[path.extname(p)] || p.endsWith(".bin")) fileCache.set(p, data);
+	}
+	res.writeHead(200, { "Content-Type": types[path.extname(p)] || "application/octet-stream", "Cache-Control": "no-store" });
+	res.end(data);
 });
 await new Promise((r) => server.listen(0, "127.0.0.1", r));
 const base = `http://127.0.0.1:${server.address().port}/tests/browser/suite.htm`;
