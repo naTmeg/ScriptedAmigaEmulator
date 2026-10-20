@@ -82,6 +82,7 @@ function init() {
 	if (param("slow", "")) cfg.memory.bogoSize = (+param("slow", "0")) << 10;  /* KB, $C00000 */
 	cfg.video.id = "myVideo";
 	cfg.video.cursor = SAEC_Config_Video_Cursor_Show; /* no pointer-lock, the canvas can be clicked and screenshotted freely */
+	cfg.video.pauseInBackground = false; /* tests often run in background tabs */
 	cfg.audio.mode = param("audio", "") == "1" ? SAEC_Config_Audio_Mode_On : SAEC_Config_Audio_Mode_Off; /* ?audio=1: sound on */
 	cfg.floppy.speed = param("speed", "orig") == "turbo" ? SAEC_Config_Floppy_Speed_Turbo : SAEC_Config_Floppy_Speed_Original;
 	cfg.floppy.drive[0].type = SAEC_Config_Floppy_Type_35_DD;

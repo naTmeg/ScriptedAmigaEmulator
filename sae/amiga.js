@@ -472,10 +472,37 @@ function ScriptedAmigaEmulator() {
 		this.filesys.uci_set_defaults(ci, false);
 	}
 
+	/* cfg.video.pauseInBackground: pause through the normal pause() while the page is
+	 * hidden. Only a pause made here is undone on return, so a pause by the user stays. */
+	var autoPaused = false, visibilityHooked = false;
+	function onVisibilityChange() {
+		if (!SAER.running)
+			return;
+		if (document.hidden) {
+			if (SAEV_config.video.pauseInBackground && !SAER.paused && SAEV_command == 0) {
+				SAEF_info("sae: page hidden, pausing");
+				autoPaused = true;
+				SAER.pause(true);
+			}
+		} else if (autoPaused) {
+			SAEF_info("sae: page visible again, resuming");
+			autoPaused = false;
+			if (!SAER.paused && SAEV_command == SAEC_command_Pause)
+				SAEV_command = 0; /* the pause was not taken yet: cancel it */
+			else
+				SAER.pause(false);
+		}
+	}
+
 	this.start = function() {
 		if (SAER.running) {
 			SAEF_warn("sae.start() emulation already running");
 			return SAEE_AlreadyRunning;
+		}
+		autoPaused = false;
+		if (!visibilityHooked && typeof document !== "undefined" && document.addEventListener) {
+			document.addEventListener("visibilitychange", onVisibilityChange);
+			visibilityHooked = true;
 		}
 		SAEF_info("sae.start() starting...");
 
