@@ -1075,7 +1075,60 @@ function SAEO_CPU() {
 		regs.db = (v << 8) | v;
 		return v;
 	}
+	/* 68000/68010: a word or long access to an odd address raises an address error.
+	 * The access is aborted by throwing; the run loop then builds the group-0 frame
+	 * (SSW, access address, IR, SR, PC) like a bus error. (vAmigaTS addrerr1-10) */
+	/* Where the 68000 has its program counter when the faulting bus cycle happens
+	 * depends on the addressing mode of the operand: with (An), (An)+ and -(An) the
+	 * next word has already been prefetched, so the stacked PC is 2 higher than
+	 * the extension words consumed so far. Rules as in WinUAE's gencpu
+	 * (exception_pc_offset_extra_000 and the MOVE special cases). */
+	function address_error_pc_extra(op, write) {
+		if (SAEV_config.cpu.model != SAEC_Config_CPU_Model_68000)
+			return 0;
+		var smode = (op >> 3) & 7, dmode = (op >> 6) & 7;
+		if ((op & 0xC000) == 0 && (op & 0x3000) != 0) { /* MOVE, MOVEA */
+			if (!write)
+				return (smode == 2 || smode == 3 || smode == 4) ? 2 : 0;
+			var srcmem = smode >= 2 && !(smode == 7 && (op & 7) == 4); /* memory source, not #imm */
+			if (srcmem && dmode == 7 && (op & 0x0E00) == 0x0200) /* (xxx).L destination */
+				return -2;
+			return dmode >= 5 ? 0 : 2;
+		}
+		if ((op & 0xFFC0) == 0x40C0) /* MOVE from SR: dummy read first */
+			return (smode == 4 || smode == 7) ? 0 : -2;
+		if ((op & 0xF1F8) == 0xC108 || (op & 0xF1F8) == 0x8108 || /* ABCD/SBCD -(Ay),-(Ax) */
+			(op & 0xF138) == 0xD108 || (op & 0xF138) == 0x9108 || /* ADDX/SUBX -(Ay),-(Ax) */
+			(op & 0xF138) == 0xB108) /* CMPM (Ay)+,(Ax)+ */
+			return 2;
+		return (smode == 2 || smode == 3 || smode == 4) ? 2 : 0;
+	}
+
+	function address_error(addr, write) {
+		last_addr_for_exception_3 = add32(coreGetPC(), address_error_pc_extra(regs.opcode, write));
+		last_fault_for_exception_3 = addr;
+		last_op_for_exception_3 = regs.opcode;
+		last_writeaccess_for_exception_3 = write;
+		last_instructionaccess_for_exception_3 = false;
+		last_notinstruction_for_exception_3 = false;
+		throw new Exception23(3);
+	}
+	function address_error_fault() {
+		/* the instruction was aborted half-way: drop its extension-word offset so that
+		 * exception() refills the prefetch queue from the vector address */
+		pc_offset = PC_OFFSET;
+		try {
+			exception(3);
+		} catch(e) {
+			if (e instanceof Exception23)
+				SAER.m68k.cpu_halt(SAEC_CPU_halt_DOUBLE_FAULT);
+			else
+				throw e;
+		}
+	}
+
 	function get16_prefetch(addr) { //get_word_000()
+		if (addr & 1) address_error(addr, false);
 		var v = SAER_Memory_get16(addr);
 		regs.db = v;
 		return v;
@@ -1089,6 +1142,7 @@ function SAEO_CPU() {
 		SAER_Memory_put8(addr, v);
 	}
 	function put16_prefetch(addr, v) { //put_word_000()
+		if (addr & 1) address_error(addr, true);
 		regs.db = v;
 		SAER_Memory_put16(addr, v);
 	}
@@ -1787,7 +1841,7 @@ function SAEO_CPU() {
 				}
 			} catch(e) {
 				if (e instanceof Exception23) {
-					bus_error();
+					if (e.num == 3) address_error_fault(); else bus_error();
 					if (SAEV_spcflags) {
 						if (SAER.m68k.do_specialties(cpu_cycles))
 							exit = true;
@@ -1821,7 +1875,7 @@ function SAEO_CPU() {
 				}
 			} catch(e) {
 				if (e instanceof Exception23) {
-					bus_error();
+					if (e.num == 3) address_error_fault(); else bus_error();
 					if (SAEV_spcflags) {
 						if (SAER.m68k.do_specialties(cpu_cycles))
 							exit = true;
@@ -1854,7 +1908,7 @@ function SAEO_CPU() {
 				}
 			} catch(e) {
 				if (e instanceof Exception23) {
-					bus_error();
+					if (e.num == 3) address_error_fault(); else bus_error();
 					if (SAEV_spcflags) {
 						if (SAER.m68k.do_specialties(cpu_cycles))
 							exit = true;
@@ -3095,6 +3149,9 @@ function SAEO_CPU() {
 			for (Xn = 0; Xn < 16; Xn++) {
 				if (list & (1 << Xn)) pre += 2;
 			}
+			/* the first bus cycle is the write at An-2; on an odd address it faults there */
+			if ((a & 1) && model < 68020 && SAEV_config.cpu.compatible)
+				address_error(a - 2, true);
 			a -= pre;
 			/* p. 4-128: The MC68000 and MC68010 write the initial register value (not decremented). */
 			if (model >= 68020) regs.a[An] -= pre;
@@ -3128,6 +3185,9 @@ function SAEO_CPU() {
 			for (Xn = 0; Xn < 16; Xn++) {
 				if (list & (1 << Xn)) pre += 4;
 			}
+			/* the first bus cycle is the write at An-2; on an odd address it faults there */
+			if ((a & 1) && model < 68020 && SAEV_config.cpu.compatible)
+				address_error(a - 2, true);
 			a -= pre;
 			/* p. 4-128: The MC68000 and MC68010 write the initial register value (not decremented). */
 			if (model >= 68020) regs.a[An] -= pre;
