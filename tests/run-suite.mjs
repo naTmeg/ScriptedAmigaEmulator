@@ -1,0 +1,135 @@
+#!/usr/bin/env node
+/* Run the vAmigaTS screenshot suite (tests/browser/suite.htm) headless in Chromium via Playwright.
+ * Every test runs in turbo mode with a fixed random seed and clock and stops after exactly
+ * --frames emulated frames, so a run is reproducible. Scores are compared with
+ * tests/browser-baseline.json: only tests that got worse count as failures.
+ *
+ *   node tests/run-suite.mjs                         all tests in suite.json
+ *   node tests/run-suite.mjs --filter CPU/Exceptions only tests whose path or group contains this
+ *   node tests/run-suite.mjs --filter "CPU/Misc|CPU/Prefetch"   several alternatives
+ *   node tests/run-suite.mjs --jobs 4                parallel browser pages (default: cores / 2, max 16)
+ *   node tests/run-suite.mjs --frames 1200           emulated frames per test (default 1200, about 24 s of A500 time)
+ *   node tests/run-suite.mjs --core normal           use the fast core (default: compatible, the only one with address errors)
+ *   node tests/run-suite.mjs --extra "&model=A1200"  more run.htm parameters (no baseline comparison then)
+ *   node tests/run-suite.mjs --check                 exit 1 on a regression against the baseline
+ *   node tests/run-suite.mjs --write-baseline        store the scores of this run in the baseline (merged)
+ *   node tests/run-suite.mjs --headed                show the browser
+ *
+ * Needs tests/browser/suite.json: npm run fetch:vamigats */
+import fs from "node:fs";
+import http from "node:http";
+import os from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { chromium } from "playwright";
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const root = path.resolve(here, "..");
+const baselineFile = path.join(here, "browser-baseline.json");
+const suiteFile = path.join(here, "browser/suite.json");
+
+function arg(name, def) {
+	const i = process.argv.indexOf("--" + name);
+	if (i < 0) return def;
+	const v = process.argv[i + 1];
+	return v === undefined || v.startsWith("--") ? true : v;
+}
+const filter = String(arg("filter", ""));
+const frames = +arg("frames", 1200);
+const core = String(arg("core", "compatible"));
+const jobs = Math.max(1, +arg("jobs", Math.min(16, Math.max(1, os.cpus().length >> 1))));
+const check = !!arg("check", false);
+const writeBaseline = !!arg("write-baseline", false);
+const headed = !!arg("headed", false);
+/* 2D canvas: with WebGL all pages wait on the one software-rendering GPU process */
+const extra = (core === "compatible" ? "&compat=1" : "") + "&video=canvas" + String(arg("extra", ""));
+const TOLERANCE = 0.005; /* a score may drop by this much before it counts as a regression */
+
+if (!fs.existsSync(suiteFile)) { console.error("missing tests/browser/suite.json, run: npm run fetch:vamigats"); process.exit(2); }
+const suite = JSON.parse(fs.readFileSync(suiteFile, "utf8"));
+const filters = filter.split("|").filter(Boolean);
+const list = suite.filter((t) => !filters.length || filters.some((f) => (t.adf + " " + t.group).includes(f)));
+if (!list.length) { console.error("no tests match " + JSON.stringify(filter)); process.exit(2); }
+
+/* minimal static file server for the repository */
+const types = { ".htm": "text/html", ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript", ".json": "application/json", ".css": "text/css" };
+const server = http.createServer((req, res) => {
+	const p = path.normalize(path.join(root, decodeURIComponent(new URL(req.url, "http://x").pathname)));
+	if (!p.startsWith(root)) { res.writeHead(403).end(); return; }
+	fs.readFile(p, (err, data) => {
+		if (err) { res.writeHead(404).end(); return; }
+		res.writeHead(200, { "Content-Type": types[path.extname(p)] || "application/octet-stream", "Cache-Control": "no-store" });
+		res.end(data);
+	});
+});
+await new Promise((r) => server.listen(0, "127.0.0.1", r));
+const base = `http://127.0.0.1:${server.address().port}/tests/browser/suite.htm`;
+
+const browser = await chromium.launch({
+	headless: !headed,
+	/* hidden or occluded pages must keep running at full speed */
+	args: ["--disable-background-timer-throttling", "--disable-renderer-backgrounding", "--disable-backgrounding-occluded-windows", "--autoplay-policy=no-user-gesture-required"],
+});
+const t0 = Date.now();
+const results = {};
+let finished = 0;
+const chunk = Math.ceil(list.length / jobs);
+await Promise.all(Array.from({ length: Math.ceil(list.length / chunk) }, async (_, j) => {
+	const from = j * chunk, count = Math.min(chunk, list.length - from);
+	/* one context per job: pages of one context share a renderer process (same site) and
+	   with it one main thread, so they would not really run in parallel */
+	const context = await browser.newContext();
+	const page = await context.newPage();
+	page.on("pageerror", (e) => console.error(`[page ${j}] ${e.message}`));
+	const url = `${base}?filter=${encodeURIComponent(filter)}&from=${from}&count=${count}&frames=${frames}&turbo=1&det=1${extra}`;
+	await page.goto(url);
+	let seen = 0;
+	for (;;) {
+		const st = await page.evaluate(() => ({ done: !!window.suiteDone, error: window.suiteError || null, results: window.suiteResults || {} }));
+		if (st.error) throw new Error(st.error);
+		for (const t of list.slice(from, from + count)) {
+			const r = st.results[t.id];
+			if (r && !results[t.id]) {
+				results[t.id] = r; finished++; seen++;
+				const s = r.score == null ? "  -   " : (r.score * 100).toFixed(2).padStart(6) + "%";
+				console.log(`${String(finished).padStart(4)}/${list.length} ${s}  ${t.id}${r.note ? "  (" + r.note + ")" : ""}`);
+			}
+		}
+		if (st.done) { if (seen < count) console.error(`[page ${j}] finished with ${count - seen} results missing`); break; }
+		await new Promise((r) => setTimeout(r, 500));
+	}
+	await context.close();
+}));
+await browser.close();
+server.close();
+
+/* the baseline only applies to runs with the same frame count and core */
+const baseline = fs.existsSync(baselineFile) ? JSON.parse(fs.readFileSync(baselineFile, "utf8")) : { frames, core, scores: {} };
+const comparable = baseline.frames === frames && baseline.core === core && !arg("extra", "");
+const regressions = [], improvements = [];
+for (const t of list) {
+	const was = baseline.scores[t.id], now = results[t.id] && results[t.id].score;
+	if (was == null || !comparable) continue;
+	if (now == null || now < was - TOLERANCE) regressions.push(`${t.id}: ${now == null ? "no score" : (now * 100).toFixed(2) + "%"} < baseline ${(was * 100).toFixed(2)}%`);
+	else if (now > was + TOLERANCE) improvements.push(`${t.id}: ${(now * 100).toFixed(2)}% > baseline ${(was * 100).toFixed(2)}%`);
+}
+const scored = list.filter((t) => results[t.id] && results[t.id].score != null);
+const perfect = scored.filter((t) => results[t.id].score >= 0.995);
+console.log(`\n${list.length} tests, ${scored.length} scored, ${perfect.length} at 99.5 % or better, ${((Date.now() - t0) / 1000).toFixed(0)} s, ${jobs} jobs, ${frames} frames, ${core} core`);
+if (!comparable) console.log(`baseline was recorded with ${baseline.frames} frames and the ${baseline.core} core, not compared`);
+if (improvements.length) console.log("Better than the baseline:\n  " + improvements.join("\n  "));
+
+fs.mkdirSync(path.join(here, "results"), { recursive: true });
+fs.writeFileSync(path.join(here, "results/browser.json"), JSON.stringify({ frames, core, filter, results }, null, 1));
+if (writeBaseline) {
+	if (arg("extra", "")) { console.error("not writing a baseline for a run with --extra"); process.exit(2); }
+	const out = { frames, core, scores: comparable ? { ...baseline.scores } : {} };
+	for (const t of scored) out.scores[t.id] = Math.round(results[t.id].score * 10000) / 10000;
+	out.scores = Object.fromEntries(Object.entries(out.scores).sort(([a], [b]) => a.localeCompare(b)));
+	fs.writeFileSync(baselineFile, JSON.stringify(out, null, 1) + "\n");
+	console.log("baseline written: " + path.relative(process.cwd(), baselineFile));
+}
+if (regressions.length) {
+	console.error("\nWorse than the baseline:\n  " + regressions.join("\n  "));
+	if (check) process.exit(1);
+}
