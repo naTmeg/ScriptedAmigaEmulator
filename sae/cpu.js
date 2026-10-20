@@ -1115,10 +1115,20 @@ function SAEO_CPU() {
 		return (smode == 2 || smode == 3 || smode == 4) ? 2 : 0;
 	}
 
+	/* The IR word of the frame. MOVE to -(An) on the 68000 prefetches the next instruction
+	 * before its write cycle, so a faulting write stacks the next opcode, which is in IRC
+	 * at that point (vAmigaTS addrerr4, photo of a real A500: IR $337C, not $353C). */
+	function address_error_ir(op, write) {
+		if (write && SAEV_config.cpu.model == SAEC_Config_CPU_Model_68000 &&
+			((op & 0xF000) == 0x1000 || (op & 0xF000) == 0x3000) && ((op >> 6) & 7) == 4) /* .b/.w; .l unverified */
+			return regs.irc;
+		return op;
+	}
+
 	function address_error(addr, write) {
 		last_addr_for_exception_3 = add32(coreGetPC(), address_error_pc_extra(regs.opcode, write));
 		last_fault_for_exception_3 = addr;
-		last_op_for_exception_3 = regs.opcode;
+		last_op_for_exception_3 = address_error_ir(regs.opcode, write);
 		last_writeaccess_for_exception_3 = write;
 		last_instructionaccess_for_exception_3 = false;
 		last_notinstruction_for_exception_3 = false;
