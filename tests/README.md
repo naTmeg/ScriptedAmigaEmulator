@@ -52,6 +52,15 @@ Other known deviations from the corpus, all deliberate:
   WinUAE (3736 tests).
 - Two ASL.b tests expect a register value that no byte shift can produce.
 
+`tests/tools/make-ae-hwtests.mjs` builds eight disks for a real A500 that settle the open
+address-error questions (R/W bit of CLR and MOVE from SR, flags and IR of faulting MOVEs, the
+first ADDX.l access, PC and I/N bit of odd jump targets, PC of (d16,An) reads). Each one is
+vAmigaTS addrerr2 with the instruction under test replaced; a photo of the screen shows the
+frame the hardware stacked.
+
+`tests/tools/make-write-test-adf.mjs` builds a boot disk that writes a pattern to sector 2,
+to check that floppy writes reach `sae.getDisk()`.
+
 ## vAmigaTS screenshot tests (browser)
 
 [vAmigaTS](https://github.com/dirkwhoffmann/vAmigaTS) contains small Amiga programs with a
