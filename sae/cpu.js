@@ -1710,7 +1710,7 @@ function SAEO_CPU() {
 		if (opcode == 0xFF0D && inrt) {
 			// User-mode STOP replacement
 			SAEF_log("cpu.illegal() STOP replacement, pc %08x", pc);
-			m68k_setstopped();
+			SAER.m68k.m68k_setstopped();
 			return true;
 		}
 		if ((opcode & 0xF000) == 0xA000 && inrt) {

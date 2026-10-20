@@ -19,11 +19,6 @@
       "count": 1
     }
   },
-  "sae/cpu.js": {
-    "no-undef": {
-      "count": 1
-    }
-  },
   "sae/disk.js": {
     "no-dupe-else-if": {
       "count": 1
@@ -31,11 +26,6 @@
   },
   "sae/dms.js": {
     "no-delete-var": {
-      "count": 1
-    }
-  },
-  "sae/expansion.js": {
-    "no-undef": {
       "count": 1
     }
   },
@@ -50,11 +40,6 @@
     }
   },
   "sae/m68k.js": {
-    "no-undef": {
-      "count": 2
-    }
-  },
-  "sae/memory.js": {
     "no-undef": {
       "count": 2
     }
