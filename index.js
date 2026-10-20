@@ -2764,6 +2764,41 @@ function dskchgEject() {
 	}
 }
 
+/* download the image of the selected drive, including everything the Amiga wrote to it */
+function dskchgSave() {
+	if (dskchg) {
+		var n = getSelect("dskchg_unit");
+		var d = sae.getDisk(n);
+		if (d === null) {
+			alert("There is no disk in DF" + n + ".");
+			return;
+		}
+		saveBlob(d.data, d.name);
+	}
+}
+function saveBlob(data, name) {
+	var url = URL.createObjectURL(new Blob([data], { type: "application/octet-stream" }));
+	var a = document.createElement("a");
+	a.href = url;
+	a.download = name;
+	document.body.appendChild(a);
+	a.click();
+	document.body.removeChild(a);
+	setTimeout(function() { URL.revokeObjectURL(url); }, 10000);
+}
+/* warn before leaving the page while a written disk has not been saved */
+window.addEventListener("beforeunload", function(e) {
+	if (typeof sae === "undefined" || sae === null || !sae.running)
+		return;
+	for (var n = 0; n < 4; n++) {
+		if (sae.isDiskModified(n)) {
+			e.preventDefault();
+			e.returnValue = "";
+			return;
+		}
+	}
+});
+
 function dskchgInsert() {
 	if (dskchg) {
 		var e = document.getElementById("dskchg_file").files[0];
