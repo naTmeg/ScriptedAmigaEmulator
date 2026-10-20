@@ -84,6 +84,9 @@ function init() {
 	cfg.video.id = "myVideo";
 	cfg.video.cursor = SAEC_Config_Video_Cursor_Show; /* no pointer-lock, the canvas can be clicked and screenshotted freely */
 	cfg.video.pauseInBackground = false; /* tests often run in background tabs */
+	/* collect everything the Amiga sends to the serial port (cputester output via SER:) */
+	window.harnessSerial = "";
+	cfg.hook.serial.put = function(c) { window.harnessSerial += String.fromCharCode(c & 0xff); };
 	cfg.audio.mode = param("audio", "") == "1" ? SAEC_Config_Audio_Mode_On : SAEC_Config_Audio_Mode_Off; /* ?audio=1: sound on */
 	cfg.floppy.speed = param("speed", "orig") == "turbo" ? SAEC_Config_Floppy_Speed_Turbo : SAEC_Config_Floppy_Speed_Original;
 	cfg.floppy.drive[0].type = SAEC_Config_Floppy_Type_35_DD;
