@@ -39,11 +39,6 @@
       "count": 3
     }
   },
-  "sae/m68k.js": {
-    "no-undef": {
-      "count": 2
-    }
-  },
   "sae/playfield.js": {
     "no-undef": {
       "count": 48

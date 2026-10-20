@@ -937,6 +937,9 @@ function SAEO_CPU() {
 		regs.irc = irc & 0xffff;
 	}
 
+	/* condition code test for the T0 trace check in m68k.js (ccTab lives in this closure) */
+	this.cctrue = function(cc) { return ccTab[cc](); }
+
 	this.getPC_normal = function() { //m68k_getpc_normal()
 		if (SAEV_config.cpu.compatible)
 			return getPCi();
