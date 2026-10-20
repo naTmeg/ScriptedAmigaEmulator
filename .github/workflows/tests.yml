@@ -1,0 +1,54 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx eslint . --quiet
+
+  cpu:
+    name: CPU single-step tests (68000)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Cache SingleStepTests corpus
+        uses: actions/cache@v4
+        with:
+          path: tests/.cache/sst
+          key: sst-68000-v1
+      - run: npm run test:cpu:check
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: sst-results, path: tests/results/sst.json }
+
+  browser:
+    name: vAmigaTS screenshot tests (subset)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Cache vAmigaTS checkout
+        uses: actions/cache@v4
+        with:
+          path: tests/.cache/vAmigaTS
+          key: vamigats-${{ hashFiles('tests/tools/fetch-vamigats.mjs') }}
+      - run: npm run fetch:vamigats
+      - run: npx playwright install --with-deps chromium
+      # the whole suite takes about half an hour on a 4-core runner; CI runs a subset
+      - run: node tests/run-suite.mjs --check --filter "CPU/Exceptions|CPU/Misc|CPU/Prefetch|CPU/IPL2|CPU/Timing2"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: browser-results, path: tests/results/browser.json }
