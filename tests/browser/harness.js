@@ -73,7 +73,8 @@ function init() {
 	cfg = sae.getConfig();
 	var modelId = { A500: SAEC_Model_A500, A500P: SAEC_Model_A500P, A600: SAEC_Model_A600, A1200: SAEC_Model_A1200 }[model];
 	sae.setModel(modelId, 0);
-	cfg.memory.z2FastSize = param("fast", "1") == "0" ? 0 : (4 << 20); /* AROS likes some fast ram */
+	var fastMB = param("fast", "1"); /* 0: none, 1: 4 MB (AROS likes some), n: n MB (up to 8) */
+	cfg.memory.z2FastSize = fastMB == "0" ? 0 : (fastMB == "1" ? 4 : +fastMB) << 20;
 	if (param("compat", "") == "1") cfg.cpu.compatible = true; /* prefetch core with address errors etc. */
 	if (param("turbo", "") == "1") cfg.debug.turbo = true;     /* frames back to back, no host clock */
 	if (param("video", "") == "canvas") cfg.video.api = SAEC_Config_Video_API_Canvas; /* 2D canvas instead of WebGL */
