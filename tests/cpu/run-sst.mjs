@@ -8,6 +8,17 @@
  *   node tests/cpu/run-sst.mjs --limit 0        all ~8000 tests per file (~1 M tests)
  *   node tests/cpu/run-sst.mjs --only ROXL      files whose name contains ROXL
  *   node tests/cpu/run-sst.mjs --show 5         print up to 5 failing tests per file
+ *   node tests/cpu/run-sst.mjs --kind ae        with --show: only tests that expect an address error
+ *                                               (--kind other: only the rest); prints the stack frame
+ *   node tests/cpu/run-sst.mjs --ae-report      table of stacked-PC deviations in address-error frames,
+ *                                               by instruction, addressing modes and access type
+ *   node tests/cpu/run-sst.mjs --ae-ignore-pc   do not compare the stacked PC of address-error frames
+ *
+ * About the stacked PC of address errors: for the cases that vAmigaTS checks against photos
+ * of a real A500 (CPU/Exceptions/StackFrame/addrerr1-10: MOVE to (An), (An)+, -(An), d16(An),
+ * abs.L; MOVEA from abs.W; MOVEM), SAE stacks the same PC as the hardware, while this corpus
+ * expects a value 2 or 4 lower. Until that is resolved, --ae-ignore-pc shows the remaining,
+ * real differences in address-error frames (SSW, access address, IR, SR, registers).
  *   node tests/cpu/run-sst.mjs --prefetch       also compare the prefetch queue
  *   node tests/cpu/run-sst.mjs --core normal    use the non-compatible core
  *   node tests/cpu/run-sst.mjs --check          exit 1 if any file fails more than tests/cpu/sst-baseline.json
@@ -41,6 +52,32 @@ const comparePrefetch = !!arg("prefetch", false);
 const core = arg("core", "compatible");
 const check = !!arg("check", false);
 const writeBaseline = !!arg("write-baseline", false);
+const kind = String(arg("kind", ""));
+const aeReport = !!arg("ae-report", false);
+const aeIgnorePc = !!arg("ae-ignore-pc", false);
+const aeTable = new Map();
+const MODES = ["Dn", "An", "(An)", "(An)+", "-(An)", "d16", "d8x"], MODES7 = ["abs.w", "abs.l", "d16pc", "d8xpc", "#imm"];
+const modeName = (m, r) => m < 7 ? MODES[m] : MODES7[r] || "?";
+/* record expected vs. actual stacked PC (relative to the instruction) of a data address error */
+function recordAe(name, t) {
+	const expRam = new Map(t.final.ram.map(([a, v]) => [a & 0xffffff, v]));
+	const ew = (a) => ((expRam.get(a & 0xffffff) ?? 0) << 8) | (expRam.get((a + 1) & 0xffffff) ?? 0);
+	const gw = (a) => (ram[a & 0xffffff] << 8) | ram[(a + 1) & 0xffffff];
+	const sp = t.final.ssp, ssw = ew(sp);
+	if ((ssw & 7) !== 1 && (ssw & 7) !== 5) return; /* program-space faults (odd branch targets) are another topic */
+	const op = t.initial.prefetch[0];
+	const isMove = /^MOVEA?\.[bwl]$/.test(name);
+	const key = `${name.padEnd(11)} ${modeName((op >> 3) & 7, op & 7).padEnd(6)} ${(isMove ? modeName((op >> 6) & 7, (op >> 9) & 7) : "").padEnd(6)} ${ssw & 0x10 ? "R" : "W"}`;
+	const exp = (((ew(sp + 10) << 16) | ew(sp + 12)) - t.initial.pc) | 0;
+	const gsp = getState().ssp;
+	const got = gsp === sp ? (((gw(sp + 10) << 16) | gw(sp + 12)) - t.initial.pc) | 0 : "noframe";
+	const e = aeTable.get(key) || { n: 0, ok: 0, exp: new Map(), got: new Map() };
+	e.n++;
+	if (got === exp) e.ok++;
+	e.exp.set(exp, (e.exp.get(exp) || 0) + 1);
+	e.got.set(got, (e.got.get(got) || 0) + 1);
+	aeTable.set(key, e);
+}
 
 async function loadFile(name) {
 	fs.mkdirSync(cacheDir, { recursive: true });
@@ -103,12 +140,24 @@ function compare(t) {
 	const got = getState(), exp = t.final, diffs = [];
 	const keys = ["d0","d1","d2","d3","d4","d5","d6","d7","a0","a1","a2","a3","a4","a5","a6","usp","ssp","sr","pc"];
 	for (const k of keys) if ((got[k] >>> 0) !== (exp[k] >>> 0)) diffs.push(`${k} ${hex(got[k])} != ${hex(exp[k])}`);
-	for (const [a, v] of exp.ram) if (ram[a & 0xffffff] !== v) diffs.push(`ram[${hex(a)}] ${hex(ram[a & 0xffffff], 2)} != ${hex(v, 2)}`);
+	/* stacked PC of an expected address-error frame: bytes 10-13 of the 14-byte frame */
+	const pcLo = aeIgnorePc && t.initial.ssp - exp.ssp === 14 ? (exp.ssp + 10) & 0xffffff : -1;
+	for (const [a, v] of exp.ram) {
+		const a24 = a & 0xffffff;
+		if (a24 >= pcLo && a24 < pcLo + 4) continue;
+		if (ram[a24] !== v) diffs.push(`ram[${hex(a)}] ${hex(ram[a24], 2)} != ${hex(v, 2)}`);
+	}
 	if (comparePrefetch && (got.prefetch[0] !== exp.prefetch[0] || got.prefetch[1] !== exp.prefetch[1]))
 		diffs.push(`prefetch ${got.prefetch.map((v) => hex(v, 4))} != ${exp.prefetch.map((v) => hex(v, 4))}`);
 	return diffs;
 }
 const hex = (v, n = 8) => "$" + (v >>> 0).toString(16).padStart(n, "0");
+
+/* the 68000 group-0 frame at sp: SSW word, access address, IR, SR, PC */
+function frameAt(read, sp) {
+	const w = (a) => (read(a) << 8) | read(a + 1), l = (a) => ((w(a) << 16) | w(a + 2)) >>> 0;
+	return `ssw ${hex(w(sp), 4)} addr ${hex(l(sp + 2))} ir ${hex(w(sp + 6), 4)} sr ${hex(w(sp + 8), 4)} pc ${hex(l(sp + 10))}`;
+}
 
 const baseline = fs.existsSync(baselineFile) ? JSON.parse(fs.readFileSync(baselineFile, "utf8")) : {};
 const results = {};
@@ -120,13 +169,25 @@ for (const name of FILES.filter((n) => !only || n.includes(only))) {
 	let fail = 0, crash = 0, shown = 0, failAe = 0;
 	for (const t of list) {
 		let diffs;
-		try { setState(t.initial); step((t.initial.sr & 0x8000) != 0); diffs = compare(t); }
+		try {
+			setState(t.initial); step((t.initial.sr & 0x8000) != 0); diffs = compare(t);
+			if (aeReport && t.initial.ssp - t.final.ssp === 14) recordAe(name, t);
+		}
 		catch (e) { crash++; diffs = ["exception: " + (e && e.message)]; }
 		if (diffs.length) {
 			fail++;
 			/* a group-0 exception was expected: address error, 14-byte frame on the supervisor stack */
 			if (t.initial.ssp - t.final.ssp === 14) failAe++;
-			if (shown < show) { shown++; console.log(`  ${name} | ${t.name}\n      ${diffs.slice(0, 6).join("\n      ")}`); }
+			const isAe = t.initial.ssp - t.final.ssp === 14;
+			if (shown < show && (!kind || (kind === "ae") === isAe)) {
+				shown++;
+				console.log(`  ${name} | ${t.name}\n      ${diffs.slice(0, 6).join("\n      ")}`);
+				if (isAe) {
+					const expRam = new Map(t.final.ram.map(([a, v]) => [a & 0xffffff, v]));
+					console.log(`      expected ${frameAt((a) => expRam.get(a & 0xffffff) ?? 0, t.final.ssp)}  (initial pc ${hex(t.initial.pc)})`);
+					console.log(`      got      ${frameAt((a) => ram[a & 0xffffff], getState().ssp)}`);
+				}
+			}
 		}
 	}
 	totalRun += list.length; totalFail += fail;
@@ -136,6 +197,11 @@ for (const name of FILES.filter((n) => !only || n.includes(only))) {
 	if (worse) regressions.push(`${name}: ${fail} > baseline ${base.fail}`);
 	const pct = ((list.length - fail) / list.length * 100).toFixed(1).padStart(5);
 	console.log(`${name.padEnd(12)} ${String(list.length).padStart(5)} tests  ${pct} % pass${fail ? `  (${fail} fail: ${failAe} address error, ${fail - failAe} other${crash ? `, ${crash} crash` : ""})` : ""}${worse ? "  REGRESSION" : ""}`);
+}
+if (aeReport) {
+	const fmt = (m) => [...m.entries()].sort((a, b) => b[1] - a[1]).map(([o, n]) => `${o >= 0 ? "+" : ""}${o}:${n}`).join(" ");
+	console.log("\nstacked PC relative to the instruction (data address errors), expected | SAE:");
+	for (const [k, e] of [...aeTable.entries()].sort()) if (e.ok < e.n) console.log(`${k}  ${String(e.ok).padStart(4)}/${String(e.n).padEnd(4)} exp ${fmt(e.exp)} | got ${fmt(e.got)}`);
 }
 const totalAe = Object.values(results).reduce((a, r) => a + r.failAddressError, 0);
 console.log(`\nfailures with an expected address-error frame: ${totalAe}, other failures: ${totalFail - totalAe}`);
