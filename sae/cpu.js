@@ -6679,6 +6679,11 @@ function SAEO_CPU() {
 			//regd = (uae_s32)(uae_s16)regd;
 			regd = extWord(regd & 0xffff);
 
+		/* 68000/68010 (get_disp_ea_000): brief format only. Bit 8 (full format) and the
+		   scale bits 9-10 do not exist there and are ignored. */
+		if (SAEV_config.cpu.model < SAEC_Config_CPU_Model_68020)
+			return add32(add32(base, extByte(dp & 0xff)), regd);
+
 		//regd <<= (dp >> 9) & 3;
 		if (scale) regd = ((regd << scale) & 0xffffffff) >>> 0;
 
