@@ -5125,105 +5125,71 @@ function SAEO_CPU() {
 		return p.cyc;
 	}
 
-	function I_ROXL_32(p) {
-		var d = regs.d[p.Dy], _d = d;
-		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.c = (d & (1 << (32-n))) != 0;
-			d = (((d << n) | (d >>> (32-n))) & 0xffffffff) >>> 0;
-			d = ((d & 0xfffffffe) | (regs.x ? 1 : 0)) >>> 0;
-			regs.d[p.Dy] = d;
-			regs.x = regs.c;
-		} else regs.c = regs.x;
-		regs.n = (d & 0x80000000) != 0;
+	/* ROXL/ROXR Dn: rotate through X, i.e. over size + 1 bits, so the count is taken
+	 * modulo 33/17/9 (after the & 63 of a register count). C = X afterwards; X only changes
+	 * if bits were actually rotated. Bit by bit: rare instructions, obviously correct. */
+	function roxl(d, n, bits) {
+		var cnt = n % (bits + 1), x = regs.x ? 1 : 0;
+		for (var i = 0; i < cnt; i++) {
+			var top = (d >>> (bits - 1)) & 1;
+			d = bits == 32 ? ((d << 1) | x) >>> 0 : ((d << 1) | x) & ((1 << bits) - 1);
+			x = top;
+		}
+		if (cnt) regs.x = x != 0;
+		roxFlags(d, bits);
+		return d;
+	}
+	function roxr(d, n, bits) {
+		var cnt = n % (bits + 1), x = regs.x ? 1 : 0;
+		for (var i = 0; i < cnt; i++) {
+			var low = d & 1;
+			d = ((d >>> 1) | (x << (bits - 1))) >>> 0;
+			x = low;
+		}
+		if (cnt) regs.x = x != 0;
+		roxFlags(d, bits);
+		return d;
+	}
+	function roxFlags(d, bits) {
+		regs.c = regs.x;
+		regs.n = ((d >>> (bits - 1)) & 1) != 0;
 		regs.z = d == 0;
 		regs.v = false;
-		//SAEF_log(("I_ROXL.L %08x << %d = %08x", _d, n, d));
+	}
+
+	function I_ROXL_32(p) {
+		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
+		regs.d[p.Dy] = roxl(regs.d[p.Dy] >>> 0, n, 32);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_ROXL_16(p) {
-		var d = regs.d[p.Dy] & 0xffff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.c = (d & (1 << (16-n))) != 0;
-			d = ((d << n) | (d >> (16-n))) & 0xffff;
-			d = (d & 0xfffe) | (regs.x ? 1 : 0);
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | d;
-			regs.x = regs.c;
-		} else regs.c = regs.x;
-		regs.n = (d & 0x8000) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_ROXL.W %08x << %d = %08x", _d, n, d));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | roxl(regs.d[p.Dy] & 0xffff, n, 16);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_ROXL_8(p) {
-		var d = regs.d[p.Dy] & 0xff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.c = (d & (1 << (8-n))) != 0;
-			d = ((d << n) | (d >> (8-n))) & 0xff;
-			d = (d & 0xfe) | (regs.x ? 1 : 0);
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | d;
-			regs.x = regs.c;
-		} else regs.c = regs.x;
-		regs.n = (d & 0x80) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_ROXL.B %08x << %d = %08x", _d, n, d));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | roxl(regs.d[p.Dy] & 0xff, n, 8);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_ROXR_32(p) {
-		var d = regs.d[p.Dy], _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.c = (d & (1 << (n-1))) != 0;
-			d = (((d << (32-n)) | (d >>> n)) & 0xffffffff) >>> 0;
-			d = ((regs.x ? 0x80000000 : 0) | (d & 0x7fffffff)) >>> 0;
-			regs.d[p.Dy] = d;
-			regs.x = regs.c;
-		} else regs.c = regs.x;
-		regs.n = (d & 0x80000000) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_ROXR.L %08x >> %d = %08x", _d, n, d));
+		regs.d[p.Dy] = roxr(regs.d[p.Dy] >>> 0, n, 32);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_ROXR_16(p) {
-		var d = regs.d[p.Dy] & 0xffff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.c = (d & (1 << (n-1))) != 0;
-			d = ((d << (16-n)) | (d >>> n)) & 0xffff;
-			d = (regs.x ? 0x8000 : 0) | (d & 0x7fff);
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | d;
-			regs.x = regs.c;
-		} else regs.c = regs.x;
-		regs.n = (d & 0x8000) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_ROXR.W %08x >> %d = %08x", _d, n, d));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | roxr(regs.d[p.Dy] & 0xffff, n, 16);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_ROXR_8(p) {
-		var d = regs.d[p.Dy] & 0xff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.c = (d & (1 << (n-1))) != 0;
-			d = ((d << (8-n)) | (d >>> n)) & 0xff;
-			d = (regs.x ? 0x80 : 0) | (d & 0x7f);
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | d;
-			regs.x = regs.c;
-		} else regs.c = regs.x;
-		regs.n = (d & 0x80) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_ROXR.B %08x >> %d = %08x", _d, n, d));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | roxr(regs.d[p.Dy] & 0xff, n, 8);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}

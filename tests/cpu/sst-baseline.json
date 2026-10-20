@@ -389,27 +389,27 @@
  },
  "ROXL.b": {
   "limit": 200,
-  "fail": 173
+  "fail": 0
  },
  "ROXL.l": {
   "limit": 200,
-  "fail": 164
+  "fail": 0
  },
  "ROXL.w": {
   "limit": 200,
-  "fail": 169
+  "fail": 24
  },
  "ROXR.b": {
   "limit": 200,
-  "fail": 180
+  "fail": 0
  },
  "ROXR.l": {
   "limit": 200,
-  "fail": 179
+  "fail": 0
  },
  "ROXR.w": {
   "limit": 200,
-  "fail": 157
+  "fail": 19
  },
  "RTE": {
   "limit": 200,
