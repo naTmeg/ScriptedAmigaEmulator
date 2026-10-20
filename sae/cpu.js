@@ -4795,50 +4795,34 @@ function SAEO_CPU() {
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
+	/* ASR: the sign bit is shifted in; C and X get the last bit shifted out (the sign once
+	 * the count reaches the operand width); a count of 0 clears C and keeps X */
+	function asr(d, n, bits) {
+		var c = 0, sign = (d >>> (bits - 1)) & 1;
+		for (var i = 0; i < n; i++) {
+			c = d & 1;
+			d = ((d >>> 1) | (sign << (bits - 1))) >>> 0;
+		}
+		regs.c = c != 0;
+		if (n) regs.x = regs.c;
+		shiftFlags(d, bits);
+		return d;
+	}
 	function I_ASR_32(p) {
-		var d = regs.d[p.Dy], _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.x = regs.c = (d & (1 << (n-1))) != 0;
-			d = (d >> n) >>> 0; //js 32
-			regs.d[p.Dy] = d;
-		} else regs.c = false;
-		regs.n = (d & 0x80000000) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_ASR.L %08x >> %d = %08x", _d, n, d));
+		regs.d[p.Dy] = asr(regs.d[p.Dy] >>> 0, n, 32);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_ASR_16(p) {
-		var d = regs.d[p.Dy] & 0xffff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.x = regs.c = (d & (1 << (n-1))) != 0;
-			d = extWord(d); d = ((d >> n) & 0xffff) >>> 0; //js 32
-			//d >>= n;
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | d;
-		} else regs.c = false;
-		regs.n = (d & 0x8000) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_ASR.W %08x >> %d = %08x", _d, n, d));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | asr(regs.d[p.Dy] & 0xffff, n, 16);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_ASR_8(p) {
-		var d = regs.d[p.Dy] & 0xff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.x = regs.c = (d & (1 << (n-1))) != 0;
-			d = extByte(d); d = ((d >> n) & 0xff) >>> 0; //js 32
-			//d >>= n;
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | d;
-		} else regs.c = false;
-		regs.n = (d & 0x80) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_ASR.B %08x >> %d = %08x", _d, n, d));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | asr(regs.d[p.Dy] & 0xff, n, 8);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
