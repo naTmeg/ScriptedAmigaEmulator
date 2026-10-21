@@ -36,7 +36,8 @@ checks the 68020 MULU.L/MULS.L/DIVU.L/DIVS.L (32- and 64-bit forms) in both core
 BigInt arithmetic with random operands, 40000 cases per core in a few seconds.
 `tests/cpu/run-frames020.mjs` (also in `test:cpu020`) checks the format $2 frames of CHK,
 DIV by zero, TRAPV and TRAPcc on the 68020, `tests/cpu/run-pack020.mjs` PACK/UNPK,
-`tests/cpu/run-bitfield020.mjs` the eight bit field instructions (memory and register form).
+`tests/cpu/run-bitfield020.mjs` the eight bit field instructions (memory and register form),
+`tests/cpu/run-cmp2020.mjs` CMP2 with address and data registers.
 
 Address errors need care: for them the reference is cputester (next section), whose data is
 confirmed on real 68000s. The corpus differs from it (and from photos of a real A500) in the

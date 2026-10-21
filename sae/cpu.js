@@ -6320,13 +6320,9 @@ function SAEO_CPU() {
 		var a = exEAtab[p.ea](4);
 		var lb = coreGet32(a);
 		var ub = coreGet32(a + 4);
-		var Rn;
-		if (ext & 0x8000)
-			Rn = regs.a[(ext >> 12) & 7];
-		else {
-			Rn = castLong(regs.d[(ext >> 12) & 7]);
-			lb = castLong(lb); ub = castLong(ub);
-		}
+		/* An or Dn, both compared as signed 32-bit values (An was compared unsigned) */
+		var Rn = castLong((ext & 0x8000 ? regs.a[(ext >> 12) & 7] : regs.d[(ext >> 12) & 7]) >>> 0);
+		lb = castLong(lb >>> 0); ub = castLong(ub >>> 0);
 		regs.z = ub == Rn || lb == Rn;
 		regs.c = lb <= ub ? Rn < lb || Rn > ub : Rn < ub || Rn > lb; // Rn > ub || Rn < lb;
 		//n v undef
@@ -6343,14 +6339,9 @@ function SAEO_CPU() {
 		var a = exEAtab[p.ea](2);
 		var lb = coreGet16(a);
 		var ub = coreGet16(a + 2);
-		var Rn;
-		if (ext & 0x8000) {
-			Rn = extWord(regs.a[(ext >> 12) & 7] & 0xffff);
-			lb = extWord(lb); ub = extWord(ub);
-		} else {
-			Rn = castWord(regs.d[(ext >> 12) & 7] & 0xffff);
-			lb = castWord(lb); ub = castWord(ub);
-		}
+		/* with An the bounds are sign-extended and compared with all 32 bits of An */
+		var Rn = ext & 0x8000 ? castLong(regs.a[(ext >> 12) & 7] >>> 0) : castWord(regs.d[(ext >> 12) & 7] & 0xffff);
+		lb = castWord(lb); ub = castWord(ub);
 		regs.z = ub == Rn || lb == Rn;
 		regs.c = lb <= ub ? Rn < lb || Rn > ub : Rn < ub || Rn > lb; // Rn > ub || Rn < lb;
 		//n v undef
@@ -6367,14 +6358,9 @@ function SAEO_CPU() {
 		var a = exEAtab[p.ea](1);
 		var lb = coreGet8(a);
 		var ub = coreGet8(a + 1);
-		var Rn;
-		if (ext & 0x8000) {
-			Rn = extByte(regs.a[(ext >> 12) & 7] & 0xff);
-			lb = extByte(lb); ub = extByte(ub);
-		} else {
-			Rn = castByte(regs.d[(ext >> 12) & 7] & 0xff);
-			lb = castByte(lb); ub = castByte(ub);
-		}
+		/* with An the bounds are sign-extended and compared with all 32 bits of An */
+		var Rn = ext & 0x8000 ? castLong(regs.a[(ext >> 12) & 7] >>> 0) : castByte(regs.d[(ext >> 12) & 7] & 0xff);
+		lb = castByte(lb); ub = castByte(ub);
 		regs.z = ub == Rn || lb == Rn;
 		regs.c = lb <= ub ? Rn < lb || Rn > ub : Rn < ub || Rn > lb; // Rn > ub || Rn < lb;
 		//n v undef
