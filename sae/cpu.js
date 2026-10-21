@@ -292,7 +292,7 @@ function SAEO_CPU() {
 			fake_tc_030 &= ~0x80000000;
 			fake_tt0_030 &= ~0x80000000;
 			fake_tt1_030 &= ~0x80000000;
-			if (hardreset || regs.halted) {
+			if (hardreset || SAER.m68k.haltedBeforeReset) { /* regs.halted was never set */
 				//fake_srp_030 = fake_crp_030 = 0;
 				fake_srp_030_hi = fake_srp_030_lo = 0;
 				fake_crp_030_hi = fake_crp_030_lo = 0;
