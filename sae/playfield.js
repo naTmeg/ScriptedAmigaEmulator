@@ -10736,9 +10736,10 @@ function SAEO_Playfield() {
 	this.CLXCON2 = function(v) {
 		//if (!(SAEV_config.chipset.mask & SAEC_Config_Chipset_Mask_AGA)) return;
 		clxcon2 = v;
-		clxcon_bpl_enable |= v & (0x40 | 0x80);
-		clxcon_bpl_match |= (v & (0x01 | 0x02)) << 6;
-		clxcon_bpl_match &= 0xffffffff; //OWN
+		/* bitplanes 7 and 8: replace their enable/match bits, OR-ing them in meant a later
+		   CLXCON2 write could never switch them off again (only a CLXCON write did) */
+		clxcon_bpl_enable = (clxcon_bpl_enable & 63) | (v & (0x40 | 0x80));
+		clxcon_bpl_match = (clxcon_bpl_match & 63) | ((v & (0x01 | 0x02)) << 6);
 	}
 
 	this.CLXDAT = function() {
