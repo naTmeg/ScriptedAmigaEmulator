@@ -121,8 +121,8 @@
    "tests": 373952
   },
   "atBCC.B": {
-   "status": "timeout",
-   "tests": 0
+   "status": "pass",
+   "tests": 399360
   },
   "atBCC.W": {
    "status": "pass",
