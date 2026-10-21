@@ -75,13 +75,16 @@ the [Moira](https://github.com/dirkwhoffmann/Moira) repository (`Cputester/ADF`)
     node tests/run-cputester.mjs --filter "atCLR|atNEG" --show
     node tests/run-cputester.mjs --check                 # exit 1 if a disk gets less far than in the baseline
     node tests/run-cputester.mjs --set basic             # another set (fetch it with --sets "basic")
+    node tests/run-cputester.mjs --set all               # every fetched set in one pool
+    node tests/run-all.mjs                               # browser suite and all cputester sets at once
 
 Each disk boots under the AROS ROM (A500, compatible core, 512 KB chip, 512 KB slow, 8 MB fast
 RAM) and runs `cputest <instruction>`. AROS has no `SER:` handler, so the runner patches
 `s/startup-sequence` (`tests/tools/adf-ofs.mjs`) to write the output to `out.txt` on the floppy
 and reads it back through `sae.getDisk()`. A disk with almost no free space (atAND.L_1 has one
 block) gets room by deleting `Stack` and `Echo` from its copy; they then run from an unchanged
-copy in DF1. cputest stops at the first difference; a disk is
+copy in DF1. All disks of the requested sets share one pool of browser pages (default: logical CPUs - 4),
+the longest first by the test count in the baseline, so no slow disk starts last. cputest stops at the first difference; a disk is
 "pass" or shows that difference (expected and actual frame, registers).
 `tests/cputester-baseline.json` records how far every disk gets.
 
@@ -102,7 +105,6 @@ reference screenshot from vAmiga (`<name>_68000.raw`, which matches photos of a 
 - `npm run test:browser` (`tests/run-suite.mjs`) serves the repository, opens `suite.htm` in
   headless Chromium via Playwright in several pages at once, and compares the scores with
   `tests/browser-baseline.json`. `--check` exits 1 if a score drops by more than 0.5 points.
-
 Runs are reproducible: `turbo=1` switches off frame pacing and the host-clock TOD hack
 (`cfg.debug.turbo`), `det=1` (`determinism.js`) seeds `Math.random` and fixes the clock, and
 `stopframe=N` pauses the emulator after exactly N frames (and skips drawing the frames

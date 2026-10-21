@@ -16,7 +16,9 @@
     "test:browser:check": "node tests/run-suite.mjs --check",
     "fetch:cputester": "node tests/tools/fetch-cputester.mjs",
     "test:cputester": "node tests/run-cputester.mjs",
-    "test:cputester:check": "node tests/run-cputester.mjs --check"
+    "test:cputester:check": "node tests/run-cputester.mjs --check",
+    "test:cputester:all": "node tests/run-cputester.mjs --set all --check",
+    "test:all": "node tests/run-all.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",
