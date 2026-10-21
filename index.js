@@ -607,6 +607,32 @@ function dbInit() {
 			}
 		}
 	}
+	/* the disk images are not part of the repository (db/README.md): ask the server once per
+	   group for its first image and mark groups without files, instead of an HTTP-404 alert
+	   for every entry the user picks */
+	for (var dbt = 1; dbt <= 4; dbt++)
+		dbProbeGroup(dbt);
+}
+function dbProbeGroup(dbt) {
+	for (var first = 0; first < db.length && db[first].type != dbt; first++);
+	if (first == db.length)
+		return;
+	var x = new XMLHttpRequest();
+	x.onload = function() {
+		if (x.status != 404)
+			return;
+		for (var k = 0; k < 2; k++) {
+			var s = document.getElementById(DB_IDS[k][dbt - 1]);
+			while (s.options.length > 1)
+				s.remove(1);
+			var option = document.createElement("option");
+			option.text = "(no disk images on this server)";
+			option.disabled = true;
+			s.add(option, null);
+		}
+	};
+	x.open("HEAD", DB_URLS[dbt - 1] + "/" + getDatabaseEntryFilename(db[first], 0, true));
+	x.send();
 }
 
 function dbFindTypeNamePos(type, name) {
