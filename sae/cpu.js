@@ -1594,13 +1594,33 @@ function SAEO_CPU() {
 				regs.a[7] -= 2; corePut16(regs.a[7], ssw);
 				regs.a[7] -= 2; corePut16(regs.a[7], 0xb000 + vector_nr * 4);*/
 
-				for (var i = 0 ; i < 36; i++) stackPut16(0);
-				stackPut32(last_fault_for_exception_3);
-				stackPut16(0);
-				stackPut16(0);
-				stackPut16(0);
-				stackPut16(ssw);
-				stackPut16(0xb000 + vector_nr * 4);
+				if (SAEV_config.cpu.model == SAEC_Config_CPU_Model_68010) {
+					/* format $8, 29 words (MC68010 manual, as WinUAE): the 68010 has no format $B,
+					   and RTE takes $B there as a format error. Its SSW: IF/DF (instruction or data
+					   fetch), RW (read), FC; the data buffers are not kept, so they stack 0 */
+					var ssw010 = (sv ? 4 : 0) | (last_instructionaccess_for_exception_3 ? 2 : 1);
+					if (!last_writeaccess_for_exception_3) ssw010 |= 0x100;
+					if (last_instructionaccess_for_exception_3) ssw010 |= 0x2000;
+					else if (!last_writeaccess_for_exception_3) ssw010 |= 0x1000;
+					for (var i = 0; i < 16; i++) stackPut16(0); /* version and internal information */
+					stackPut16(regs.irc); /* instruction input buffer */
+					stackPut16(0);
+					stackPut16(0); /* data input buffer */
+					stackPut16(0);
+					stackPut16(0); /* data output buffer */
+					stackPut16(0);
+					stackPut32(last_fault_for_exception_3);
+					stackPut16(ssw010);
+					stackPut16(0x8000 + vector_nr * 4);
+				} else {
+					for (var i = 0 ; i < 36; i++) stackPut16(0);
+					stackPut32(last_fault_for_exception_3);
+					stackPut16(0);
+					stackPut16(0);
+					stackPut16(0);
+					stackPut16(ssw);
+					stackPut16(0xb000 + vector_nr * 4);
+				}
 
 				SAEF_log("cpu.exception() %d (%x) at %x -> %x!", nr, regs.instruction_pc, currpc, SAER_Memory_get32(regs.vbr + 4 * vector_nr));
 			} else if ((nr == 5 || nr == 6 || nr == 7 || nr == 9) && SAEV_config.cpu.model >= SAEC_Config_CPU_Model_68020) { /* format $2; the 68010 knows only $0 and $8 */

@@ -39,7 +39,8 @@ DIV by zero, TRAPV and TRAPcc on the 68020, `tests/cpu/run-pack020.mjs` PACK/UNP
 `tests/cpu/run-bitfield020.mjs` the eight bit field instructions (memory and register form),
 `tests/cpu/run-cmp2020.mjs` CMP2 with address and data registers, `tests/cpu/run-movem020.mjs`
 MOVEM to -(An) with An in the list (68000 and 68020), `tests/cpu/run-handler-pc.mjs` that an
-exception handler starts at its first word in the compatible core.
+exception handler starts at its first word in the compatible core, `tests/cpu/run-frames010.mjs`
+the 68010 frames (format $0 and $8) and RTE.
 
 Address errors need care: for them the reference is cputester (next section), whose data is
 confirmed on real 68000s. The corpus differs from it (and from photos of a real A500) in the
