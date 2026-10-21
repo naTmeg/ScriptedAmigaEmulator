@@ -31,6 +31,10 @@ The first run downloads the corpus (about 193 MB). `tests/cpu/sst-baseline.json`
 failure count per file. When a fix makes tests pass, update it with
 `node tests/cpu/run-sst.mjs --write-baseline`.
 
+The corpus covers only the 68000. `npm run test:cpu020` (`tests/cpu/run-muldiv020.mjs`)
+checks the 68020 MULU.L/MULS.L/DIVU.L/DIVS.L (32- and 64-bit forms) in both cores against
+BigInt arithmetic with random operands, 40000 cases per core in a few seconds.
+
 Address errors need care: for them the reference is cputester (next section), whose data is
 confirmed on real 68000s. The corpus differs from it (and from photos of a real A500) in the
 stacked PC, the I/N bit and register updates of many frames, so most remaining address-error

@@ -3783,7 +3783,7 @@ function SAEO_CPU() {
 					if (productLo) productLo = -productLo + 0x100000000;
 					if (productLo == 0) { productHi++; if (productHi > 0xffffffff) productHi -= 0x100000000; }
 				}
-				regs.v = (ext & 0x400) == 0 && (productHi != 0 || (productLo & 0x80000000) != 0) && ((productHi & 0xffffffff) != 0xffffffff || (productLo & 0x80000000) != 0x80000000);
+				regs.v = (ext & 0x400) == 0 && (productHi != 0 || (productLo & 0x80000000) != 0) && (productHi != 0xffffffff || (productLo & 0x80000000) == 0); /* productHi is unsigned; "& 0xffffffff" made it -1 */
 				//SAEF_log("I_MULS64.L $%04x, %d * %d = [%08x:%08x] | v %d, PC %08x", ext, castLong(_a),castLong(_b), productHi,productLo, regs.v?1:0, getPC());
 			}
 		} else {
@@ -3802,8 +3802,13 @@ function SAEO_CPU() {
 		}
 		regs.d[Dl] = productLo;
 		if (ext & 0x400) regs.d[ext & 7] = productHi;
-		regs.n = (productHi & 0x80000000) != 0;
-		regs.z = productHi == 0 && productLo == 0;
+		if (ext & 0x400) {
+			regs.n = (productHi & 0x80000000) != 0;
+			regs.z = productHi == 0 && productLo == 0;
+		} else { /* 32-bit form: N and Z describe the 32-bit result in Dl (as Musashi and WinUAE) */
+			regs.n = (productLo & 0x80000000) != 0;
+			regs.z = productLo == 0;
+		}
 		regs.c = false;
 
 		coreSyncPC();
@@ -3927,7 +3932,7 @@ function SAEO_CPU() {
 				var result = divu64(dividendHi, dividendLo, divisor);
 				quo = result[1];
 				rem = result[2];
-				if (result[0] || sign ? quo > 0x80000000 : quo > 0x7fffffff) {
+				if (result[0] || (sign ? quo > 0x80000000 : quo > 0x7fffffff)) { /* 64-bit quotient, or too big for 32 bits signed */
 					regs.v = true;
 					//SAEF_log("I_DIVS64.L %d:%d / %d OVERFLOW", dividendHi,dividendLo,divisor);
 					coreSyncPC();
