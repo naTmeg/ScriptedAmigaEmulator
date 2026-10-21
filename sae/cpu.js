@@ -3162,7 +3162,8 @@ function SAEO_CPU() {
 			address_error_long = true;
 			address_error(sp, true, 2);
 		}
-		stackPut32(regs.a[p.An]);
+		/* An is read after SP is decremented: LINK A7 pushes SP-4 (WinUAE, SingleStepTests) */
+		stackPut32(p.An == 7 ? (regs.a[7] - 4) >>> 0 : regs.a[p.An]);
 		regs.a[p.An] = regs.a[7];
 		regs.a[7] = add32(regs.a[7], dp);
 		//SAEF_log(("I_LINK.W A%d, dp $%04x", p.An, dp));
