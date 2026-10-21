@@ -977,7 +977,7 @@ function SAEO_DMS() {
 				return ERR_CANTWRITE;
 			normaltrack = true;
 		} else if (number == 0 && unpklen == 1024) {
-			b2.set(0, 0, unpklen); //memset(b2, 0, unpklen);
+			b2.fill(0, 0, unpklen); //memset(b2, 0, unpklen);
 			if (!crcerr)
 				Unpack_Track(b1, b2, pklen2, unpklen, cmode, flags, number, pklen1, usum, dmsflags & DMSFLAG_ENCRYPTED);
 			addextra("FakeBootBlock", extra, b2, unpklen);
