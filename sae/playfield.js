@@ -6837,26 +6837,28 @@ function SAEO_Playfield() {
 	}*/
 	//#endif
 
+	/* shift the 128-bit value p[3]:p[2]:p[1]:p[0] (Uint32Array) left / right by n bits.
+	   n goes up to 63 with FMODE=3; "n &= 31" lost the word part of larger shifts. */
 	function aga_shift(p, n) {
 		if (n) {
 			//p[1] = (p[1] << n) | (p[0] >> (64 - n));
 			//p[0] <<= n;
-			n &= 31;
-			p[3] = (p[3] << n) | (p[2] >>> (32 - n));
-			p[2] = (p[2] << n) | (p[1] >>> (32 - n));
-			p[1] = (p[1] << n) | (p[0] >>> (32 - n));
-			p[0] <<= n;
+			var w = n >>> 5, b = n & 31;
+			for (var i = 3; i >= 0; i--) {
+				var hi = i - w >= 0 ? p[i - w] : 0, lo = i - w - 1 >= 0 ? p[i - w - 1] : 0;
+				p[i] = b ? (hi << b) | (lo >>> (32 - b)) : hi;
+			}
 		}
 	}
 	function aga_shift_n(p, n) {
 		if (n) {
 			//p[0] = (p[0] >> n) | (p[1] << (64 - n));
 			//p[1] >>= n;
-			n &= 31;
-			p[0] = (p[1] << (32 - n)) | (p[0] >>> n);
-			p[1] = (p[2] << (32 - n)) | (p[1] >>> n);
-			p[2] = (p[3] << (32 - n)) | (p[2] >>> n);
-			p[3] >>>= n;
+			var w = n >>> 5, b = n & 31;
+			for (var i = 0; i < 4; i++) {
+				var lo = i + w < 4 ? p[i + w] : 0, hi = i + w + 1 < 4 ? p[i + w + 1] : 0;
+				p[i] = b ? (lo >>> b) | (hi << (32 - b)) : lo;
+			}
 		}
 	}
 
