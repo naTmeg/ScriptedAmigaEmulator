@@ -655,7 +655,10 @@ function Cache() {
 	function load(url, handler) {
 		var client = new XMLHttpRequest();
 		client.onload = handler;
+		/* network error, file:// or a stalled server: report it instead of "Loading..." forever */
+		client.onerror = client.ontimeout = function() { handler.call({ status: 0, responseText: "" }); };
 		client.open("GET", url);
+		client.timeout = 120000;
 		client.overrideMimeType("text\/plain; charset=x-user-defined"); /* we want binary data */
 		client.send();
 	}
@@ -667,7 +670,12 @@ function Cache() {
 		if (dst !== false)
 			dst.clr();
 
-		if ((item = find(url)) !== false) {
+		if ((item = find(url)) !== false && item.state == S_ERROR) {
+			/* a failed download is tried again instead of blocking every later start */
+			items.splice(items.indexOf(item), 1);
+			item = false;
+		}
+		if (item !== false) {
 			if (dst !== false) {
 				//dst.path = item.path;
 				dst.name = item.name;
@@ -686,19 +694,17 @@ function Cache() {
 		load(url, function() {
 			if (this.status == 200) {
 				if (this.responseText.length == size) {
-					/*if (crc !== false) {
-						var hash = crc32(this.responseText);
-						if (hash != crc) {
-							item.state = S_ERROR;
-							alert(sprintf("Wrong checksum for '%s'\n\n(should be $%08x, but is $%08x)\n\nTry to flush the browser-cache with 'Ctrl+Shift+Del' and press F5 to reload...", url, crc, hash));
-							return;
-						}
-					}*/
+					var hash = crc32(this.responseText);
+					if (crc !== false && hash != crc) {
+						item.state = S_ERROR;
+						alert(sprintf("Wrong checksum for '%s'\n\n(should be $%08x, but is $%08x)\n\nTry to flush the browser-cache with 'Ctrl+Shift+Del' and press F5 to reload...", url, crc, hash));
+						return;
+					}
 					//item.path = path;
 					item.name = name;
 					item.data = this.responseText;
 					item.size = size;
-					item.crc32 = crc;
+					item.crc32 = hash; /* the computed one, not just the expected one */
 					item.state = S_VALID;
 					if (dst !== false) {
 						//dst.path = item.path;
@@ -714,7 +720,8 @@ function Cache() {
 				}
 			} else {
 				item.state = S_ERROR;
-				var msg = sprintf("Error while downloading '%s' (http status: %d)", url, this.status);
+				var msg = this.status ? sprintf("Error while downloading '%s' (http status: %d)", url, this.status) :
+					sprintf("Could not download '%s' (no connection, or the page was opened as a file instead of over http)", url);
 				if (name == AROS_ROM_FILE || name == AROS_EXT_FILE)
 					msg += sprintf("\n\nThe AROS kickstart-replacement is missing. Put '%s' and '%s' into the '%s'-directory next to index.htm, or select a kickstart-rom at 'Config/ROM'.", AROS_ROM_FILE, AROS_EXT_FILE, URL_DATABASE);
 				alert(msg);
