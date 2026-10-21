@@ -2139,34 +2139,35 @@ function closeRomInfo() {
 
 function romSelect() {
 	var e = document.getElementById("cfg_rom_file").files[0];
-	if (e) {
-		loadFile(e, function (event) {
-			//cfg.memory.rom.path = e.path;
-			cfg.memory.rom.name = e.name;
-			cfg.memory.rom.data = event.target.result;
-			cfg.memory.rom.size = e.size;
-			cfg.memory.rom.crc32 = crc32(event.target.result);
+	if (e)
+		loadFile(e, function (event) { romLoaded(e.name, event.target.result); });
+}
+/* a Kickstart file was read (file dialog or drag and drop) */
+function romLoaded(name, data) {
+	//cfg.memory.rom.path = e.path;
+	cfg.memory.rom.name = name;
+	cfg.memory.rom.data = data;
+	cfg.memory.rom.size = data.length;
+	cfg.memory.rom.crc32 = crc32(data);
 
-			defRomInfo = new SAEO_RomInfo();
-			var err = sae.getRomInfo(defRomInfo, cfg.memory.rom);
-			if (err == SAEE_None) {
-				defRomEncrypted = defRomInfo.cloanto;
-				if (!(defRomInfo.type & SAEC_RomType_ALL_KICK))
-					alert("A 'Kickstart'-ROM is required, but you selected a/an '"+getRomType(defRomInfo)+"'-ROM.");
-			} else {
-				defRomInfo = null;
-				if (err != SAEE_Memory_RomUnknown) {
-					if (err == SAEE_Memory_RomKey || err == SAEE_Memory_RomDecode) {
-						defRomEncrypted = true;
-						setKeyName();
-						if (err == SAEE_Memory_RomDecode)
-							alert(saee2text(err));
-					}
-				}
+	defRomInfo = new SAEO_RomInfo();
+	var err = sae.getRomInfo(defRomInfo, cfg.memory.rom);
+	if (err == SAEE_None) {
+		defRomEncrypted = defRomInfo.cloanto;
+		if (!(defRomInfo.type & SAEC_RomType_ALL_KICK))
+			alert("A 'Kickstart'-ROM is required, but you selected a/an '"+getRomType(defRomInfo)+"'-ROM.");
+	} else {
+		defRomInfo = null;
+		if (err != SAEE_Memory_RomUnknown) {
+			if (err == SAEE_Memory_RomKey || err == SAEE_Memory_RomDecode) {
+				defRomEncrypted = true;
+				setKeyName();
+				if (err == SAEE_Memory_RomDecode)
+					alert(saee2text(err));
 			}
-			setRomName();
-		});
+		}
 	}
+	setRomName();
 }
 function romRemove() {
 	cfg.memory.rom.clr();
@@ -2562,41 +2563,43 @@ function mountEnable(n) {
 
 function mountSelect(n) {
 	var e = document.getElementById("cfg_mount_"+n+"_file").files[0];
-	if (e) {
-		loadFile(e, function(event) {
-			var ci = cfg.mount.config[n].ci;
+	if (e)
+		loadFile(e, function(event) { mountLoaded(n, e.name, event.target.result); });
+}
+/* a hard-file for mount slot n was read (file dialog or drag and drop) */
+function mountLoaded(n, name, data) {
+	var ci = cfg.mount.config[n].ci;
+	var e = { name: name, size: data.length };
 
-			var ok = true;
-			if (e.size < 512) {
-				alert("The selected hard-file is too small. (512 bytes minimum)")
-				ok = false;
-			}
-			if (ci.controller_type == SAEC_Config_Mount_Controller_Type_PCMCIA_SRAM && e.size > 4 * 1024 * 1024) {
-				alert("The selected hard-file is too large for a PCMCIA SRAM-card. (4096K maximum)")
-				ok = false;
-			}
-			if (ok) {
-				ci.file.name = e.name;
-				ci.file.data = event.target.result;
-				ci.file.size = e.size;
-				ci.file.crc32 = false;
-
-				if (n < 4) {
-					var haveRDB = ci.file.data.substr(0, 4) == "RDSK";
-					if (haveRDB)
-						;//queryRDB(ci);
-					else {
-						var blocks = Math.floor(ci.file.size / ci.blocksize);
-						ci.highcyl = Math.floor(blocks / (ci.surfaces * ci.sectors));
-						ci.devname = "IDE"+String(n);
-					}
-					setDisabled("cfg_mount_"+n+"_setup", haveRDB);
-				}
-				setMountName(n);
-			} else
-				document.getElementById("cfg_mount_"+n+"_file").value = "";
-		});
+	var ok = true;
+	if (e.size < 512) {
+		alert("The selected hard-file is too small. (512 bytes minimum)")
+		ok = false;
 	}
+	if (ci.controller_type == SAEC_Config_Mount_Controller_Type_PCMCIA_SRAM && e.size > 4 * 1024 * 1024) {
+		alert("The selected hard-file is too large for a PCMCIA SRAM-card. (4096K maximum)")
+		ok = false;
+	}
+	if (ok) {
+		ci.file.name = e.name;
+		ci.file.data = event.target.result;
+		ci.file.size = e.size;
+		ci.file.crc32 = false;
+
+		if (n < 4) {
+			var haveRDB = ci.file.data.substr(0, 4) == "RDSK";
+			if (haveRDB)
+				;//queryRDB(ci);
+			else {
+				var blocks = Math.floor(ci.file.size / ci.blocksize);
+				ci.highcyl = Math.floor(blocks / (ci.surfaces * ci.sectors));
+				ci.devname = "IDE"+String(n);
+			}
+			setDisabled("cfg_mount_"+n+"_setup", haveRDB);
+		}
+		setMountName(n);
+	} else
+		document.getElementById("cfg_mount_"+n+"_file").value = "";
 }
 
 function mountRemove(n) {
@@ -2994,13 +2997,41 @@ function dskchgInsert() {
 	}
 }
 
-/* drag and drop: a disk image dropped anywhere on the page goes into DF0, during the emulation
-   as a disk change, before it into the drive setup (gzip-packed images are unpacked) */
+/* drag and drop anywhere on the page. A Kickstart (.rom, or 256/512 KB starting like one) and a
+   hard-file (.hdf, into the first free IDE slot) are taken before the start, as with their
+   file dialogs; anything else is a disk image for DF0: during the emulation a disk change,
+   before it the drive setup (gzip-packed images are unpacked) */
 function floppyDrop(e) {
 	var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
 	if (!f)
 		return;
 	e.preventDefault();
+	var ext = (/\.([^.]*)$/.exec(f.name) || ["", ""])[1].toLowerCase();
+	if (ext == "rom" || ext == "hdf" || (ext != "adf" && ext != "adz" && ext != "dms" && (f.size == 0x40000 || f.size == 0x80000))) {
+		if (sae.running) {
+			alert(sprintf("'%s': Kickstart-ROMs and hard-files can only be changed before the start.", f.name));
+			return;
+		}
+		loadFile(f, function(event) {
+			var data = event.target.result;
+			if (ext == "hdf") {
+				for (var n = 0; n < 4; n++)
+					if (!getCheckbox("cfg_mount_" + n + "_enabled") || !cfg.mount.config[n].ci.file.size)
+						break;
+				if (n == 4) {
+					alert("All four IDE slots are in use. Remove one at 'Config/Mount' first.");
+					return;
+				}
+				if (!getCheckbox("cfg_mount_" + n + "_enabled")) {
+					setCheckbox("cfg_mount_" + n + "_enabled", true);
+					mountEnable(n);
+				}
+				mountLoaded(n, f.name, data);
+			} else
+				romLoaded(f.name, data);
+		});
+		return;
+	}
 	loadFile(f, function(event) {
 		var n = 0;
 		if (cfg.floppy.drive[n].type == SAEC_Config_Floppy_Type_None) {
