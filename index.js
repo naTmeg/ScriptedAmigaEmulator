@@ -2994,6 +2994,39 @@ function dskchgInsert() {
 	}
 }
 
+/* drag and drop: a disk image dropped anywhere on the page goes into DF0, during the emulation
+   as a disk change, before it into the drive setup (gzip-packed images are unpacked) */
+function floppyDrop(e) {
+	var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+	if (!f)
+		return;
+	e.preventDefault();
+	loadFile(f, function(event) {
+		var n = 0;
+		if (cfg.floppy.drive[n].type == SAEC_Config_Floppy_Type_None) {
+			cfg.floppy.drive[n].type = SAEC_Config_Floppy_Type_35_DD;
+			if (!sae.running) {
+				setCheckbox("cfg_df" + n + "_enabled", true);
+				floppyEnable(n);
+			}
+		}
+		var file = cfg.floppy.drive[n].file;
+		file.name = f.name;
+		file.data = event.target.result;
+		file.size = event.target.result.length;
+		file.crc32 = crc32(event.target.result);
+		if (sae.running)
+			sae.insert(n);
+		else
+			setFloppyName(n);
+	}, true);
+}
+document.addEventListener("dragover", function(e) {
+	if (e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types, "Files") >= 0)
+		e.preventDefault(); /* allow the drop instead of opening the file in the tab */
+});
+document.addEventListener("drop", floppyDrop);
+
 function dskchgSelect() {
 	if (dskchg) {
 		var filename = getSelect("dskchg_select", true) + ".adf";
