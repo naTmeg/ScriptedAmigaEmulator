@@ -43,8 +43,7 @@ const jobs = Math.max(1, +arg("jobs", Math.max(1, os.cpus().length - 4)));
 const timeout = +arg("timeout", 900) * 1000;
 /* the floppy in turbo mode saves about 6 s of boot and loading per disk; the CPU tests do not
    depend on it. A faster CPU (cpu.speed maximum) gained nothing: turbo=1 already runs the frames
-   back to back, so the host's emulation speed is the limit either way. A disk with DF1 runs at
-   the original speed: with turbo and a second drive AROS never writes out.txt (cputest hangs). */
+   back to back, so the host's emulation speed is the limit either way. */
 const floppy = String(arg("floppy", "turbo"));
 const check = !!arg("check", false), writeBaseline = !!arg("write-baseline", false), show = !!arg("show", false);
 const baselineFile = path.join(here, "cputester-baseline.json");
@@ -73,26 +72,21 @@ list.sort((x, y) => weight(y) - weight(x) || x.name.localeCompare(y.name));
 
 /* patch s/startup-sequence: cputest output to out.txt, then an end marker. A few disks are
    full (atAND.L_1: one free block), so out.txt stayed empty and they looked like a hang. Those
-   get room by deleting the Stack and Echo commands from their copy; the startup-sequence runs
-   them from an unchanged copy of the disk in DF1. (Writing out.txt to an empty disk in DF1
-   does not work: AROS's OFS handler keeps the data blocks of the file in its cache.) */
-const withDF1 = new Set();
-for (const { set, file: f, name } of list) {
+   get room by deleting the Stack and Echo commands from their copy: both are resident in the
+   AROS shell, which looks there first. (A second drive is no way out: AROS's trackdisk.device
+   drops a modified track buffer when it switches to the other drive, so out.txt loses its
+   data as soon as DF1 is read after cputest has written. Kickstart 3.1 does not.) */
+for (const { set, file: f } of list) {
 	const runDir = path.resolve(here, ".cache/cputester", set);
 	fs.mkdirSync(runDir, { recursive: true });
 	const adf = new Uint8Array(fs.readFileSync(f));
-	const moved = [];
-	if (freeBlocks(adf) < 8) {
-		withDF1.add(set + "/" + name);
-		fs.writeFileSync(path.join(runDir, name + ".df1.adf"), fs.readFileSync(f));
+	if (freeBlocks(adf) < 8)
 		for (const cmd of ["Stack", "Echo"])
-			if (findFile(adf, cmd)) { deleteRootFile(adf, cmd); moved.push(cmd.toLowerCase()); }
-	}
-	const viaDF1 = (l) => { const w = l.trim().split(/\s+/)[0].toLowerCase(); return moved.includes(w) ? "DF1:" + l.trim() : l; };
+			if (findFile(adf, cmd)) deleteRootFile(adf, cmd);
 	const ss = Buffer.from(readFile(adf, "s/startup-sequence")).toString("latin1");
 	const lines = ss.split("\n").filter((l) => l.trim() && !/^echo\b/i.test(l.trim()));
-	const out = lines.map((l) => (/^cputest\b/i.test(l.trim()) ? l.trim() + " >out.txt" : viaDF1(l))).join("\n") +
-		"\n" + viaDF1("echo \"" + END + "\" >>out.txt") + "\n";
+	const out = lines.map((l) => (/^cputest\b/i.test(l.trim()) ? l.trim() + " >out.txt" : l)).join("\n") +
+		"\necho \"" + END + "\" >>out.txt\n";
 	replaceSmallFile(adf, "s/startup-sequence", Buffer.from(out, "latin1"));
 	fs.writeFileSync(path.join(runDir, path.basename(f)), adf);
 }
@@ -155,8 +149,7 @@ async function worker() {
 		try {
 			const adf = encodeURIComponent("../.cache/cputester/" + set + "/" + name + ".adf");
 			const unit = 0;
-			const df1 = withDF1.has(set + "/" + name) ? "&df1=" + encodeURIComponent("../.cache/cputester/" + set + "/" + name + ".df1.adf") : "";
-			await page.goto(`${base}?adf=${adf}${df1}&model=A500&compat=1&chip=512&slow=512&fast=8&turbo=1&det=1&video=canvas&speed=${df1 ? "orig" : floppy}`);
+			await page.goto(`${base}?adf=${adf}&model=A500&compat=1&chip=512&slow=512&fast=8&turbo=1&det=1&video=canvas&speed=${floppy}`);
 			const lim = Date.now() + timeout;
 			while (Date.now() < lim) {
 				await new Promise((r) => setTimeout(r, 500));
@@ -166,9 +159,7 @@ async function worker() {
 					const out = d && window.__ofs.readFile(d.data, "out.txt");
 					return out ? new TextDecoder("latin1").decode(out) : null;
 				}, unit);
-				/* "All tests complete" is enough: on a disk with DF1 the closing echo (loaded from DF1)
-				   never gets its marker into out.txt */
-				if (txt && (txt.includes(END) || /All tests complete \(total \d+\)/.test(txt))) break;
+				if (txt && txt.includes(END)) break;
 			}
 		} catch (e) {
 			console.error(`[${set}/${name}] ${e.message}`);

@@ -82,8 +82,8 @@ Each disk boots under the AROS ROM (A500, compatible core, 512 KB chip, 512 KB s
 RAM) and runs `cputest <instruction>`. AROS has no `SER:` handler, so the runner patches
 `s/startup-sequence` (`tests/tools/adf-ofs.mjs`) to write the output to `out.txt` on the floppy
 and reads it back through `sae.getDisk()`. A disk with almost no free space (atAND.L_1 has one
-block) gets room by deleting `Stack` and `Echo` from its copy; they then run from an unchanged
-copy in DF1. All disks of the requested sets share one pool of browser pages (default: logical CPUs - 4),
+block) gets room by deleting `Stack` and `Echo` from its copy; both are resident in the AROS
+shell anyway. All disks of the requested sets share one pool of browser pages (default: logical CPUs - 4),
 the longest first by the test count in the baseline, so no slow disk starts last. cputest stops at the first difference; a disk is
 "pass" or shows that difference (expected and actual frame, registers).
 `tests/cputester-baseline.json` records how far every disk gets.
