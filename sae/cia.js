@@ -676,7 +676,7 @@ function SAEO_CIA() {
 		}
 		// Not yet, add event to guarantee exact TOD inc position
 		ciab_tod_event_state = 2; // event active
-		SAER.events.event2_newevent_xx(-1, -hpos, 0, CIAB_tod_inc_event);
+		SAER.events.event2_newevent_xx(-1, -hpos * SAEC_Events_CYCLE_UNIT, 0, CIAB_tod_inc_event);
 	}
 
 	this.b_tod_handler = function(hoffset) { //CIAB_tod_handler()
@@ -687,7 +687,7 @@ function SAEO_CIA() {
 		if (checkalarm((ciabtod + 1) & 0xffffff, ciabalarm, true, 1)) {
 			// causes interrupt on this line, add event
 			ciab_tod_event_state = 2; // event active
-			SAER.events.event2_newevent_xx (-1, ciab_tod_hoffset, 0, CIAB_tod_inc_event);
+			SAER.events.event2_newevent_xx (-1, ciab_tod_hoffset * SAEC_Events_CYCLE_UNIT, 0, CIAB_tod_inc_event);
 		}
 	}
 
@@ -811,7 +811,7 @@ function SAEO_CIA() {
 		if (!ciaatodon)
 			return;
 
-		SAER.events.event2_newevent_xx(-1, cycles + TOD_INC_DELAY, 0, CIAA_tod_handler);
+		SAER.events.event2_newevent_xx(-1, (cycles + TOD_INC_DELAY) * SAEC_Events_CYCLE_UNIT, 0, CIAA_tod_handler);
 	}
 
 	function check_led() {
