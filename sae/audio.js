@@ -760,6 +760,9 @@ function SAEO_Audio() {
 		check_sound_buffers();
 	}
 
+	/* RH interpolation: per and evtime are in cycles (period * CYCLE_UNIT), so "<< 8" of the
+	   remainder overflowed 32 bits from period 16384 on and the ratio went negative; "* 256" is
+	   exact here */
 	function sample16i_rh_mono_handler() {
 		var data0, data1, data2, data3, data0p, data1p, data2p, data3p;
 		var delta, ratio; //ulong
@@ -781,16 +784,16 @@ function SAEO_Audio() {
 		} else data3 = data3p = 0;
 
 		delta = audio_channel[0].per;
-		ratio = ~~(((audio_channel[0].evtime % delta) << 8) / delta);
+		ratio = ~~(((audio_channel[0].evtime % delta) * 256) / delta);
 		data0 = (data0 * (256 - ratio) + data0p * ratio) >> 8;
 		delta = audio_channel[1].per;
-		ratio = ~~(((audio_channel[1].evtime % delta) << 8) / delta);
+		ratio = ~~(((audio_channel[1].evtime % delta) * 256) / delta);
 		data0 += (data1 * (256 - ratio) + data1p * ratio) >> 8;
 		delta = audio_channel[2].per;
-		ratio = ~~(((audio_channel[2].evtime % delta) << 8) / delta);
+		ratio = ~~(((audio_channel[2].evtime % delta) * 256) / delta);
 		data0 += (data2 * (256 - ratio) + data2p * ratio) >> 8;
 		delta = audio_channel[3].per;
-		ratio = ~~(((audio_channel[3].evtime % delta) << 8) / delta);
+		ratio = ~~(((audio_channel[3].evtime % delta) * 256) / delta);
 		data0 += (data3 * (256 - ratio) + data3p * ratio) >> 8;
 
 		var data = data0;
@@ -933,16 +936,16 @@ function SAEO_Audio() {
 		} else data3 = data3p = 0;
 
 		delta = audio_channel[0].per;
-		ratio = ~~(((audio_channel[0].evtime % delta) << 8) / delta);
+		ratio = ~~(((audio_channel[0].evtime % delta) * 256) / delta);
 		data0 = (data0 * (256 - ratio) + data0p * ratio) >> 8;
 		delta = audio_channel[1].per;
-		ratio = ~~(((audio_channel[1].evtime % delta) << 8) / delta);
+		ratio = ~~(((audio_channel[1].evtime % delta) * 256) / delta);
 		data1 = (data1 * (256 - ratio) + data1p * ratio) >> 8;
 		delta = audio_channel[2].per;
-		ratio = ~~(((audio_channel[2].evtime % delta) << 8) / delta);
+		ratio = ~~(((audio_channel[2].evtime % delta) * 256) / delta);
 		data1 += (data2 * (256 - ratio) + data2p * ratio) >> 8;
 		delta = audio_channel[3].per;
-		ratio = ~~(((audio_channel[3].evtime % delta) << 8) / delta);
+		ratio = ~~(((audio_channel[3].evtime % delta) * 256) / delta);
 		data0 += (data3 * (256 - ratio) + data3p * ratio) >> 8;
 		data2 = data0;
 		data2 = data2 << 1;
