@@ -599,7 +599,7 @@ function SAEO_CPU() {
 			// do burst fetch if cache enabled, not frozen, all slots invalid, no chip ram
 			if ((regs.cacr & (CACR030_DBE|CACR030_ED)) == (CACR030_DBE|CACR030_ED) && p1.lws == 0 &&
 				!c1.valid[1] && !c1.valid[2] && !c1.valid[3] &&
-				SAER_Memory_banktype[addr >> 16] == SAEC_Memory_banktype_FAST32
+				SAER_Memory_banktype[addr >>> 16] == SAEC_Memory_banktype_FAST32
 			) {
 				c1.data[1] = SAER_Memory_get32(addr + 4);
 				c1.data[2] = SAER_Memory_get32(addr + 8);
