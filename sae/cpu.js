@@ -6256,11 +6256,10 @@ function SAEO_CPU() {
 	/*-----------------------------------------------------------------------*/
 	/* System Control */
 
-	function I_BKPT(p) { /* >= 68010, FIX not implemented */
-		//SAEF_log(("I_BKPT vec %d", p.v));
-		//ccna
-		coreSyncPC();
-		return p.cyc;
+	function I_BKPT(p) { /* >= 68010 */
+		/* the breakpoint acknowledge cycle gets no answer on an Amiga, so the CPU takes the
+		   illegal instruction exception (as WinUAE does); it was a NOP before */
+		return coreIllegal(p.op);
 	}
 
 	function I_CHK_16(p) {
