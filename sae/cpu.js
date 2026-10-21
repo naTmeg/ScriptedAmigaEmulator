@@ -1682,6 +1682,10 @@ function SAEO_CPU() {
 			return;
 		}
 		setPC(newpc);
+		/* compatible core: drop the extension-word offset of the instruction that trapped
+		   (e.g. MOVEC in user mode), or the handler runs with a wrong PC. Only some paths
+		   (exception3f, address_error_fault, coreSyncPC) reset it before */
+		pc_offset = PC_OFFSET;
 		fill_prefetch();
 		exception_trace(nr);
 	}
