@@ -1642,7 +1642,17 @@ function SAEO_CPU() {
 		if (newpc & 1) {
 			if (nr == 2 || nr == 3)
 				SAER.m68k.cpu_halt(SAEC_CPU_halt_DOUBLE_FAULT);
-			else
+			else if (SAEV_config.cpu.model == SAEC_Config_CPU_Model_68000) {
+				/* odd handler address (cputester "vector" set, checked on real 68000s): the
+				   prefetch from it faults; the frame holds the handler address, the address of
+				   the vector as PC, the opcode (the vector number for interrupts) as IR, and
+				   I/N set for group-1 exceptions (illegal, privilege, trace, line A/F,
+				   interrupts) but not for TRAP, TRAPV, CHK and DIV */
+				if (interrupt)
+					regs.intmask = nr - 24;
+				var group1 = interrupt || nr == 4 || nr == 8 || nr == 9 || nr == 10 || nr == 11;
+				exception3f(interrupt ? vector_nr : regs.opcode, newpc, false, true, group1, (regs.vbr + 4 * vector_nr) >>> 0, false);
+			} else
 				exception3_notinstruction(regs.ir, newpc);
 			return;
 		}
