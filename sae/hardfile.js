@@ -234,7 +234,7 @@ function SAEO_Hardfile() {
 	}
 	function create_virtual_rdb(hfd) {
 		var cyl = hfd.ci.surfaces * hfd.ci.sectors;
-		var cyls = 262144 / (cyl * 512);
+		var cyls = Math.ceil(262144 / (cyl * 512)); /* whole cylinders: the partition starts at locyl = cyls */
 		var size = cyl * cyls * 512;
 
 		SAEF_log("hardfile.create_virtual_rdb() cyl %d, cyls %d, size %d", cyl, cyls, size);
