@@ -254,8 +254,9 @@ const SAEC_info = (function() {
 				canvas.requestPointerLock !== undefined
 			) info.video.pointerLock = true;
 
-			/* fullScreen API */
-			if (canvas.webkitRequestFullscreen !== undefined ||
+			/* fullScreen API: the standard one first, a browser without prefixes counted as none */
+			if (canvas.requestFullscreen !== undefined ||
+				canvas.webkitRequestFullscreen !== undefined ||
 				canvas.mozRequestFullScreen !== undefined ||
 				canvas.msRequestFullscreen !== undefined ||
 				canvas.requestFullScreen !== undefined

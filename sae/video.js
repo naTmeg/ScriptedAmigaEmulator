@@ -306,38 +306,40 @@ function SAEO_Video() {
 			SAER.input.joystick[1].enable();
 
 		if (SAEC_info.video.requestFullScreen) {
+			/* standard API first, the prefixed ones for old browsers */
 			hWnd.canvas.myRequestFullscreen =
+				hWnd.canvas.requestFullscreen ||
 				hWnd.canvas.webkitRequestFullscreen ||
 				hWnd.canvas.mozRequestFullScreen ||
 				hWnd.canvas.msRequestFullscreen ||
 				hWnd.canvas.requestFullScreen;
 
 			document.myFullscreenEnabled =
+				document.fullscreenEnabled ||
 				document.webkitFullscreenEnabled ||
 				document.mozFullScreenEnabled ||
-				document.msFullscreenEnabled ||
-				document.fullscreenEnabled;
+				document.msFullscreenEnabled;
 
 			document.myExitFullscreen =
+				document.exitFullscreen ||
 				document.webkitExitFullscreen ||
 				document.mozCancelFullScreen ||
-				document.msExitFullscreen ||
-				document.exitFullscreen;
+				document.msExitFullscreen;
 
-				  if (typeof document.onwebkitfullscreenchange != "undefined") document.addEventListener("webkitfullscreenchange", fullscreenChange, false);
+				  if (typeof document.onfullscreenchange != "undefined") document.addEventListener("fullscreenchange", fullscreenChange, false);
+			else if (typeof document.onwebkitfullscreenchange != "undefined") document.addEventListener("webkitfullscreenchange", fullscreenChange, false);
 			else if (typeof document.onmozfullscreenchange != "undefined") document.addEventListener("mozfullscreenchange", fullscreenChange, false);
 			else if (typeof document.onMSFullscreenChange != "undefined") document.addEventListener("MSFullscreenChange", fullscreenChange, false);
-			else if (typeof document.onfullscreenchange != "undefined") document.addEventListener("fullscreenchange", fullscreenChange, false);
 		}
 		return hWnd;
 	}
 
 	function DestroyWindow(hWnd) {
 		if (SAEC_info.video.requestFullScreen) {
-				  if (typeof document.onwebkitfullscreenchange != "undefined") document.removeEventListener("webkitfullscreenchange", fullscreenChange, false);
+				  if (typeof document.onfullscreenchange != "undefined") document.removeEventListener("fullscreenchange", fullscreenChange, false);
+			else if (typeof document.onwebkitfullscreenchange != "undefined") document.removeEventListener("webkitfullscreenchange", fullscreenChange, false);
 			else if (typeof document.onmozfullscreenchange != "undefined") document.removeEventListener("mozfullscreenchange", fullscreenChange, false);
 			else if (typeof document.onMSFullscreenChange != "undefined") document.removeEventListener("MSFullscreenChange", fullscreenChange, false);
-			else if (typeof document.onfullscreenchange != "undefined") document.removeEventListener("fullscreenchange", fullscreenChange, false);
 		}
 
 		if (SAEV_config.ports[0].type == SAEC_Config_Ports_Type_Joy && SAEV_config.ports[0].device != SAEC_Config_Ports_Device_None)
