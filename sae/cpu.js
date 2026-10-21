@@ -2162,7 +2162,7 @@ function SAEO_CPU() {
 				//SAEF_log(("put_bitfield_4 {%d:%d}, data $%08x $%08x, val $%x, out32 $%x\n", offset,width, data[0],data[1],val, out32));
 				break;
 			case 5:
-				out32 = (data[0] | (val >> (offs - 32))) >>> 0;
+				out32 = (data[0] | (val >>> (offs - 32))) >>> 0; /* unsigned: ">>" filled the bits before the field with ones */
 				out8 = ((data[1] | (val << (40 - offs))) >>> 0) & 0xff;
 				corePut32(addr, out32); //data[0] | (val >> (offs - 32)));
 				corePut8(addr + 4, out8); //data[1] | (val << (40 - offs)));
@@ -5552,9 +5552,10 @@ function SAEO_CPU() {
 			bdata[0] = (tmp & ((1 << (32 - width)) - 1)) >>> 0;
 		} else {
 			if (offset & 0x80000000) offset -= 0x100000000;
-			var addr = exEAtab[p.ea](1);
-			if (offset) addr += Math.truncate(offset / 8);
-			var bf = getBitfield(addr, Math.abs(offset), width);
+			/* the offset is signed: bit -1 is bit 0 of the byte before <ea>, so round the byte
+			   offset down and take the bit within that byte from the low three bits */
+			var addr = (exEAtab[p.ea](1) + (offset >> 3)) >>> 0;
+			var bf = getBitfield(addr, offset & 7, width);
 			tmp = bf[0];
 			bdata = bf[1];
 		}
@@ -5602,7 +5603,7 @@ function SAEO_CPU() {
 				tmp = bdata[0] | (tmp << (32 - width));
 				regs.d[p.ea & 7] = (tmp >>> offset) | (tmp << (32 - offset));
 			} else {
-				putBitfield(addr, Math.abs(offset), width, bdata, tmp);
+				putBitfield(addr, offset & 7, width, bdata, tmp);
 			}
 		}
 		/*if (p.ea >> 3 == 0)
