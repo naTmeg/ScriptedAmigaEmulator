@@ -72,6 +72,7 @@ function SAEO_Video() {
 		this.pixbytes = pixbytes;
 		this.rowbytes = this.width_allocated * this.pixbytes;
 		this.data = new ArrayBuffer(this.width_allocated * this.height_allocated * this.pixbytes);
+		this.allocated = false; /* GL texture storage and vertex quad set up for this size */
 	}
 
 	function Surface(width, height, pixbytes) {
@@ -84,6 +85,13 @@ function SAEO_Video() {
 		this.data = new ArrayBuffer(this.width_allocated * this.height_allocated * this.pixbytes);
 		this.imageData = null;
 	}
+	/* the ImageData that putImageData shows; when the sizes agree the emulator draws straight
+	   into its buffer, which saves copying the whole frame every time */
+	Surface.prototype.attach = function(ctx) {
+		this.imageData = ctx.createImageData(this.width, this.height);
+		if (this.imageData.data.byteLength == this.data.byteLength)
+			this.data = this.imageData.data.buffer;
+	};
 
 	function HWND() {
 		this.canvas = null;
@@ -247,8 +255,11 @@ function SAEO_Video() {
 				}, false);
 				hWnd.canvas.addEventListener("webglcontextrestored", function() {
 					SAEF_info("video.CreateWindow() WebGL context restored");
-					if (hAmigaWnd !== null && hAmigaWnd.canvas === this && (currentmode.flags & DM_WEBGL))
+					if (hAmigaWnd !== null && hAmigaWnd.canvas === this && (currentmode.flags & DM_WEBGL)) {
 						setupWebGL(hAmigaWnd.ctx, currentmode.native_width, currentmode.native_height);
+						if (hAmigaWnd.texture !== null)
+							hAmigaWnd.texture.allocated = false;
+					}
 				}, false);
 			}
 		}
@@ -1120,7 +1131,7 @@ function SAEO_Video() {
 		}*/
 		if (dd) {
 			hAmigaWnd.surface = new Surface(width, height, 4);
-			hAmigaWnd.surface.imageData = hAmigaWnd.ctx.createImageData(width, height);
+			hAmigaWnd.surface.attach(hAmigaWnd.ctx);
 			currentmode.pitch = hAmigaWnd.surface.rowbytes;
 		}
 
@@ -1986,7 +1997,7 @@ function SAEO_Video() {
 		}
 		else if (currentmode.flags & DM_CANVAS) {
 			hAmigaWnd.surface = new Surface(w, h, 4);
-			hAmigaWnd.surface.imageData = hAmigaWnd.ctx.createImageData(w, h);
+			hAmigaWnd.surface.attach(hAmigaWnd.ctx);
 		}
 		/*else if (currentmode.flags & DM_D3D) {
 			if (!D3D_alloctexture(w, h)) {
@@ -2199,19 +2210,25 @@ function SAEO_Video() {
 			var y1 = 0;
 			var y2 = tex.height;
 
-			if (SAER_Playfield_gfxvidinfo.drawbuffer.pixbytes == 2)
-				ctx.texImage2D(ctx.TEXTURE_2D, 0, ctx.RGB, tex.width, tex.height, 0, ctx.RGB, ctx.UNSIGNED_SHORT_5_6_5, new Uint16Array(tex.data));
-			else
-				ctx.texImage2D(ctx.TEXTURE_2D, 0, ctx.RGBA, tex.width, tex.height, 0, ctx.RGBA, ctx.UNSIGNED_BYTE, new Uint8Array(tex.data));
-
-			ctx.bufferData(ctx.ARRAY_BUFFER, new Float32Array([x1,y1, x2,y1, x1,y2,  x1,y2, x2,y1, x2,y2]), ctx.STATIC_DRAW);
+			/* allocate the texture and upload the (constant) quad once per size, then only
+			   replace the pixels: texImage2D every frame reallocates the texture */
+			var fmt = tex.pixbytes == 2 ? ctx.RGB : ctx.RGBA;
+			var type = tex.pixbytes == 2 ? ctx.UNSIGNED_SHORT_5_6_5 : ctx.UNSIGNED_BYTE;
+			var pixels = tex.pixbytes == 2 ? new Uint16Array(tex.data) : new Uint8Array(tex.data);
+			if (!tex.allocated) {
+				ctx.texImage2D(ctx.TEXTURE_2D, 0, fmt, tex.width, tex.height, 0, fmt, type, pixels);
+				ctx.bufferData(ctx.ARRAY_BUFFER, new Float32Array([x1,y1, x2,y1, x1,y2,  x1,y2, x2,y1, x2,y2]), ctx.STATIC_DRAW);
+				tex.allocated = true;
+			} else
+				ctx.texSubImage2D(ctx.TEXTURE_2D, 0, 0, 0, tex.width, tex.height, fmt, type, pixels);
 			ctx.drawArrays(ctx.TRIANGLES, 0, 6);
 			render_ok = true;
 		}
 		else if (currentmode.flags & DM_CANVAS) {
 			var sur = hAmigaWnd.surface;
 
-			sur.imageData.data.set(new Uint8ClampedArray(sur.data));
+			if (sur.data !== sur.imageData.data.buffer)
+				sur.imageData.data.set(new Uint8ClampedArray(sur.data));
 			hAmigaWnd.ctx.putImageData(sur.imageData, 0, 0);
 			render_ok = true;
 		}
