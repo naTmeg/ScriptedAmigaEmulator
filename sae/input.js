@@ -1116,6 +1116,11 @@ function SAEO_Keyboard() {
 		}
 		if (e.code == "F11" || e.code == "F12")
 			return;
+		/* typing into a form field (the settings next to the emulator) is not for the Amiga
+		   and must reach the field. A key held down before still gets its keyup */
+		var t = e.target;
+		if (t && (t.isContentEditable || t.nodeName == "INPUT" || t.nodeName == "TEXTAREA" || t.nodeName == "SELECT") && (down || !(e.code in pressed)))
+			return;
 
 		//SAEF_log("Keyboard.newHandleKey() down %d, code %s, loc %d, alt %d, shift %d, ctrl %d, meta %d", down?1:0, e.code, e.location, e.altKey?1:0, e.shiftKey?1:0, e.ctrlKey?1:0, e.metaKey?1:0);
 
