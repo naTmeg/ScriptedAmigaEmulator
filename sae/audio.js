@@ -123,9 +123,13 @@ function SAEO_Audio() {
 	/*---------------------------------*/
 
 	function cachediff(write, read) {
+		/* signed ring distance in (-frames/2, frames/2]. More than half ahead cannot be real
+		   (cachewrite stops at a quarter): the reader has overtaken the writer across the
+		   wrap, a negative distance (underrun). It was returned as frames - diff, positive,
+		   so cacheread played stale samples instead of silence */
 		var diff = write - read;
 		if (diff > cache.frames >> 1)
-			diff = cache.frames - write + read;
+			diff -= cache.frames;
 		else if (diff < -cache.frames >> 1)
 			diff = cache.frames - read + write;
 		return diff;
