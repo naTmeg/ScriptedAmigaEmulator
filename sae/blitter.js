@@ -146,6 +146,7 @@ function SAEO_Blitter() {
 
 	var blit_func_tab = null; //OWN
 	var blit_filltable = null; //u8 [256][4][2]
+	var blit_ptr = { val:0 }; /* for the (disabled) alloc_cycle_blitter calls: one object, not one per call */
 	var blit_masktable = null; //global u32 [BLITTER_MAX_WORDS]
 	//var bltstate = 0; -> SAEV_Blitter_bltstate
 	//var blit_interrupt = false; -> SAEV_Blitter_interrupt
@@ -681,7 +682,7 @@ function SAEO_Blitter() {
 
 	//#ifdef CPUEMU_13
 	function decide_blitter_line(hsync, hpos) {
-		var ptr = { val:0 };
+		var ptr = blit_ptr;
 
 		if (blit_final && blt_info.vblitsize)
 			blit_final = 0;
@@ -860,7 +861,7 @@ function SAEO_Blitter() {
 	}
 
 	function blitter_doddma(hpos) {
-		var d, ptr = { val:0 };
+		var d, ptr = blit_ptr;
 
 		if (blit_dmacount2 == 0) {
 			d = blitter_doblit();
@@ -904,7 +905,7 @@ function SAEO_Blitter() {
 	function blitter_dodma(ch, hpos) {
 		var dat, reg;
 		var addr;
-		var ptr = { val:0 };
+		var ptr = blit_ptr;
 
 		switch (ch) {
 			case 1:

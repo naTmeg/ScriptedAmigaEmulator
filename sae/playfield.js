@@ -3506,6 +3506,17 @@ function SAEO_Playfield() {
 	const dh_line = 1;
 	const dh_emerg = 2;
 
+	/* typed views on the line buffers, made once per buffer and pixel size instead of on every line */
+	var line_view_buf = [null, null], line_view_bytes = [0, 0], line_view_arr = [null, null];
+	function line_view(k, buf, pixbytes) {
+		if (line_view_buf[k] !== buf || line_view_bytes[k] != pixbytes) {
+			line_view_buf[k] = buf;
+			line_view_bytes[k] = pixbytes;
+			line_view_arr[k] = pixbytes == 2 ? new Uint16Array(buf) : new Uint32Array(buf);
+		}
+		return line_view_arr[k];
+	}
+
 	function pfield_draw_line(vb, lineno, gfx_ypos, follow_ypos) {
 		var border = 0;
 		var do_double = 0;
@@ -3573,17 +3584,11 @@ function SAEO_Playfield() {
 		xlinebuffer_pos = 0; //OWN
 		if (gfxvidinfo.drawbuffer.linemem !== null) {
 			dh = dh_line;
-			if (gfxvidinfo.drawbuffer.pixbytes == 2)
-				xlinebuffer = new Uint16Array(gfxvidinfo.drawbuffer.linemem);
-			else
-				xlinebuffer = new Uint32Array(gfxvidinfo.drawbuffer.linemem);
+			xlinebuffer = line_view(0, gfxvidinfo.drawbuffer.linemem, gfxvidinfo.drawbuffer.pixbytes);
 		}
 		if (xlinebuffer === null && gfxvidinfo.drawbuffer.emergmem !== null && do_double && (border == 0 || have_color_changes)) {
 			dh = dh_emerg;
-			if (gfxvidinfo.drawbuffer.pixbytes == 2)
-				xlinebuffer = new Uint16Array(gfxvidinfo.drawbuffer.emergmem);
-			else
-				xlinebuffer = new Uint32Array(gfxvidinfo.drawbuffer.emergmem);
+			xlinebuffer = line_view(1, gfxvidinfo.drawbuffer.emergmem, gfxvidinfo.drawbuffer.pixbytes);
 		}
 		if (xlinebuffer === null) {
 			dh = dh_buf;
@@ -6873,7 +6878,7 @@ function SAEO_Playfield() {
 		#else
 		uae_u64 shiftbuffer[2];
 		#endif*/
-		var shiftbuffer = new Uint32Array(4);
+		var shiftbuffer = fetch_shiftbuffer; /* all four words are set below before use */
 		var outval = outword[plane]; //u32
 		//var fetchval = fetched_aga[plane]; //u64
 		var fetchval_hi = fetched_aga_hi[plane];
@@ -8342,10 +8347,14 @@ function SAEO_Playfield() {
 		}
 	}
 
+	/* decide_sprites() and the AGA fetch use only the entries they have written, so they keep
+	   their buffers instead of allocating new ones on every call */
+	var decide_sprites_nrs = new Int32Array(MAX_SPRITES * 2), decide_sprites_posns = new Int32Array(MAX_SPRITES * 2);
+	var fetch_shiftbuffer = new Uint32Array(4);
 	function decide_sprites(hpos, usepointx) {
 		if (typeof usepointx == "undefined") var usepointx = false;
-		var nrs = new Int32Array(MAX_SPRITES * 2);
-		var posns = new Int32Array(MAX_SPRITES * 2);
+		var nrs = decide_sprites_nrs;
+		var posns = decide_sprites_posns;
 		var width = sprite_width;
 		var sscanmask = 0x100 << sprite_buffer_res;
 		var gotdata = false;
