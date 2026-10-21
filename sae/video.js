@@ -233,7 +233,23 @@ function SAEO_Video() {
 				hWnd.ctx = hWnd.canvas.getContext("webgl", glParams) || hWnd.canvas.getContext("experimental-webgl", glParams);
 				//hWnd.texture = new Texture(width, height, SAEV_config.video.colorMode < 5 : 2 : 4);
 			} catch(e) {
+				hWnd.ctx = null;
+			}
+			if (!hWnd.ctx)
 				throw SAEE_Video_RequiresWegGl;
+			if (!hWnd.canvas.saeContextLost) {
+				/* the GPU process can drop the context (driver reset, too many contexts, sleep):
+				   allow the browser to restore it and set up shaders, buffers and texture again */
+				hWnd.canvas.saeContextLost = true;
+				hWnd.canvas.addEventListener("webglcontextlost", function(e) {
+					SAEF_warn("video.CreateWindow() WebGL context lost");
+					e.preventDefault();
+				}, false);
+				hWnd.canvas.addEventListener("webglcontextrestored", function() {
+					SAEF_info("video.CreateWindow() WebGL context restored");
+					if (hAmigaWnd !== null && hAmigaWnd.canvas === this && (currentmode.flags & DM_WEBGL))
+						setupWebGL(hAmigaWnd.ctx, currentmode.native_width, currentmode.native_height);
+				}, false);
 			}
 		}
 		else if (SAEV_config.video.api == SAEC_Config_Video_API_Canvas) {

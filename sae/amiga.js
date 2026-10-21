@@ -238,8 +238,13 @@ const SAEC_info = (function() {
 					preserveDrawingBuffer: true,
 					failIfMajorPerformanceCaveat: false
 				};
-				ctx = canvas.getContext("webgl", glParams) || canvas.getContext("experimental-webgl", glParams);
-				info.video.webGL = true;
+				/* a canvas of its own: this one already has a 2d context, so "webgl" would always be null.
+				   getContext returns null when WebGL is blocked or unavailable, it does not throw. */
+				var glCanvas = document.createElement("canvas");
+				ctx = glCanvas.getContext("webgl", glParams) || glCanvas.getContext("experimental-webgl", glParams);
+				info.video.webGL = !!ctx;
+				if (ctx && ctx.getExtension("WEBGL_lose_context"))
+					ctx.getExtension("WEBGL_lose_context").loseContext(); /* browsers allow only a few live contexts */
 			} catch(e) {}
 
 			/* pointerLock API */
