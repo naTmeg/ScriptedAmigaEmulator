@@ -683,8 +683,11 @@ function SAEO_Audio() {
 
 			//PUT_SOUND_WORD(w);
 			//PUT_SOUND_WORD(tmp);
-			paula.buffer[1][paula.pointer] = w;
-			paula.buffer[0][paula.pointer] = tmp;
+			/* w is mostly the left sample (lnew * mul2), tmp the right one: channel 0 is left,
+			   as in the unmixed path below. They were swapped, so any separation below 100 %
+			   or a stereo delay exchanged left and right */
+			paula.buffer[0][paula.pointer] = w;
+			paula.buffer[1][paula.pointer] = tmp;
 		} else
 			//PUT_SOUND_WORD(w);
 			paula.buffer[0][paula.pointer] = w;
