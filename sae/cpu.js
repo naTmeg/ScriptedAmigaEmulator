@@ -9601,8 +9601,8 @@ function SAEO_CPU() {
 		}
 		//TST
 		{
-			var en = [M_rdd, M_rda, M_ria, M_ripo, M_ripr, M_rid, M_rii, M_absw, M_absl, M_imm];
-			if (model >= 68020) en.push(M_pcid, M_pcii);
+			var en = [M_rdd, M_ria, M_ripo, M_ripr, M_rid, M_rii, M_absw, M_absl];
+			if (model >= 68020) en.push(M_rda, M_imm, M_pcid, M_pcii); /* 68000/010: data alterable only */
 			for (var z = 0; z < 3; z++) {
 				var z2 = z == 0 ? 1 : (z == 1 ? 2 : 4);
 				for (var ea = 0; ea < 61; ea++) {
