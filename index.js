@@ -450,10 +450,10 @@ function switchScreenWindow(s) {
 	var e = document.getElementById("controls_sw");
 	if (s) {
 		e.innerHTML = "Window";
-		e.onclick = function() { screen(false); };
+		e.onclick = function() { screenMode(false); };
 	} else {
 		e.innerHTML = "Screen";
-		e.onclick = function() { screen(true); };
+		e.onclick = function() { screenMode(true); };
 	}
 }
 
@@ -1525,7 +1525,7 @@ function advandedStart() {
 	}
 }
 
-function stop() {
+function stopEmulation() { /* not "stop": that would hide window.stop */
 	sae.stop(); /* send stop-request */
 }
 
@@ -1537,7 +1537,7 @@ function reset() {
 	sae.reset(false, false);
 }
 
-function screen(s) {
+function screenMode(s) { /* not "screen": that would hide window.screen */
 	sae.screen(s);
 
 	screened = s;
@@ -2655,7 +2655,7 @@ function portUpdate(n) {
 /* hooks */
 
 function hook_log_error(err, msg) {
-	stop();
+	stopEmulation();
 	if (msg.length)
 		alert(msg);
 }
