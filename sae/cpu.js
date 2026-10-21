@@ -1640,6 +1640,10 @@ function SAEO_CPU() {
 		last_writeaccess_for_exception_3 = writeaccess;
 		last_instructionaccess_for_exception_3 = instructionaccess;
 		last_notinstruction_for_exception_3 = notinstruction;
+		/* the frame PC is taken; drop the extension-word offset of the aborted instruction
+		   (JMP/JSR (d16,An) etc.), or the first instruction of the handler runs with a wrong
+		   PC (as address_error_fault() already does for data accesses) */
+		pc_offset = PC_OFFSET;
 		exception(3);
 	}
 	function exception3_notinstruction(opcode, addr) {
