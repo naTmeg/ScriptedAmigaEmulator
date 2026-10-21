@@ -2587,18 +2587,31 @@ function mountCloseSetup(use) {
 		var bootpri = getText("cfg_mount_bootpri");
 		var devname = getText("cfg_mount_devname", true);
 
-		if (blocksize < 512 || blocksize > 65536 || (blocksize & 511) != 0) {
-			alert("'Blocksize' must be smaller or equal 65536 and a multiple of 512.");
+		/* the fields hold Number(text): NaN for anything that is not a number, which passed
+		   every comparison below; surfaces or sectors 0 divided by zero later */
+		var isInt = function(v, lo, hi) { return Number.isInteger(v) && v >= lo && v <= hi; };
+		if (!isInt(surfaces, 1, 65535)) {
+			alert("'Surfaces' must be a whole number from 1 to 65535.");
+			document.getElementById("cfg_mount_surfaces").focus();
+			return;
+		}
+		if (!isInt(sectors, 1, 65535)) {
+			alert("'Sectors' must be a whole number from 1 to 65535.");
+			document.getElementById("cfg_mount_sectors").focus();
+			return;
+		}
+		if (!isInt(blocksize, 512, 65536) || (blocksize & (blocksize - 1)) != 0) {
+			alert("'Blocksize' must be a power of two from 512 to 65536.");
 			document.getElementById("cfg_mount_blocksize").focus();
 			return;
 		}
 		var blocks = Math.floor(ci.file.size / blocksize);
-		if (reserved >= blocks) {
-			alert("Number of 'Reserved'-blocks is beyond the disk-size.");
+		if (!isInt(reserved, 0, blocks - 1)) {
+			alert("'Reserved' must be a whole number of blocks, smaller than the disk.");
 			document.getElementById("cfg_mount_reserved").focus();
 			return;
 		}
-		if (isNaN(bootpri)) {
+		if (!Number.isInteger(bootpri)) {
 			alert("The value at 'Bootpri' is not a number.");
 			document.getElementById("cfg_mount_bootpri").focus();
 			return;
