@@ -1028,6 +1028,9 @@ function SAEO_CIA() {
 					tmp |= SAER.input.handle_parport_joystick(1, ciabpra, ciabdra);*/
 			}
 			//#endif
+			/* pins set as outputs (DTR, RTS, ...) read back what was written to them;
+			   without the serial port enabled they read 0 */
+			tmp = (tmp & ~ciabdra) | (ciabpra & ciabdra);
 			tmp = SAER.dongle.cia_read(1, reg, tmp);
 			return tmp;
 		case 1:
