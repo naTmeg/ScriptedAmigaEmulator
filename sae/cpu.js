@@ -1772,7 +1772,8 @@ function SAEO_CPU() {
 
 		if (SAEV_Memory_cloantoRom && (opcode & 0xF100) == 0x7100) {
 			regs.d[(opcode >> 9) & 7] = extByte(opcode & 0xFF);
-			SAER.cpu.incPC_normal(2);
+			/* no incPC_normal(2) as in WinUAE: coreIllegal() has synced the PC past the
+			   opcode already, adding 2 skipped the next instruction */
 			fill_prefetch();
 			return true;
 		}
@@ -1795,7 +1796,7 @@ function SAEO_CPU() {
 		if ((opcode & 0xF000) == 0xA000 && inrt) {
 			// Calltrap.
 			SAEF_log("cpu.illegal() Trap %03X at %08X, call...", opcode & 0xFFF, pc);
-			SAER.cpu.incPC_normal(2);
+			/* PC is already past the trap (see above): the RTS after it must run */
 			SAER.autoconf.m68k_handle_trap(opcode & 0xFFF);
 			fill_prefetch();
 			return true;
