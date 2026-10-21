@@ -3229,11 +3229,11 @@ function SAEO_CPU() {
 			} else if (dm == 4 || absDst)
 				flgLogical(s, 0x80000000);
 		} else { /* memory source */
-			if (dm == 2 || dm == 3) { /* low word: Z, N */
+			if (dm == 2 || dm == 3 || dea == (7 << 3 | 1)) { /* low word: Z, N (abs.L too, cputester) */
 				regs.c = regs.v = false;
 				regs.z = (s & 0xffff) == 0;
 				regs.n = (s & 0x8000) != 0;
-			} else if (dm == 4 || dm == 5 || dm == 6 || absDst)
+			} else if (dm == 4 || dm == 5 || dm == 6 || dea == (7 << 3 | 0)) /* abs.W: normal */
 				flgLogical(s, 0x80000000);
 		}
 		if (dm == 4) {
