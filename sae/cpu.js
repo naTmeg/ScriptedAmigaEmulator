@@ -851,7 +851,11 @@ function SAEO_CPU() {
 	}
 
 	function syncPC() {
+		/* keep instruction_pc: setPC() also sets it, and the format $2 frames of CHK, TRAPcc,
+		   TRAPV and DIV by zero stack it as the address of the instruction */
+		var ipc = regs.instruction_pc;
 		setPC(getPC());
+		regs.instruction_pc = ipc;
 	}
 
 	/*function setPC_default(pc) {
