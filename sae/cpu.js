@@ -1603,7 +1603,7 @@ function SAEO_CPU() {
 				stackPut16(0xb000 + vector_nr * 4);
 
 				SAEF_log("cpu.exception() %d (%x) at %x -> %x!", nr, regs.instruction_pc, currpc, SAER_Memory_get32(regs.vbr + 4 * vector_nr));
-			} else if (nr == 5 || nr == 6 || nr == 7 || nr == 9) {
+			} else if ((nr == 5 || nr == 6 || nr == 7 || nr == 9) && SAEV_config.cpu.model >= SAEC_Config_CPU_Model_68020) { /* format $2; the 68010 knows only $0 and $8 */
 				//regs.a[7] -= 4; corePut32(regs.a[7], regs.instruction_pc);
 				//regs.a[7] -= 2; corePut16(regs.a[7], 0x2000 + vector_nr * 4);
 				stackPut32(regs.instruction_pc);
