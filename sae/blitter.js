@@ -412,9 +412,9 @@ function SAEO_Blitter() {
 					if (blitfill) {
 						var d = blt_info.bltddat;
 						var ifemode = blitife ? 2 : 0;
-						var fc1 = blit_filltable[d & 255][ifemode + blitfc][1];
-						blt_info.bltddat = (blit_filltable[d & 255][ifemode + blitfc][0] + (blit_filltable[d >> 8][ifemode + fc1][0] << 8));
-						blitfc = blit_filltable[d >> 8][ifemode + fc1][1];
+						var fc1 = blit_filltable[(((d & 255) << 2) + ifemode + blitfc) << 1 | 1];
+						blt_info.bltddat = (blit_filltable[(((d & 255) << 2) + ifemode + blitfc) << 1 | 0] + (blit_filltable[(((d >> 8) << 2) + ifemode + fc1) << 1 | 0] << 8));
+						blitfc = blit_filltable[(((d >> 8) << 2) + ifemode + fc1) << 1 | 1];
 					}
 					if (blt_info.bltddat)
 						blt_info.blitzero = 0;
@@ -513,9 +513,9 @@ function SAEO_Blitter() {
 					if (blitfill) {
 						var d = blt_info.bltddat;
 						var ifemode = blitife ? 2 : 0;
-						var fc1 = blit_filltable[d & 255][ifemode + blitfc][1];
-						blt_info.bltddat = (blit_filltable[d & 255][ifemode + blitfc][0] + (blit_filltable[d >> 8][ifemode + fc1][0] << 8));
-						blitfc = blit_filltable[d >> 8][ifemode + fc1][1];
+						var fc1 = blit_filltable[(((d & 255) << 2) + ifemode + blitfc) << 1 | 1];
+						blt_info.bltddat = (blit_filltable[(((d & 255) << 2) + ifemode + blitfc) << 1 | 0] + (blit_filltable[(((d >> 8) << 2) + ifemode + fc1) << 1 | 0] << 8));
+						blitfc = blit_filltable[(((d >> 8) << 2) + ifemode + fc1) << 1 | 1];
 					}
 					if (blt_info.bltddat)
 						blt_info.blitzero = 0;
@@ -851,9 +851,9 @@ function SAEO_Blitter() {
 		if ((bltcon1 & 0x18)) {
 			var d = ddat;
 			var ifemode = blitife ? 2 : 0;
-			var fc1 = blit_filltable[d & 255][ifemode + blitfc][1];
-			ddat = (blit_filltable[d & 255][ifemode + blitfc][0] + (blit_filltable[d >> 8][ifemode + fc1][0] << 8));
-			blitfc = blit_filltable[d >> 8][ifemode + fc1][1];
+			var fc1 = blit_filltable[(((d & 255) << 2) + ifemode + blitfc) << 1 | 1];
+			ddat = (blit_filltable[(((d & 255) << 2) + ifemode + blitfc) << 1 | 0] + (blit_filltable[(((d >> 8) << 2) + ifemode + fc1) << 1 | 0] << 8));
+			blitfc = blit_filltable[(((d >> 8) << 2) + ifemode + fc1) << 1 | 1];
 		}
 		if (ddat) blt_info.blitzero = 0;
 		return ddat;
@@ -1805,13 +1805,13 @@ function SAEO_Blitter() {
 		for (var i = 0; i < blit_masktable.length; i++)
 			blit_masktable[i] = 0xFFFF;
 
-		blit_filltable = new Array(256);
+		/* one flat table, [(d * 4 + mode) * 2 + 0] = data, [... + 1] = fill carry, instead of
+		   256 x 4 small arrays: one lookup instead of three per byte in fill mode */
+		blit_filltable = new Uint8Array(256 * 4 * 2);
 		for (var d = 0; d < 256; d++) {
-			blit_filltable[d] = new Array(4);
 			for (var i = 0; i < 4; i++) {
 				var fc = i & 1;
 				var data = d; //u8
-				blit_filltable[d][i] = new Uint8Array(2);
 				for (var fillmask = 1; fillmask != 0x100; fillmask <<= 1) {
 					var tmp = data; //u16
 					if (fc) {
@@ -1822,8 +1822,8 @@ function SAEO_Blitter() {
 					}
 					if (tmp & fillmask) fc = !fc;
 				}
-				blit_filltable[d][i][0] = data;
-				blit_filltable[d][i][1] = fc;
+				blit_filltable[(d * 4 + i) * 2] = data;
+				blit_filltable[(d * 4 + i) * 2 + 1] = fc ? 1 : 0;
 			}
 		}
 	}
