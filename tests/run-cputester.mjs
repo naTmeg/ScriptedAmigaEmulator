@@ -4,7 +4,7 @@
  * and read back through sae.getDisk(), so every disk gives "pass" or the first mismatch.
  *
  *   node tests/run-cputester.mjs                       all disks of the "address" set
- *   node tests/run-cputester.mjs --filter CLR          disks whose name contains CLR
+ *   node tests/run-cputester.mjs --filter CLR          disks whose name contains CLR ("CLR|NEG": either)
  *   node tests/run-cputester.mjs --set basic --jobs 8
  *   node tests/run-cputester.mjs --check               exit 1 if a disk does worse than tests/cputester-baseline.json
  *   node tests/run-cputester.mjs --write-baseline
@@ -50,7 +50,8 @@ const disks = [];
 	}
 })(srcDir);
 disks.sort();
-const list = disks.filter((f) => !filter || path.basename(f).includes(filter));
+const filters = filter.split("|").filter(Boolean); /* alternatives: --filter "atCLR|atNEG" */
+const list = disks.filter((f) => !filters.length || filters.some((x) => path.basename(f).includes(x)));
 
 /* patch s/startup-sequence: cputest output to out.txt, then an end marker */
 fs.mkdirSync(runDir, { recursive: true });

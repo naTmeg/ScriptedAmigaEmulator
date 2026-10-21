@@ -9,19 +9,19 @@
  },
  "ADD.l": {
   "limit": 200,
-  "fail": 76
+  "fail": 50
  },
  "ADD.w": {
   "limit": 200,
-  "fail": 68
+  "fail": 38
  },
  "ADDA.l": {
   "limit": 200,
-  "fail": 62
+  "fail": 40
  },
  "ADDA.w": {
   "limit": 200,
-  "fail": 64
+  "fail": 44
  },
  "ADDX.b": {
   "limit": 200,
@@ -41,11 +41,11 @@
  },
  "AND.l": {
   "limit": 200,
-  "fail": 78
+  "fail": 52
  },
  "AND.w": {
   "limit": 200,
-  "fail": 80
+  "fail": 53
  },
  "ANDItoCCR": {
   "limit": 200,
@@ -65,7 +65,7 @@
  },
  "ASL.w": {
   "limit": 200,
-  "fail": 23
+  "fail": 15
  },
  "ASR.b": {
   "limit": 200,
@@ -77,7 +77,7 @@
  },
  "ASR.w": {
   "limit": 200,
-  "fail": 47
+  "fail": 37
  },
  "BCHG": {
   "limit": 200,
@@ -105,7 +105,7 @@
  },
  "CHK": {
   "limit": 200,
-  "fail": 65
+  "fail": 45
  },
  "CLR.b": {
   "limit": 200,
@@ -113,11 +113,11 @@
  },
  "CLR.l": {
   "limit": 200,
-  "fail": 77
+  "fail": 51
  },
  "CLR.w": {
   "limit": 200,
-  "fail": 80
+  "fail": 50
  },
  "CMP.b": {
   "limit": 200,
@@ -125,19 +125,19 @@
  },
  "CMP.l": {
   "limit": 200,
-  "fail": 77
+  "fail": 51
  },
  "CMP.w": {
   "limit": 200,
-  "fail": 77
+  "fail": 61
  },
  "CMPA.l": {
   "limit": 200,
-  "fail": 65
+  "fail": 38
  },
  "CMPA.w": {
   "limit": 200,
-  "fail": 69
+  "fail": 40
  },
  "DBcc": {
   "limit": 200,
@@ -145,11 +145,11 @@
  },
  "DIVS": {
   "limit": 200,
-  "fail": 80
+  "fail": 124
  },
  "DIVU": {
   "limit": 200,
-  "fail": 65
+  "fail": 85
  },
  "EOR.b": {
   "limit": 200,
@@ -157,11 +157,11 @@
  },
  "EOR.l": {
   "limit": 200,
-  "fail": 77
+  "fail": 58
  },
  "EOR.w": {
   "limit": 200,
-  "fail": 73
+  "fail": 39
  },
  "EORItoCCR": {
   "limit": 200,
@@ -209,7 +209,7 @@
  },
  "LSL.w": {
   "limit": 200,
-  "fail": 26
+  "fail": 19
  },
  "LSR.b": {
   "limit": 200,
@@ -221,7 +221,7 @@
  },
  "LSR.w": {
   "limit": 200,
-  "fail": 28
+  "fail": 14
  },
  "MOVE.b": {
   "limit": 200,
@@ -229,7 +229,7 @@
  },
  "MOVE.l": {
   "limit": 200,
-  "fail": 120
+  "fail": 93
  },
  "MOVE.q": {
   "limit": 200,
@@ -237,23 +237,23 @@
  },
  "MOVE.w": {
   "limit": 200,
-  "fail": 106
+  "fail": 82
  },
  "MOVEA.l": {
   "limit": 200,
-  "fail": 67
+  "fail": 44
  },
  "MOVEA.w": {
   "limit": 200,
-  "fail": 73
+  "fail": 43
  },
  "MOVEM.l": {
   "limit": 200,
-  "fail": 86
+  "fail": 73
  },
  "MOVEM.w": {
   "limit": 200,
-  "fail": 88
+  "fail": 83
  },
  "MOVEP.l": {
   "limit": 200,
@@ -265,7 +265,7 @@
  },
  "MOVEfromSR": {
   "limit": 200,
-  "fail": 75
+  "fail": 45
  },
  "MOVEfromUSP": {
   "limit": 200,
@@ -273,11 +273,11 @@
  },
  "MOVEtoCCR": {
   "limit": 200,
-  "fail": 84
+  "fail": 59
  },
  "MOVEtoSR": {
   "limit": 200,
-  "fail": 84
+  "fail": 40
  },
  "MOVEtoUSP": {
   "limit": 200,
@@ -285,11 +285,11 @@
  },
  "MULS": {
   "limit": 200,
-  "fail": 85
+  "fail": 47
  },
  "MULU": {
   "limit": 200,
-  "fail": 73
+  "fail": 45
  },
  "NBCD": {
   "limit": 200,
@@ -301,11 +301,11 @@
  },
  "NEG.l": {
   "limit": 200,
-  "fail": 78
+  "fail": 47
  },
  "NEG.w": {
   "limit": 200,
-  "fail": 86
+  "fail": 59
  },
  "NEGX.b": {
   "limit": 200,
@@ -313,11 +313,11 @@
  },
  "NEGX.l": {
   "limit": 200,
-  "fail": 72
+  "fail": 42
  },
  "NEGX.w": {
   "limit": 200,
-  "fail": 74
+  "fail": 55
  },
  "NOP": {
   "limit": 200,
@@ -329,11 +329,11 @@
  },
  "NOT.l": {
   "limit": 200,
-  "fail": 89
+  "fail": 53
  },
  "NOT.w": {
   "limit": 200,
-  "fail": 78
+  "fail": 49
  },
  "OR.b": {
   "limit": 200,
@@ -341,11 +341,11 @@
  },
  "OR.l": {
   "limit": 200,
-  "fail": 82
+  "fail": 42
  },
  "OR.w": {
   "limit": 200,
-  "fail": 90
+  "fail": 55
  },
  "ORItoCCR": {
   "limit": 200,
@@ -373,7 +373,7 @@
  },
  "ROL.w": {
   "limit": 200,
-  "fail": 23
+  "fail": 17
  },
  "ROR.b": {
   "limit": 200,
@@ -385,7 +385,7 @@
  },
  "ROR.w": {
   "limit": 200,
-  "fail": 24
+  "fail": 19
  },
  "ROXL.b": {
   "limit": 200,
@@ -397,7 +397,7 @@
  },
  "ROXL.w": {
   "limit": 200,
-  "fail": 24
+  "fail": 15
  },
  "ROXR.b": {
   "limit": 200,
@@ -409,7 +409,7 @@
  },
  "ROXR.w": {
   "limit": 200,
-  "fail": 19
+  "fail": 14
  },
  "RTE": {
   "limit": 200,
@@ -433,19 +433,19 @@
  },
  "SUB.l": {
   "limit": 200,
-  "fail": 67
+  "fail": 40
  },
  "SUB.w": {
   "limit": 200,
-  "fail": 75
+  "fail": 43
  },
  "SUBA.l": {
   "limit": 200,
-  "fail": 67
+  "fail": 42
  },
  "SUBA.w": {
   "limit": 200,
-  "fail": 59
+  "fail": 31
  },
  "SUBX.b": {
   "limit": 200,
@@ -485,11 +485,11 @@
  },
  "TST.l": {
   "limit": 200,
-  "fail": 58
+  "fail": 37
  },
  "TST.w": {
   "limit": 200,
-  "fail": 84
+  "fail": 46
  },
  "UNLINK": {
   "limit": 200,

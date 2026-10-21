@@ -12,7 +12,10 @@
     "test:cpu:full": "node tests/cpu/run-sst.mjs --limit 0",
     "fetch:vamigats": "node tests/tools/fetch-vamigats.mjs",
     "test:browser": "node tests/run-suite.mjs",
-    "test:browser:check": "node tests/run-suite.mjs --check"
+    "test:browser:check": "node tests/run-suite.mjs --check",
+    "fetch:cputester": "node tests/tools/fetch-cputester.mjs",
+    "test:cputester": "node tests/run-cputester.mjs",
+    "test:cputester:check": "node tests/run-cputester.mjs --check"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",
