@@ -666,6 +666,7 @@ function CacheItem(url) {
 	this.data = "";
 	this.size = 0;
 	this.crc32 = 0;
+	this.waiters = []; /* {dst, done} to fill when the download has finished */
 }
 function Cache() {
 	var items = [];
@@ -689,7 +690,9 @@ function Cache() {
 		client.send();
 	}
 
-	this.req = function(path, name, size, crc, dst) {
+	/* done (optional) is called once dst holds the data: at once if cached, else after the
+	   download, also when another request has already started it */
+	this.req = function(path, name, size, crc, dst, done) {
 		var url = path + "/" + name;
 		var item = null;
 
@@ -701,18 +704,30 @@ function Cache() {
 			items.splice(items.indexOf(item), 1);
 			item = false;
 		}
-		if (item !== false) {
-			if (dst !== false) {
+		var fill = function(it, w) {
+			if (w.dst !== false) {
 				//dst.path = item.path;
-				dst.name = item.name;
-				dst.data = item.data;
-				dst.size = item.size;
-				dst.crc32 = item.crc32;
+				w.dst.name = it.name;
+				w.dst.data = it.data;
+				w.dst.size = it.size;
+				w.dst.crc32 = it.crc32;
 			}
+			if (typeof w.done === "function")
+				w.done();
+		};
+		if (item !== false) {
+			if (item.state != S_VALID) {
+				/* still downloading (e.g. disk 2 picked before the prefetch finished):
+				   copying now gave an empty drive */
+				item.waiters.push({ dst: dst, done: done });
+				return false;
+			}
+			fill(item, { dst: dst, done: done });
 			//console.log("cache.req() '"+url+"' is cached.");
 			return true;
 		}
 		item = new CacheItem(url);
+		item.waiters.push({ dst: dst, done: done });
 		items.push(item);
 
 		//console.log("cache.req() start downloading '"+url+"'...");
@@ -732,13 +747,10 @@ function Cache() {
 					item.size = size;
 					item.crc32 = hash; /* the computed one, not just the expected one */
 					item.state = S_VALID;
-					if (dst !== false) {
-						//dst.path = item.path;
-						dst.name = item.name;
-						dst.data = item.data;
-						dst.size = item.size;
-						dst.crc32 = item.crc32;
-					}
+					var waiters = item.waiters;
+					item.waiters = [];
+					for (var i = 0; i < waiters.length; i++)
+						fill(item, waiters[i]);
 					//console.log("cache.req() downloaded of '"+url+"' done.");
 				} else {
 					item.state = S_ERROR;
@@ -2989,8 +3001,8 @@ function dskchgSelect() {
 
 		dskchgClose();
 
-		if (cache.req(dbUrl, filename, 0xdc000, false, cfg.floppy.drive[n].file))
-			sae.insert(n);
+		/* insert when the data is there: at once if cached, else after the download */
+		cache.req(dbUrl, filename, 0xdc000, false, cfg.floppy.drive[n].file, function() { sae.insert(n); });
 	}
 }
 
