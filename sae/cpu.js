@@ -6460,7 +6460,7 @@ function SAEO_CPU() {
 	function I_TRAPCC(p) { /* 68020 */
 		if (ccTab[p.cc]()) {
 			//SAEF_log(("I_TRAP%s coreException 7 -> take", ccNames(p.cc)));
-			stackPut32(coreGetPC());
+			/* the format $2 frame (with the instruction address) is built by the exception */
 			//coreSyncPC();
 			return coreException(7);
 		} //else SAEF_log(("I_TRAP%s coreException 7 -> abort", ccNames(p.cc)));
@@ -6472,7 +6472,7 @@ function SAEO_CPU() {
 		var entry = coreNext16();
 		if (ccTab[p.cc]()) {
 			//SAEF_log(("I_TRAP%s.W coreException 7 -> take", ccNames(p.cc)));
-			stackPut32(coreGetPC());
+			/* the format $2 frame (with the instruction address) is built by the exception */
 			//coreSyncPC();
 			return coreException(7);
 		} //else SAEF_log(("I_TRAP%s.W coreException 7 -> abort", ccNames(p.cc)));
@@ -6484,7 +6484,7 @@ function SAEO_CPU() {
 		var entry = coreNext32();
 		if (ccTab[p.cc]()) {
 			//SAEF_log(("I_TRAP%s.L coreException 7 -> take", ccNames(p.cc)));
-			stackPut32(coreGetPC());
+			/* the format $2 frame (with the instruction address) is built by the exception */
 			//coreSyncPC();
 			return coreException(7);
 		} //else SAEF_log(("I_TRAP%s.L coreException 7 -> abort", ccNames(p.cc)));
