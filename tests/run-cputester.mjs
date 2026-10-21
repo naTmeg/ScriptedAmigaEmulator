@@ -18,7 +18,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
-import { readFile, replaceSmallFile } from "./tools/adf-ofs.mjs";
+import { readFile, replaceSmallFile, freeBlocks, deleteRootFile, findFile } from "./tools/adf-ofs.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "..");
@@ -53,14 +53,28 @@ disks.sort();
 const filters = filter.split("|").filter(Boolean); /* alternatives: --filter "atCLR|atNEG" */
 const list = disks.filter((f) => !filters.length || filters.some((x) => path.basename(f).includes(x)));
 
-/* patch s/startup-sequence: cputest output to out.txt, then an end marker */
+/* patch s/startup-sequence: cputest output to out.txt, then an end marker. A few disks are
+   full (atAND.L_1: one free block), so out.txt stayed empty and they looked like a hang. Those
+   get room by deleting the Stack and Echo commands from their copy; the startup-sequence runs
+   them from an unchanged copy of the disk in DF1. (Writing out.txt to an empty disk in DF1
+   does not work: AROS's OFS handler keeps the data blocks of the file in its cache.) */
 fs.mkdirSync(runDir, { recursive: true });
+const withDF1 = new Set();
 for (const f of list) {
 	const adf = new Uint8Array(fs.readFileSync(f));
+	const name = path.basename(f, ".adf");
+	const moved = [];
+	if (freeBlocks(adf) < 8) {
+		withDF1.add(name);
+		fs.writeFileSync(path.join(runDir, name + ".df1.adf"), fs.readFileSync(f));
+		for (const cmd of ["Stack", "Echo"])
+			if (findFile(adf, cmd)) { deleteRootFile(adf, cmd); moved.push(cmd.toLowerCase()); }
+	}
+	const viaDF1 = (l) => { const w = l.trim().split(/\s+/)[0].toLowerCase(); return moved.includes(w) ? "DF1:" + l.trim() : l; };
 	const ss = Buffer.from(readFile(adf, "s/startup-sequence")).toString("latin1");
 	const lines = ss.split("\n").filter((l) => l.trim() && !/^echo\b/i.test(l.trim()));
-	const out = lines.map((l) => (/^cputest\b/i.test(l.trim()) ? l.trim() + " >out.txt" : l)).join("\n") +
-		"\necho \"" + END + "\" >>out.txt\n";
+	const out = lines.map((l) => (/^cputest\b/i.test(l.trim()) ? l.trim() + " >out.txt" : viaDF1(l))).join("\n") +
+		"\n" + viaDF1("echo \"" + END + "\" >>out.txt") + "\n";
 	replaceSmallFile(adf, "s/startup-sequence", Buffer.from(out, "latin1"));
 	fs.writeFileSync(path.join(runDir, path.basename(f)), adf);
 }
@@ -110,16 +124,18 @@ async function worker() {
 		let txt = null;
 		try {
 			const adf = encodeURIComponent("../.cache/cputester/" + set + "/" + name + ".adf");
-			await page.goto(`${base}?adf=${adf}&model=A500&compat=1&chip=512&slow=512&fast=8&turbo=1&det=1&video=canvas`);
+			const unit = 0;
+			const df1 = withDF1.has(name) ? "&df1=" + encodeURIComponent("../.cache/cputester/" + set + "/" + name + ".df1.adf") : "";
+			await page.goto(`${base}?adf=${adf}${df1}&model=A500&compat=1&chip=512&slow=512&fast=8&turbo=1&det=1&video=canvas`);
 			const lim = Date.now() + timeout;
 			while (Date.now() < lim) {
 				await new Promise((r) => setTimeout(r, 2000));
-				txt = await page.evaluate(() => {
+				txt = await page.evaluate((unit) => {
 					if (!window.sae || !window.sae.running) return null;
-					const d = window.sae.getDisk(0);
+					const d = window.sae.getDisk(unit);
 					const out = d && window.__ofs.readFile(d.data, "out.txt");
 					return out ? new TextDecoder("latin1").decode(out) : null;
-				});
+				}, unit);
 				if (txt && txt.includes(END)) break;
 			}
 		} catch (e) {

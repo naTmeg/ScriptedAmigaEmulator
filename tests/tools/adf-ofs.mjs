@@ -61,3 +61,36 @@ export function replaceSmallFile(adf, path, content) {
 	put32(hdr, BS - 188, content.length);
 	setChecksum(hdr);
 }
+
+/* free data blocks according to the bitmap (bit set = free; bit i is block i + 2) */
+export function freeBlocks(adf) {
+	const bm = block(adf, u32(block(adf, 880), BS - 196));
+	let free = 0;
+	for (let i = 0; i < 1758; i++)
+		if ((u32(bm, 4 + ((i >> 5) << 2)) >>> (i & 31)) & 1) free++;
+	return free;
+}
+
+/* delete a file in the root directory (no extension blocks, at most 72 data blocks): unlink it
+ * from the hash chain and free its header and data blocks in the bitmap */
+export function deleteRootFile(adf, name) {
+	const root = block(adf, 880);
+	const slot = 24 + 4 * hashName(name);
+	let prev = null, n = u32(root, slot);
+	while (n && blockName(block(adf, n)).toLowerCase() !== name.toLowerCase()) { prev = n; n = u32(block(adf, n), BS - 16); }
+	if (!n) throw new Error(name + " not found");
+	const hdr = block(adf, n);
+	if (u32(hdr, BS - 4) !== 0xfffffffd) throw new Error(name + " is not a file");
+	if (u32(hdr, BS - 8)) throw new Error(name + " has extension blocks");
+	const next = u32(hdr, BS - 16);
+	if (prev) { const pb = block(adf, prev); put32(pb, BS - 16, next); setChecksum(pb); } else put32(root, slot, next);
+	setChecksum(root);
+	const blocks = [n];
+	for (let k = 0; k < 72; k++) { const b = u32(hdr, BS - 204 - 4 * k); if (b) blocks.push(b); }
+	const bm = block(adf, u32(root, BS - 196));
+	for (const b of blocks) { const i = b - 2, o = 4 + ((i >> 5) << 2); put32(bm, o, (u32(bm, o) | (1 << (i & 31))) >>> 0); }
+	let sum = 0;
+	for (let i = 4; i < BS; i += 4) sum = (sum + u32(bm, i)) >>> 0;
+	put32(bm, 0, (-sum) >>> 0);
+	return blocks.length;
+}

@@ -79,7 +79,9 @@ the [Moira](https://github.com/dirkwhoffmann/Moira) repository (`Cputester/ADF`)
 Each disk boots under the AROS ROM (A500, compatible core, 512 KB chip, 512 KB slow, 8 MB fast
 RAM) and runs `cputest <instruction>`. AROS has no `SER:` handler, so the runner patches
 `s/startup-sequence` (`tests/tools/adf-ofs.mjs`) to write the output to `out.txt` on the floppy
-and reads it back through `sae.getDisk()`. cputest stops at the first difference; a disk is
+and reads it back through `sae.getDisk()`. A disk with almost no free space (atAND.L_1 has one
+block) gets room by deleting `Stack` and `Echo` from its copy; they then run from an unchanged
+copy in DF1. cputest stops at the first difference; a disk is
 "pass" or shows that difference (expected and actual frame, registers).
 `tests/cputester-baseline.json` records how far every disk gets.
 
