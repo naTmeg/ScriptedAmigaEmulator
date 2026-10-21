@@ -3243,6 +3243,10 @@ function SAEO_CPU() {
 		var An = p.ea & 7;
 		var a = exEAtab[ripo ? (2<<3|An) : p.ea](2);
 		var n = 0;
+		/* the 68000 always reads one word more than the list needs, so even an empty
+		   list accesses the address and faults if it is odd (cputester) */
+		if (list == 0 && coreGet16 === get16_prefetch)
+			coreGet16(a);
 
 		for (var Xn = 0; Xn < 16; Xn++) {
 			if (list & (1 << Xn)) {
@@ -3266,6 +3270,10 @@ function SAEO_CPU() {
 		var An = p.ea & 7;
 		var a = exEAtab[ripo ? (2<<3|An) : p.ea](4);
 		var n = 0;
+		/* the 68000 always reads one word more than the list needs, so even an empty
+		   list accesses the address and faults if it is odd (cputester) */
+		if (list == 0 && coreGet16 === get16_prefetch)
+			coreGet16(a);
 
 		for (var Xn = 0; Xn < 16; Xn++) {
 			if (list & (1 << Xn)) {
@@ -3489,19 +3497,37 @@ function SAEO_CPU() {
 	}
 
 	function I_CLR_32(p) {
-		stEA32tab[p.ea](0);
+		if (p.ea >= 16 && SAEV_config.cpu.model == SAEC_Config_CPU_Model_68000) {
+			/* the 68000 reads the operand before it clears it (an address error is a read) */
+			var a = exEAtab[p.ea](4);
+			coreGet32(a);
+			corePut32(a, 0);
+		} else
+			stEA32tab[p.ea](0);
 		regs.z = true; regs.n = regs.v = regs.c = false;
 		coreSyncPC();
 		return p.cyc;
 	}
 	function I_CLR_16(p) {
-		stEA16tab[p.ea](0);
+		if (p.ea >= 16 && SAEV_config.cpu.model == SAEC_Config_CPU_Model_68000) {
+			/* the 68000 reads the operand before it clears it (an address error is a read) */
+			var a = exEAtab[p.ea](2);
+			coreGet16(a);
+			corePut16(a, 0);
+		} else
+			stEA16tab[p.ea](0);
 		regs.z = true; regs.n = regs.v = regs.c = false;
 		coreSyncPC();
 		return p.cyc;
 	}
 	function I_CLR_8(p) {
-		stEA8tab[p.ea](0);
+		if (p.ea >= 16 && SAEV_config.cpu.model == SAEC_Config_CPU_Model_68000) {
+			/* the 68000 reads the operand before it clears it (an address error is a read) */
+			var a = exEAtab[p.ea](1);
+			coreGet8(a);
+			corePut8(a, 0);
+		} else
+			stEA8tab[p.ea](0);
 		regs.z = true; regs.n = regs.v = regs.c = false;
 		coreSyncPC();
 		return p.cyc;
@@ -5876,7 +5902,14 @@ function SAEO_CPU() {
 		if (regs.s || model == 68000) { /* This instruction is not privileged for the MC68000 and MC68008 */
 			var sr = coreGetSR();
 			//SAEF_log(("I_MOVE_SR2.W sr $%04x", sr));
-			stEA16tab[p.ea](sr);
+			if (p.ea >= 16 && model == 68000) {
+				/* the 68000 reads the destination first and ignores the value (an address
+				   error is a read) */
+				var a = exEAtab[p.ea](2);
+				coreGet16(a);
+				corePut16(a, sr);
+			} else
+				stEA16tab[p.ea](sr);
 			coreSyncPC();
 			//ccna
 			return p.cyc;
