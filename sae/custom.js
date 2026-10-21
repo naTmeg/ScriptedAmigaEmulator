@@ -251,11 +251,12 @@ function SAEO_Custom() {
 		var v = false;
 
 		addr &= 0xfff;
-		try {
-			v = readMap[(addr & 0x1fe) >> 1](hpos);
-		} catch(e) {
-			if (!(e instanceof Error))
-				throw e;
+		/* unused and write-only registers hold false in readMap. No try/catch: catching the
+		   TypeError of calling false also swallowed real errors inside the handlers */
+		var read = readMap[(addr & 0x1fe) >> 1];
+		if (read)
+			v = read(hpos);
+		else {
 			/* OCS/ECS:
 			* reading write-only register causes write with last value in chip
 			* bus (custom registers, chipram, slowram)
@@ -393,11 +394,10 @@ function SAEO_Custom() {
 		#endif
 		#endif*/
 
-		try {
-			writeMap[addr >> 1](value, hpos);
-		} catch(e) {
-			if (!(e instanceof Error))
-				throw e;
+		var write = writeMap[addr >> 1]; /* false for read-only and unused registers */
+		if (write)
+			write(value, hpos);
+		else {
 			/* writing to read-only register causes read access */
 			if (!noget) {
 				//SAEF_log("Custom.put16_real() %04x written", addr);
