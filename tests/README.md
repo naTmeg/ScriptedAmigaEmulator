@@ -72,6 +72,10 @@ and reads it back through `sae.getDisk()`. cputest stops at the first difference
 "pass" or shows that difference (expected and actual frame, registers).
 `tests/cputester-baseline.json` records how far every disk gets.
 
+State: address 191 disks, basic 189, stack 8, vector 14 and interrupt 20 (19 pass; aitMV2SR.B
+depends on interrupt timing within an instruction, which SAE does not model). The cycles set
+needs a bus-cycle exact core and is not run.
+
 ## vAmigaTS screenshot tests (browser)
 
 [vAmigaTS](https://github.com/dirkwhoffmann/vAmigaTS) contains small Amiga programs with a
