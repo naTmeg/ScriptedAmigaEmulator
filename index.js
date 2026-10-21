@@ -767,9 +767,40 @@ function Cache() {
 
 /*---------------------------------*/
 
-function loadFile(e, callback) {
+/* reads a local file as a binary string. With disk set (floppy images): gzip-packed images
+   (.adz, .adf.gz) are unpacked, ZIP archives are refused here, the emulator would stop on them */
+function loadFile(e, callback, disk) {
 	var reader = new FileReader();
-	reader.onload = callback;
+	if (!disk) {
+		reader.onload = callback;
+		reader.readAsBinaryString(e);
+		return;
+	}
+	reader.onload = function() {
+		var data = reader.result;
+		if (data.substr(0, 4) == "PK\x03\x04") {
+			alert(sprintf("'%s' is a ZIP archive. Unpack it first and select the disk image inside.", e.name));
+			return;
+		}
+		if (data.charCodeAt(0) != 0x1f || data.charCodeAt(1) != 0x8b) {
+			callback({ target: { result: data } });
+			return;
+		}
+		if (typeof DecompressionStream !== "function") {
+			alert(sprintf("'%s' is gzip-packed, and this browser cannot unpack it. Unpack it first.", e.name));
+			return;
+		}
+		var bytes = new Uint8Array(data.length);
+		for (var i = 0; i < data.length; i++) bytes[i] = data.charCodeAt(i);
+		new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer().then(function(buf) {
+			var u = new Uint8Array(buf), s = "";
+			for (var i = 0; i < u.length; i += 0x8000)
+				s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+			callback({ target: { result: s } });
+		}, function() {
+			alert(sprintf("'%s' looks gzip-packed but could not be unpacked.", e.name));
+		});
+	};
 	reader.readAsBinaryString(e);
 }
 
@@ -2353,10 +2384,10 @@ function floppyInsert(n) {
 			//file.path = e.path;
 			file.name = e.name;
 			file.data = event.target.result;
-			file.size = e.size;
+			file.size = event.target.result.length;
 			file.crc32 = crc32(event.target.result);
 			setFloppyName(n);
-		});
+		}, true);
 	}
 }
 
@@ -2943,10 +2974,10 @@ function dskchgInsert() {
 				//file.path = e.path;
 				file.name = e.name;
 				file.data = event.target.result;
-				file.size = e.size;
+				file.size = event.target.result.length;
 				file.crc32 = crc32(event.target.result);
 				sae.insert(n);
-			});
+			}, true);
 		}
 	}
 }
