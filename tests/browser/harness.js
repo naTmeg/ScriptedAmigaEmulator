@@ -165,9 +165,9 @@ function init() {
 		});
 	} else {
 		fetchBinary("../../db/aros-amiga-m68k-rom.bin", function(data) {
-			setFile(cfg.memory.rom, "aros-amiga-m68k-rom.bin", data, 0x3F4FCC0A);
+			setFile(cfg.memory.rom, "aros-amiga-m68k-rom.bin", data, 0x7AE94477);
 			fetchBinary("../../db/aros-amiga-m68k-ext.bin", function(ext) {
-				setFile(cfg.memory.extRom, "aros-amiga-m68k-ext.bin", ext, 0xF2E52B07);
+				setFile(cfg.memory.extRom, "aros-amiga-m68k-ext.bin", ext, 0x6F9A4AD2);
 				loadDisks();
 			});
 		});

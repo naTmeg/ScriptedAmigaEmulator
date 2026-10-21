@@ -155,7 +155,7 @@ async function main() {
 		.catch(e => { status(String(e)); window.suiteError = String(e); window.suiteDone = true; return []; });
 	const filter = param("filter", ""), from = +param("from", "0"), count = +param("count", "100000");
 	const opts = { wait: +param("wait", "20"), frames: +param("frames", "0"), tol: +param("tol", "48"), model: param("model", "A500P"), fast: param("fast", "0"), extra: "" };
-	for (const k of ["chip", "slow", "rom", "speed", "compat", "turbo", "det", "seed", "video"]) if (param(k, "")) opts.extra += "&" + k + "=" + encodeURIComponent(param(k, ""));
+	for (const k of ["chip", "slow", "rom", "ext", "speed", "compat", "turbo", "det", "seed", "video"]) if (param(k, "")) opts.extra += "&" + k + "=" + encodeURIComponent(param(k, ""));
 	try { results = JSON.parse(localStorage.getItem("suite_results") || "{}"); } catch (e) { results = {}; }
 	const filters = filter.split("|").filter(Boolean); /* alternatives: filter=CPU/Misc|CPU/Prefetch */
 	const list = suite.filter(t => !filters.length || filters.some(f => (t.adf + " " + t.group).indexOf(f) >= 0)).slice(from, from + count);

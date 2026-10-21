@@ -105,6 +105,12 @@ reference screenshot from vAmiga (`<name>_68000.raw`, which matches photos of a 
 - `npm run test:browser` (`tests/run-suite.mjs`) serves the repository, opens `suite.htm` in
   headless Chromium via Playwright in several pages at once, and compares the scores with
   `tests/browser-baseline.json`. `--check` exits 1 if a score drops by more than 0.5 points.
+- The suite boots the AROS build of 2019 from `tests/roms/`, not the newer one SAE ships in
+  `db/`: the test programs rely on the hardware state the Kickstart leaves behind, and the newer
+  AROS leaves interrupts and its display running (the IPL tests drop from ~80 % to ~18 %). The
+  new ROM is covered by cputester, whose disks run entirely under it. `--extra "&rom=…&ext=…"`
+  boots another ROM (without baseline comparison).
+
 Runs are reproducible: `turbo=1` switches off frame pacing and the host-clock TOD hack
 (`cfg.debug.turbo`), `det=1` (`determinism.js`) seeds `Math.random` and fixes the clock, and
 `stopframe=N` pauses the emulator after exactly N frames (and skips drawing the frames

@@ -202,8 +202,10 @@ function SAEO_Roms() {
 
 	const roms = [
 		//new romdata("AROS KS ROM (built-in)", 0, 0, 0, 0, "AROS", K512 * 2, 66, 0, 0, SAEC_RomType_KICK, 0, "", "", 0xffffffff, 0, 0, 0, 0, 0, "AROS"),
-		new romdata("AROS KS ROM (built-in)", 0, 0, 0, 0, "AROS", K512, 66, 0, 0, SAEC_RomType_KICK, 0, "", "", 0x3F4FCC0A, 0, 0, 0, 0, 0, "AROS"),
-		new romdata("AROS extended ROM (built-in)", 0, 0, 0, 0, "AROS", K512, 66, 0, 0, SAEC_RomType_EXT, 0, "", "", 0xF2E52B07, 0, 0, 0, 0, 0, "AROS"),
+		new romdata("AROS KS ROM (built-in)", 0, 0, 0, 0, "AROS", K512, 66, 0, 0, SAEC_RomType_KICK, 0, "", "", 0x7AE94477, 0, 0, 0, 0, 0, "AROS"), /* build of 2026-08-20 */
+		new romdata("AROS extended ROM (built-in)", 0, 0, 0, 0, "AROS", K512, 66, 0, 0, SAEC_RomType_EXT, 0, "", "", 0x6F9A4AD2, 0, 0, 0, 0, 0, "AROS"),
+		new romdata("AROS KS ROM (SVN55696, 2019)", 0, 0, 0, 0, "AROS", K512, 66, 0, 0, SAEC_RomType_KICK, 0, "", "", 0x3F4FCC0A, 0, 0, 0, 0, 0, "AROS"), /* the one bundled before */
+		new romdata("AROS extended ROM (SVN55696, 2019)", 0, 0, 0, 0, "AROS", K512, 66, 0, 0, SAEC_RomType_EXT, 0, "", "", 0xF2E52B07, 0, 0, 0, 0, 0, "AROS"),
 		//new romdata("ROM Disabled", 0, 0, 0, 0, "NOROM", 0, 87, 0, 0, SAEC_RomType_NONE, 0, "", "", 0xffffffff, 0, 0, 0, 0, 0, "NOROM"),
 		//new romdata("Enabled", 0, 0, 0, 0, "ENABLED", 0, 142, 0, 0, SAEC_RomType_NOT, 0, "", "", 0xffffffff, 0, 0, 0, 0, 0, "ENABLED"),
 

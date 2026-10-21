@@ -42,7 +42,12 @@ const check = !!arg("check", false);
 const writeBaseline = !!arg("write-baseline", false);
 const headed = !!arg("headed", false);
 /* 2D canvas: with WebGL all pages wait on the one software-rendering GPU process */
-const extra = (core === "compatible" ? "&compat=1" : "") + "&video=canvas" + String(arg("extra", ""));
+/* The suite boots the AROS build of 2019, not the one SAE ships: the vAmigaTS programs rely on
+   the hardware state the Kickstart leaves behind, and the newer AROS leaves interrupts and its
+   display running, which disturbs the screenshots (the IPL tests drop from ~80 % to ~18 %). The
+   baseline was recorded with this pair. --extra "&rom=...&ext=..." boots another one. */
+const suiteRom = /[?&]rom=/.test(String(arg("extra", ""))) ? "" : "&rom=../roms/aros-2019-svn55696-rom.bin&ext=../roms/aros-2019-svn55696-ext.bin";
+const extra = (core === "compatible" ? "&compat=1" : "") + "&video=canvas" + suiteRom + String(arg("extra", ""));
 const TOLERANCE = 0.005; /* a score may drop by this much before it counts as a regression */
 
 if (!fs.existsSync(suiteFile)) { console.error("missing tests/browser/suite.json, run: npm run fetch:vamigats"); process.exit(2); }

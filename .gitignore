@@ -7,6 +7,8 @@ db/demos/index.htm
 *.bin
 !db/aros-amiga-m68k-rom.bin
 !db/aros-amiga-m68k-ext.bin
+!tests/roms/aros-2019-svn55696-rom.bin
+!tests/roms/aros-2019-svn55696-ext.bin
 scriptedamigaemulator.js
 scriptedamigaemulator.js.map
 node_modules/
