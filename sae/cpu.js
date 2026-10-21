@@ -1147,7 +1147,19 @@ function SAEO_CPU() {
 	   68000 leaves An unchanged when that access faults (cputester) */
 	var ae_pi_reg = -1, ae_pi_old = 0, ae_pi_ipc = -1;
 
+	/* stacked PC for a fault on an odd SP, relative to the PC after the extension words
+	   (cputester "stack" set, checked on real 68000s): BSR.W -2, PEA +2 (abs 0), LINK +2,
+	   others 0 */
+	function address_error_stack_extra(op) {
+		if ((op & 0xFF00) == 0x6100) return (op & 0xFF) == 0 ? -2 : 0; /* BSR.W / BSR.B */
+		if ((op & 0xFFC0) == 0x4840) return (op & 0x3E) == 0x38 ? 0 : 2; /* PEA (abs.W/abs.L: 0) */
+		return 0; /* JSR, RTS, RTR, RTE, LINK, ... */
+	}
+
 	function address_error(addr, write, pcExtra) {
+		if (ae_stack && pcExtra === undefined && SAEV_config.cpu.model == SAEC_Config_CPU_Model_68000)
+			pcExtra = address_error_stack_extra(regs.opcode);
+		ae_stack = false;
 		last_addr_for_exception_3 = add32(coreGetPC(), pcExtra !== undefined ? pcExtra : address_error_pc_extra(regs.opcode, write));
 		address_error_long = false;
 		if (ae_pi_reg >= 0 && ae_pi_ipc === regs.instruction_pc)
@@ -2961,21 +2973,32 @@ function SAEO_CPU() {
 	/* SECT instruction core. Implementation based on M68000PRM.pdf          */
 	/*-----------------------------------------------------------------------*/
 
+	/* stack accesses of instructions are marked, an odd SP gives its own stacked PC
+	   (address_error_stack_extra) */
+	var ae_stack = false;
 	function stackPut16(v) {
 		regs.a[7] -= 2; /* pre-decrement */
+		ae_stack = true;
 		corePut16(regs.a[7], v);
+		ae_stack = false;
 	}
 	function stackPut32(v) {
 		regs.a[7] -= 4; /* pre-decrement */
+		ae_stack = true;
 		corePut32(regs.a[7], v);
+		ae_stack = false;
 	}
 	function stackGet16() {
+		ae_stack = true;
 		var v = coreGet16(regs.a[7]);
+		ae_stack = false;
 		regs.a[7] += 2; /* post-increment */
 		return v;
 	}
 	function stackGet32() {
+		ae_stack = true;
 		var v = coreGet32(regs.a[7]);
+		ae_stack = false;
 		regs.a[7] += 4; /* post-increment */
 		return v;
 	}
@@ -3132,6 +3155,13 @@ function SAEO_CPU() {
 
 	function I_LINK(p) {
 		var dp = extWord(coreNext16());
+		if (((regs.a[7] - 4) & 1) && coreGet32 === get32_prefetch) {
+			/* odd SP: An already holds SP-4 when the push faults, SP is unchanged (cputester) */
+			var sp = (regs.a[7] - 4) >>> 0;
+			regs.a[p.An] = sp; /* also for LINK A7: A7 = SP-4 */
+			address_error_long = true;
+			address_error(sp, true, 2);
+		}
 		stackPut32(regs.a[p.An]);
 		regs.a[p.An] = regs.a[7];
 		regs.a[7] = add32(regs.a[7], dp);
