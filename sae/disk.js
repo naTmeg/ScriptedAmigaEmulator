@@ -3891,7 +3891,7 @@ function SAEO_Disk() {
 					if (_tcslen (n) >= sizeof (di.diskname)) n[sizeof (di.diskname) - 1] = 0;
 					di.diskname = n;
 					xfree(n);*/
-					var len = writebuffer[512 - 20 * 4]; //BSTR
+					var len = Math.min(writebuffer[512 - 20 * 4], 30); //BSTR, AmigaDOS names have at most 30 characters
 					var off = 512 - 20 * 4 + 1;
 					var n = "";
 					while (--len >= 0) n += String.fromCharCode(writebuffer[off++]);

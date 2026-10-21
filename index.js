@@ -376,6 +376,11 @@ function setText(id, v) {
 	document.getElementById(id).value = typeof v === "string" ? v : String(v);
 }
 
+/* text from disks, files or the database must not be taken as HTML */
+function escapeHTML(s) {
+	return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 function setText2(id, v) {
 	document.getElementById(id).innerHTML = typeof v === "string" ? v : String(v);
 }
@@ -871,7 +876,7 @@ function setRomName() {
 			e.className = "orange";
 			setDisabled("cfg_rom_info", 1);
 		}
-		e.innerHTML = name.length > MAX_FILENAME ? name.substr(0, MAX_FILENAME)+" [...]" : name;
+		e.innerHTML = escapeHTML(name.length > MAX_FILENAME ? name.substr(0, MAX_FILENAME)+" [...]" : name);
 
 		styleDisplayInline("cfg_rom_remove", 1);
 		styleDisplayInline("cfg_rom_info", 1);
@@ -896,7 +901,7 @@ function setExtName() {
 			e.className = "orange";
 			setDisabled("cfg_ext_info", 1);
 		}
-		e.innerHTML = name.length > MAX_FILENAME ? name.substr(0, MAX_FILENAME)+" [...]" : name;
+		e.innerHTML = escapeHTML(name.length > MAX_FILENAME ? name.substr(0, MAX_FILENAME)+" [...]" : name);
 
 		styleDisplayInline("cfg_ext_remove", 1);
 		styleDisplayInline("cfg_ext_info", 1);
@@ -921,7 +926,7 @@ function setKeyName() {
 			e.className = "orange";
 			setDisabled("cfg_key_info", 1);
 		}
-		e.innerHTML = name.length > MAX_FILENAME ? name.substr(0, MAX_FILENAME)+" [...]" : name;
+		e.innerHTML = escapeHTML(name.length > MAX_FILENAME ? name.substr(0, MAX_FILENAME)+" [...]" : name);
 
 		styleDisplayInline("cfg_key_remove", 1);
 		styleDisplayInline("cfg_key_info", 1);
@@ -951,7 +956,7 @@ function setAMaxName() {
 			e.className = "orange";
 			setDisabled("cfg_amax_info", 1);
 		}
-		e.innerHTML = name.length > MAX_FILENAME ? name.substr(0, MAX_FILENAME)+" [...]" : name;
+		e.innerHTML = escapeHTML(name.length > MAX_FILENAME ? name.substr(0, MAX_FILENAME)+" [...]" : name);
 
 		styleDisplayInline("cfg_amax_remove", 1);
 		styleDisplayInline("cfg_amax_info", 1);
@@ -969,9 +974,9 @@ function setFloppyName(n) {
 	if (cfg.floppy.drive[n].file.size) {
 		e.className = "";
 		if (cfg.floppy.drive[n].file.name.length > MAX_FILENAME)
-			e.innerHTML = cfg.floppy.drive[n].file.name.substr(0, MAX_FILENAME)+" [...]";
+			e.innerHTML = escapeHTML(cfg.floppy.drive[n].file.name.substr(0, MAX_FILENAME)+" [...]");
 		else
-			e.innerHTML = cfg.floppy.drive[n].file.name;
+			e.innerHTML = escapeHTML(cfg.floppy.drive[n].file.name);
 		styleDisplayInline("cfg_df"+n+"_eject", 1);
 		styleDisplayInline("cfg_df"+n+"_info", 1);
 	} else {
@@ -989,9 +994,9 @@ function setMountName(n) {
 	if (ci.file.name.length) {
 		e.className = "";
 		if (ci.file.name.length > MAX_FILENAME)
-			e.innerHTML = ci.file.name.substr(0, MAX_FILENAME)+" [...]";
+			e.innerHTML = escapeHTML(ci.file.name.substr(0, MAX_FILENAME)+" [...]");
 		else
-			e.innerHTML = ci.file.name;
+			e.innerHTML = escapeHTML(ci.file.name);
 
 		styleDisplayInline("cfg_mount_"+n+"_remove", 1);
 		if (n < 4) styleDisplayInline("cfg_mount_"+n+"_setup", 1);
@@ -2379,7 +2384,7 @@ function floppyOpenInfo(n) {
 
 	floppyNum = n;
 
-	setText2("cfg_floppy_info_label", di.diskname.length ? di.diskname : span("gray", NA));
+	setText2("cfg_floppy_info_label", di.diskname.length ? escapeHTML(di.diskname) : span("gray", NA));
 	setText2("cfg_floppy_info_size", sprintf("%d (%dK)", file.size, file.size >> 10));
 	setText2("cfg_floppy_info_disktype", di.hd ? "High Density (HD)" : "Double Density (DD)");
 
