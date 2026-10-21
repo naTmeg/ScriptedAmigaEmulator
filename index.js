@@ -39,6 +39,7 @@ const DBF_BIM = 8; /* enable immediate blitter */
 const DBF_ECS = 16; /* ECS required */
 const DBF_AGA = 32; /* AGA required */
 const DBF_030 = 64; /* 68030 enabled */
+const DBF_CHIP1M = 128; /* A500 with ECS Agnus and 1 MB chip RAM, no slow RAM (instead of 0.5 MB chip + 0.5 MB slow) */
 
 function dbEntry(t,nd, n,d,p,l,y, f,no) {
 	this.id = Math.random() * 0xffffffff >>> 0;
@@ -93,7 +94,7 @@ const db = [
 	new dbEntry(DBT_GAME,1, "Asteroids",          "Vertical Developments","","PD", "1979", 0, ""),
 	new dbEntry(DBT_GAME,1, "BlockySkies",        URL_ENABLE_SOFTWARE,"","FW",     "2016", 0, ""),
 	new dbEntry(DBT_GAME,1, "Crazy Sue",          "Jumpshoe,Hironymous","","PD",   "1991", 0, "Loading can take some time."),
-	new dbEntry(DBT_GAME,1, "Deluxe Galaga 2.4",  "Edgar Vigdal","","FW",          "1994", DBF_COL, ""),
+	new dbEntry(DBT_GAME,1, "Deluxe Galaga 2.4",  "Edgar Vigdal","","FW",          "1994", DBF_COL|DBF_CHIP1M, ""), /* crashes with slow + fast RAM (a computed jump uses a register it never set); without fast RAM, AROS leaves it too little memory */
 	new dbEntry(DBT_GAME,2, "Hoi",                URL_TEAM_HOI,"Hollyware","FW",   "1992", DBF_MDC, "Press the LMB to skip the intro and insert the 2nd disk manually.<br /><br /><span title=\"After the disk-change, place the \"LVL\"-pointer in the far lower right of the green quarter screen. The bottom \"L\" must be positioned in the corner precisely. Click the LMB, then shift the \"LVL\" pointer to the absolute top left of the screen (as far as it can be moved in that direction). Click the LMB again. Any of the first four levels may now be selected for game play. Press the F4 key during game play for twelve lives. Note: Level 5 can only be accessed by completing level 4.\">Cheat (move mouse-over)</span>"),
 	new dbEntry(DBT_GAME,1, "Norse Gods",         URL_LOEWENSTEIN,"","FW",         "1991", 0, ""),
 	new dbEntry(DBT_GAME,1, "Pollymorf",          "Andrew Campbell","","PD",       "1993", 0, "Loading takes some time, just wait."),
@@ -896,7 +897,7 @@ function getDatabaseConfig() {
 		else if (dbe.flags & DBF_ECS)
 			sae.setModel(SAEC_Model_A500P, 0); /* set an A500+ for ECS */
 		else
-			sae.setModel(SAEC_Model_A500, 0); /* set an A500 for OCS */
+			sae.setModel(SAEC_Model_A500, (dbe.flags & DBF_CHIP1M) ? 2 : 0); /* set an A500 for OCS (variant 2: ECS Agnus, 1 MB chip) */
 
 		if (dbe.flags & DBF_030)
 			cfg.cpu.model = SAEC_Config_CPU_Model_68030;
