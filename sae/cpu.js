@@ -6406,6 +6406,14 @@ function SAEO_CPU() {
 				var frame = fmt >> 12;
 				var offset = 0; //8
 
+				/* the 68010 knows only the formats $0 and $8 (its bus/address error frame);
+				   $8 does not exist on the 68020/030. Any other format is a format error, taken
+				   with the stack as it was before the RTE */
+				if (model == 68010 ? frame != 0x0 && frame != 0x8 : frame == 0x8) {
+					regs.a[7] -= 8;
+					return coreException(14);
+				}
+
 				//if (frame > 1) SAEF_log("I_RTE010 fmt %04x frame %x sr $%04x newpc $%08x oldpc $%08x", fmt, frame, sr, pc, regs.pc);
 
 					  if (frame == 0x0) {}//regs.a[7] += offset;
@@ -6416,7 +6424,7 @@ function SAEO_CPU() {
 				else if (frame == 0x9) regs.a[7] += offset + 12;
 				else if (frame == 0xa) regs.a[7] += offset + 24;
 				else if (frame == 0xb) regs.a[7] += offset + 84;
-				else 						{ regs.a[7] += offset;
+				else 						{ regs.a[7] -= 8; /* format error: leave the frame on the stack */
 					//coreSyncPC();
 					return coreException(14);
 				}
