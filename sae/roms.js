@@ -575,7 +575,9 @@ function SAEO_Roms() {
 	function decode_rekick_rom(mem,memo, size, real_size) {
 		var d1 = 0xdeadfeed, d0;
 
-		for (var i = memo; i < memo + (size >> 3); i++) {
+		/* memo is a byte offset; the loop counted it in 8-byte steps (from byte memo * 8) */
+		for (var k = 0; k < (size >> 3); k++) {
+			var i = (memo >> 3) + k;
 			d0 = (((mem[i * 8 + 0] << 24) | (mem[i * 8 + 1] << 16) | (mem[i * 8 + 2] << 8) | mem[i * 8 + 3])) >>> 0;
 			d1 = (d1 ^ d0) >>> 0;
 			mem[i * 8 + 0] = d1 >>> 24;
