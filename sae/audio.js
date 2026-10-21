@@ -314,6 +314,19 @@ function SAEO_Audio() {
 			if (driver.context) driver.context.close().then(function() {});
 			return false;
 		}
+		/* created without a user gesture (autostart), the context starts suspended and
+		   stays silent: resume it on the first click or key press */
+		if (driver.context.state == "suspended") {
+			var context = driver.context;
+			var unlock = function() {
+				document.removeEventListener("pointerdown", unlock, true);
+				document.removeEventListener("keydown", unlock, true);
+				if (context.state == "suspended")
+					context.resume().then(function() { SAEF_log("audio.obtain() context resumed"); }, function() {});
+			};
+			document.addEventListener("pointerdown", unlock, true);
+			document.addEventListener("keydown", unlock, true);
+		}
 
 		if (SAEV_config.audio.freq == SAEC_Config_Audio_Freq_Auto)
 			used_freq = driver.context.sampleRate;
