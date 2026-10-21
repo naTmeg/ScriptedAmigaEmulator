@@ -35,7 +35,7 @@ The corpus covers only the 68000. `npm run test:cpu020` (`tests/cpu/run-muldiv02
 checks the 68020 MULU.L/MULS.L/DIVU.L/DIVS.L (32- and 64-bit forms) in both cores against
 BigInt arithmetic with random operands, 40000 cases per core in a few seconds.
 `tests/cpu/run-frames020.mjs` (also in `test:cpu020`) checks the format $2 frames of CHK,
-DIV by zero, TRAPV and TRAPcc on the 68020.
+DIV by zero, TRAPV and TRAPcc on the 68020, `tests/cpu/run-pack020.mjs` PACK/UNPK.
 
 Address errors need care: for them the reference is cputester (next section), whose data is
 confirmed on real 68000s. The corpus differs from it (and from photos of a real A500) in the

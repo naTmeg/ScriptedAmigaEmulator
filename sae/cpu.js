@@ -5718,9 +5718,11 @@ function SAEO_CPU() {
 	}
 	function I_PACK_A(p) { /* >= 68020 */
 		var adj = coreNext16();
-		regs.a[p.Rx] -= aIncDec[1][p.Rx]; var s_hi = coreGet8(regs.a[p.Rx]);
+		/* big-endian word read backwards: the first byte (higher address) is the low byte.
+		   The adjustment is added to the whole word before packing its nibbles 11-8 and 3-0 */
 		regs.a[p.Rx] -= aIncDec[1][p.Rx]; var s_lo = coreGet8(regs.a[p.Rx]);
-		var s = (((s_hi & 0xf) << 8) | (s_lo & 0xf)) + adj; if (s > 0xffff) s -= 0x10000;
+		regs.a[p.Rx] -= aIncDec[1][p.Rx]; var s_hi = coreGet8(regs.a[p.Rx]);
+		var s = ((s_hi << 8) | s_lo) + adj; if (s > 0xffff) s -= 0x10000;
 		var d = (((s >> 4) & 0xf0) | (s & 0xf));
 		regs.a[p.Ry] -= aIncDec[1][p.Ry]; corePut8(regs.a[p.Ry], d);
 		//SAEF_log(("I_PACK -(A%d),-(A%d),#%04x | %04x -> %02x", p.Rx,p.Ry,adj, s,d));
@@ -5743,8 +5745,9 @@ function SAEO_CPU() {
 		var adj = coreNext16();
 		regs.a[p.Rx] -= aIncDec[1][p.Rx]; var s = coreGet8(regs.a[p.Rx]);
 		var d = (((s << 4) & 0xf00) | (s & 0xf)) + adj; if (d > 0xffff) d -= 0x10000;
-		regs.a[p.Ry] -= aIncDec[1][p.Ry]; corePut8(regs.a[p.Ry], d >> 8);
+		/* the word goes to memory backwards as well: low byte first (higher address) */
 		regs.a[p.Ry] -= aIncDec[1][p.Ry]; corePut8(regs.a[p.Ry], d & 0xff);
+		regs.a[p.Ry] -= aIncDec[1][p.Ry]; corePut8(regs.a[p.Ry], d >> 8);
 		//SAEF_log(("I_UNPK -(A%d),-(A%d),#%04x | %02x -> %04x", p.Rx,p.Ry,adj, s,d));
 		//ccna
 		coreSyncPC();
