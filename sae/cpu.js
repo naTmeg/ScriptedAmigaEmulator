@@ -928,13 +928,22 @@ function SAEO_CPU() {
 
 	/* Test hook: put the CPU at an instruction boundary with a given prefetch queue
 	 * (pc = address of the opcode in ir, irc = the word after it). Used by the
-	 * single-instruction tests in tests/cpu; the emulator itself never calls it. */
+	 * single-instruction tests in tests/cpu; the emulator itself never calls it.
+	 * The normal core fetches through regs.pc_p, the 68020/030 prefetch core from its
+	 * instruction cache: both read the opcode from memory at pc, ir/irc only matter
+	 * for the 68000/010 prefetch core. */
 	this.setPrefetchState = function(pc, ir, irc) {
+		regs.ir = ir & 0xffff;
+		regs.irc = irc & 0xffff;
+		if (!SAEV_config.cpu.compatible) {
+			setPC(pc >>> 0);
+			return;
+		}
 		regs.pc_p = regs.pc_oldp = 0;
 		setPCi(pc >>> 0);
 		pc_offset = PC_OFFSET;
-		regs.ir = ir & 0xffff;
-		regs.irc = irc & 0xffff;
+		if (SAEV_config.cpu.model >= SAEC_Config_CPU_Model_68020)
+			fill_prefetch();
 	}
 
 	/* condition code test for the T0 trace check in m68k.js (ccTab lives in this closure) */

@@ -105,6 +105,14 @@ function setState(s) {
 	for (const a of dirty) ram[a] = 0;
 	dirty = [];
 	for (const [a, v] of s.ram) { ram[a & 0xffffff] = v; dirty.push(a & 0xffffff); }
+	/* the normal core fetches opcodes from memory, the corpus has them only in the prefetch queue */
+	if (core !== "compatible") {
+		const ms = new Map(s.ram.map(([a, v]) => [a & 0xffffff, v]));
+		for (let i = 0; i < 4; i++) {
+			const a = (s.pc + i) & 0xffffff;
+			if (!ms.has(a)) { ram[a] = (s.prefetch[i >> 1] >> ((i & 1) ? 0 : 8)) & 0xff; dirty.push(a); }
+		}
+	}
 	for (let i = 0; i < 8; i++) regs.d[i] = s["d" + i] >>> 0;
 	for (let i = 0; i < 7; i++) regs.a[i] = s["a" + i] >>> 0;
 	const sr = s.sr;
