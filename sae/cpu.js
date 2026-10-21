@@ -507,6 +507,9 @@ function SAEO_CPU() {
 
 	/*---------------------------------*/
 
+	/* tag/longword results of getcache030(), one object per caller instead of one per access */
+	var c030_fill = { tag: 0, lws: 0 }, c030_rd1 = { tag: 0, lws: 0 }, c030_rd2 = { tag: 0, lws: 0 };
+	var c030_wr1 = { tag: 0, lws: 0 }, c030_wr2 = { tag: 0, lws: 0 };
 	function getcache030(cp, addr, p) {
 		addr = (addr & ~3) >>> 0;
 		var index = (addr >>> 4) & CACHELINE030_IM;
@@ -526,7 +529,7 @@ function SAEO_CPU() {
 		addr = (addr & ~3) >>> 0;
 		if (regs.cacheholdingaddr020 == addr)
 			return;
-		var p = {};
+		var p = c030_fill;
 		var c = getcache030(icaches030, addr, p);
 		if (c.valid[p.lws] && c.tag == p.tag) {
 			// cache hit
@@ -579,7 +582,7 @@ function SAEO_CPU() {
 		var aligned = addr & 3;
 		var v1, v2;
 
-		var p1 = {};
+		var p1 = c030_rd1;
 		var c1 = getcache030(dcaches030, addr, p1);
 		addr = (addr & ~3) >>> 0;
 		if (!c1.valid[p1.lws] || c1.tag != p1.tag) {
@@ -617,7 +620,7 @@ function SAEO_CPU() {
 		}
 		// no, need another one
 		addr += 4;
-		var p2 = {};
+		var p2 = c030_rd2;
 		var c2 = getcache030(dcaches030, addr, p2);
 		if (!c2.valid[p2.lws] || c2.tag != p2.tag) {
 			v2 = SAER_Memory_get32(addr);
@@ -649,7 +652,7 @@ function SAEO_CPU() {
 		var aligned = addr & 3;
 		var wa = (regs.cacr & CACR030_WA) != 0;
 
-		var p1 = {};
+		var p1 = c030_wr1;
 		var c1 = getcache030(dcaches030, addr, p1);
 
 		// easy one
@@ -685,7 +688,7 @@ function SAEO_CPU() {
 		if ((size == 0) || (size == 1 && aligned <= 2) || (size == 2 && aligned == 0))
 			return;
 
-		var p2 = {};
+		var p2 = c030_wr2;
 		var c2 = getcache030(dcaches030, addr + 4, p2);
 		hit = (c2.tag == p2.tag && c2.valid[p2.lws]);
 		if (hit || wa) {
