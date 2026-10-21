@@ -43,6 +43,20 @@ function SAEO_Serial() {
 
 	/*---------------------------------*/
 
+	/* Transmitter, timed like Paula (and vAmiga's UART): SERDAT fills the transmit buffer (0 is
+	   "empty"). When the shift register is free the word moves in at once and TBE is raised;
+	   the shift register then sends a start bit and the word down to its highest 1 bit (the
+	   stop bits written by the program), (SERPER & $7FFF) + 1 colour clocks per bit. When it is
+	   empty and the buffer holds the next word, that one moves in and raises TBE again.
+	   (Before, the shift register emptied at the next hsync.) With the serial port off SERDAT
+	   is ignored as before: a running transmitter there (no TBE so far) made vAmigaTS
+	   CPU/IPL2 ANDCCR/moveRgRg and CPU/IPL/DIV/DIVU2 drop from about 85 to 20 %, though
+	   NOP/TAS/BKPT improved; SAE's CPU/chipset timing is not exact enough for those. */
+	function tx_bits(v) {
+		var n = 0;
+		while (v) { n++; v >>>= 1; }
+		return n;
+	}
 	function serdatcopy() {
 		if (data_in_sershift || !data_in_serdat)
 			return;
@@ -55,6 +69,13 @@ function SAEO_Serial() {
 		SAEV_config.hook.serial.put(serdatshift_masked);
 
 		SAER.custom.INTREQ(SAEC_Custom_INTF_SETCLR | SAEC_Custom_INTF_TBE);
+
+		var colour_clocks = (1 + tx_bits(serdatshift)) * ((serper & 0x7fff) + 1);
+		SAER.events.event2_newevent_xx(-1, colour_clocks * SAEC_Events_CYCLE_UNIT, 0, serdatshift_done);
+	}
+	function serdatshift_done() {
+		data_in_sershift = 0;
+		serdatcopy(); /* the next word, if one is waiting */
 	}
 
 	this.hsync = function() { //serial_hsynchandler()
@@ -68,12 +89,6 @@ function SAEO_Serial() {
 			}
 		}
 
-		//if (!first_write) return;
-
-		if (data_in_sershift) {
-			data_in_sershift = 0;
-			serdatcopy();
-		}
 	}
 
 	this.rbf_clear = function() { //serial_rbf_clear()
@@ -166,12 +181,12 @@ function SAEO_Serial() {
 	/*---------------------------------*/
 
 	this.SERPER = function(w) {
-		if (!SAEV_config.serial.enabled)
-			return;
 		if (serper == w)  /* don't set baudrate if it's already ok */
 			return;
 
-		serper = w;
+		serper = w; /* the transmitter timing needs it with the port off too */
+		if (!SAEV_config.serial.enabled)
+			return;
 		//first_write = 1;
 
 		if (DEBUGIO > 1) {
