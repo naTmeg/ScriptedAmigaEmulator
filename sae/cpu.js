@@ -3653,11 +3653,37 @@ function SAEO_CPU() {
 		return p.cyc;
 	}
 
+	/* "undefined" flags of DIVU/DIVS.W (WinUAE divbyzero_special / setdiv?flags, confirmed
+	   by cputester on real 68000s): division by zero on 68000/68010 clears N, Z, V, C and
+	   sets Z (DIVS) or N/Z from the high word of the dividend (DIVU); 68020/030 also set V
+	   for DIVU. An overflow on 68000/68010 sets N and V and clears Z and C. */
+	function div_zero_flags(signed, dst) {
+		if (SAEV_config.cpu.model >= SAEC_Config_CPU_Model_68040)
+			return;
+		regs.n = regs.z = regs.v = regs.c = false;
+		if (signed)
+			regs.z = true;
+		else {
+			regs.n = (dst & 0x80000000) != 0;
+			regs.z = (dst >>> 16) == 0;
+			if (SAEV_config.cpu.model >= SAEC_Config_CPU_Model_68020)
+				regs.v = true;
+		}
+	}
+	function div_overflow_flags() {
+		regs.v = true;
+		if (SAEV_config.cpu.model <= SAEC_Config_CPU_Model_68010) {
+			regs.n = true;
+			regs.z = false;
+		}
+	}
+
 	function I_DIVS(p) {
 		var s = ldEA16tab[p.ea]();
 
 		regs.c = false;
 		if (s == 0) {
+			div_zero_flags(true, regs.d[p.Dn]);
 			//SAEF_log(("I_DIVS.W %08x / 0 (coreException 5)", regs.d[p.Dn]));
 			//coreSyncPC();
 			return coreException(5);
@@ -3668,7 +3694,7 @@ function SAEO_CPU() {
 			if (d & 0x80000000) d = -d + 0x100000000;
 			var quo = (d / s) >>> 0;
 			if (sign ? quo > 0x8000 : quo > 0x7fff) {
-				regs.v = true;
+				div_overflow_flags();
 				//SAEF_log(("I_DIVS.W %d / %d = %d OVERFLOW", d,s, quo));
 			} else {
 				var rem = d % s;
@@ -3690,6 +3716,7 @@ function SAEO_CPU() {
 
 		regs.c = false;
 		if (s == 0) {
+			div_zero_flags(false, regs.d[p.Dn]);
 			//SAEF_log(("I_DIVU.%s %08x / 0 (coreException 5)", regs.d[p.Dn]));
 			//coreSyncPC();
 			return coreException(5);
@@ -3697,7 +3724,7 @@ function SAEO_CPU() {
 			var d = regs.d[p.Dn];
 			var quo = (d / s) >>> 0;
 			if (quo > 0xffff) {
-				regs.v = true;
+				div_overflow_flags();
 				//SAEF_log(("I_DIVU.W %d / %d = %d OVERFLOW", d,s, quo));
 			} else {
 				var rem = d % s;
