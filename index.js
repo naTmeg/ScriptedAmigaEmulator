@@ -1810,7 +1810,8 @@ function preSelect(grp) {
 		if (tmp == href) break;
 		href = tmp;
 	}
-	href = window.location.protocol+"//" + window.location.hostname + "/#" + href;
+	/* keep port and path, so the link also works on a local server or below a subdirectory */
+	href = window.location.protocol + "//" + window.location.host + window.location.pathname + "#" + href;
 	var nameLink = dbe.name+" (<a target=\"_blank\" href=\""+href+"\">share</a>)";
 
 	var license = "";
