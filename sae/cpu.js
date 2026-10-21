@@ -3317,21 +3317,22 @@ function SAEO_CPU() {
 			if (list && (a & 1) && model < 68020 && SAEV_config.cpu.compatible)
 				address_error(a - 2, true);
 			a -= pre;
-			/* p. 4-128: The MC68000 and MC68010 write the initial register value (not decremented). */
-			if (model >= 68020) regs.a[An] -= pre;
 		}
+		/* p. 4-128: if An itself is in the list, the MC68020/030/040 write its initial value
+		   decremented by the operand size (once), the MC68000/010 the initial value */
+		var anValue = ripr && model >= 68020 ? (regs.a[An] - 2) >>> 0 : regs.a[An];
 		for (Xn = 0; Xn < 16; Xn++) {
 			if (list & (1 << (Xn ^ inv))) {
 				if (Xn < 8)
 					corePut16(a, regs.d[Xn] & 0xffff);
 				else
-					corePut16(a, regs.a[Xn & 7] & 0xffff);
+					corePut16(a, (ripr && (Xn & 7) == An ? anValue : regs.a[Xn & 7]) & 0xffff);
 
 				a += 2;
 				n++;
 			}
 		}
-		if (ripr && model < 68020) regs.a[An] -= pre;
+		if (ripr) regs.a[An] -= pre;
 		//ccna
 		coreSyncPC();
 		return [p.cyc[0]+4*n,p.cyc[1],n];
@@ -3353,21 +3354,22 @@ function SAEO_CPU() {
 			if (list && (a & 1) && model < 68020 && SAEV_config.cpu.compatible)
 				address_error(a - 2, true);
 			a -= pre;
-			/* p. 4-128: The MC68000 and MC68010 write the initial register value (not decremented). */
-			if (model >= 68020) regs.a[An] -= pre;
 		}
+		/* p. 4-128: if An itself is in the list, the MC68020/030/040 write its initial value
+		   decremented by the operand size (once), the MC68000/010 the initial value */
+		var anValue = ripr && model >= 68020 ? (regs.a[An] - 4) >>> 0 : regs.a[An];
 		for (Xn = 0; Xn < 16; Xn++) {
 			if (list & (1 << (Xn ^ inv))) {
 				if (Xn < 8)
 					corePut32(a, regs.d[Xn]);
 				else
-					corePut32(a, regs.a[Xn & 7]);
+					corePut32(a, (ripr && (Xn & 7) == An ? anValue : regs.a[Xn & 7]));
 
 				a += 4;
 				n++;
 			}
 		}
-		if (ripr && model < 68020) regs.a[An] -= pre;
+		if (ripr) regs.a[An] -= pre;
 		//ccna
 		coreSyncPC();
 		return [p.cyc[0]+8*n,p.cyc[1],2*n];

@@ -10,7 +10,7 @@
     "test:cpu": "node tests/cpu/run-sst.mjs",
     "test:cpu:check": "node tests/cpu/run-sst.mjs --check",
     "test:cpu:full": "node tests/cpu/run-sst.mjs --limit 0",
-    "test:cpu020": "node tests/cpu/run-muldiv020.mjs && node tests/cpu/run-frames020.mjs && node tests/cpu/run-pack020.mjs && node tests/cpu/run-bitfield020.mjs && node tests/cpu/run-cmp2020.mjs",
+    "test:cpu020": "node tests/cpu/run-muldiv020.mjs && node tests/cpu/run-frames020.mjs && node tests/cpu/run-pack020.mjs && node tests/cpu/run-bitfield020.mjs && node tests/cpu/run-cmp2020.mjs && node tests/cpu/run-movem020.mjs",
     "fetch:vamigats": "node tests/tools/fetch-vamigats.mjs",
     "test:browser": "node tests/run-suite.mjs",
     "test:browser:check": "node tests/run-suite.mjs --check",
