@@ -56,6 +56,7 @@ function dbEntry(t,nd, n,d,p,l,y, f,no) {
 
 	this.flags = f;
 	this.notes = no;
+	this.files = null; /* local files: the file name of every disk (see dbScanLocal) */
 }
 
 const DB_IDS = [[
@@ -614,6 +615,83 @@ function dbInit() {
 	   for every entry the user picks */
 	for (var dbt = 1; dbt <= 4; dbt++)
 		dbProbeGroup(dbt);
+	for (var dbt = 1; dbt <= 4; dbt++)
+		dbScanLocal(dbt);
+}
+/* A server that lists directories (python -m http.server, Apache or nginx autoindex) shows
+   which images lie in a database folder. Those without an entry are added to the group as
+   "local files" with default settings, so own disks only have to be put into the folder.
+   Disks named "... (Disk 1 of 2)" or "... (Disk 1)" become one entry, "(AGA)" in the name
+   selects an A1200. On a server without listings the request fails and nothing changes. */
+function dbScanLocal(dbt) {
+	var x = new XMLHttpRequest();
+	x.onload = function() {
+		if (x.status != 200 || !/html/i.test(x.getResponseHeader("Content-Type") || ""))
+			return;
+		var known = {};
+		for (var i = 0; i < db.length; i++) {
+			if (db[i].type == dbt) {
+				for (var n = 0; n < db[i].numdisks; n++)
+					known[getDatabaseEntryFilename(db[i], n, true).toLowerCase()] = true;
+			}
+		}
+		var sets = {}, keys = [];
+		var re = /href="([^"?#/]+\.(?:adf|adz|dms))"/gi, m;
+		while ((m = re.exec(x.responseText)) !== null) {
+			var file;
+			try { file = decodeURIComponent(m[1]); } catch (e) { continue; }
+			if (known[file.toLowerCase()])
+				continue;
+			var name = file.replace(/\.(?:adf|adz|dms)$/i, "");
+			var disk = /\s*\(Disk (\d+)(?: of \d+)?\)/i.exec(name), num = 1;
+			if (disk !== null) {
+				num = parseInt(disk[1], 10);
+				name = (name.substr(0, disk.index) + name.substr(disk.index + disk[0].length)).trim();
+			}
+			var key = name.toLowerCase();
+			if (!(key in sets)) {
+				sets[key] = { name: name, disks: [] };
+				keys.push(key);
+			}
+			sets[key].disks.push({ num: num, file: file });
+			known[file.toLowerCase()] = true;
+		}
+		if (!keys.length)
+			return;
+		keys.sort();
+		var entries = [];
+		for (var k = 0; k < keys.length; k++) {
+			var set = sets[keys[k]];
+			set.disks.sort(function(a, b) { return a.num - b.num; });
+			var flags = /\(AGA\)/i.test(set.name) ? DBF_AGA : 0;
+			if (set.disks.length > 4)
+				flags |= DBF_MDC; /* more disks than drives: change them by hand */
+			var dbe = new dbEntry(dbt, set.disks.length, set.name, "local file", "", "", "", flags,
+				"Found in the folder on this server; started with default settings.");
+			dbe.files = set.disks.map(function(d) { return d.file; });
+			db.push(dbe);
+			entries.push(db.length);
+		}
+		for (var s = 0; s < 2; s++) {
+			var select = document.getElementById(DB_IDS[s][dbt - 1]);
+			if (select.options.length > 1 && select.options[1].disabled)
+				select.remove(1); /* "(no disk images on this server)" */
+			var head = document.createElement("option");
+			head.text = "Local files";
+			head.value = "0";
+			head.disabled = true;
+			head.style.fontWeight = "bold";
+			select.add(head, null);
+			for (var e = 0; e < entries.length; e++) {
+				var o = document.createElement("option");
+				o.text = db[entries[e] - 1].name;
+				o.value = String(entries[e]);
+				select.add(o, null);
+			}
+		}
+	};
+	x.open("GET", DB_URLS[dbt - 1] + "/");
+	x.send();
 }
 function dbProbeGroup(dbt) {
 	for (var first = 0; first < db.length && db[first].type != dbt; first++);
@@ -831,6 +909,8 @@ function setDatabaseConfig() {
 }
 
 function getDatabaseEntryFilename(dbe, disk, adf) {
+	if (dbe.files !== null)
+		return adf ? dbe.files[disk] : dbe.files[disk].replace(/\.(?:adf|adz|dms)$/i, "");
 	if (dbe.numdisks == 1)
 		return dbe.name + (adf ? ".adf" : "");
 	else
@@ -1884,7 +1964,7 @@ function preSelect(grp) {
 	}
 	/* keep port and path, so the link also works on a local server or below a subdirectory */
 	href = window.location.protocol + "//" + window.location.host + window.location.pathname + "#" + href;
-	var nameLink = dbe.name+" (<a target=\"_blank\" href=\""+href+"\">share</a>)";
+	var nameLink = escapeHTML(dbe.name)+" (<a target=\"_blank\" href=\""+href+"\">share</a>)";
 
 	var license = "";
 	if (dbe.license.length) {
