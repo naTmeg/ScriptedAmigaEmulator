@@ -70,10 +70,10 @@ function switchScreenWindow(s) {
 	var e = document.getElementById("controls_sw");
 	if (s) {
 		e.innerHTML = "Window";
-		e.onclick = function() { screen(false); };
+		e.onclick = function() { screenMode(false); };
 	} else {
 		e.innerHTML = "Screen";
-		e.onclick = function() { screen(true); };
+		e.onclick = function() { screenMode(true); };
 	}
 }
 
@@ -334,7 +334,7 @@ function start() {
 	}
 }
 
-function stop() {
+function stopEmulation() { /* not "stop": that would hide window.stop */
 	/* Send stop-request. This does take some time.
 	Once stopped, the hook SAEV_config.hook.event.stopped will be called. (new 0.9.1) */
 	var err = sae.stop();
@@ -366,7 +366,7 @@ function pause(p) {
 		alert(saee2text(err));
 }
 
-function screen(s) {
+function screenMode(s) { /* not "screen": that would hide window.screen */
 	/* Fullscreen or window.
 	true == fullscreen, false == window */
 	var err = sae.screen(s);

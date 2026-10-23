@@ -39,6 +39,7 @@ const DBF_BIM = 8; /* enable immediate blitter */
 const DBF_ECS = 16; /* ECS required */
 const DBF_AGA = 32; /* AGA required */
 const DBF_030 = 64; /* 68030 enabled */
+const DBF_CHIP1M = 128; /* A500 with ECS Agnus and 1 MB chip RAM, no slow RAM (instead of 0.5 MB chip + 0.5 MB slow) */
 
 function dbEntry(t,nd, n,d,p,l,y, f,no) {
 	this.id = Math.random() * 0xffffffff >>> 0;
@@ -93,7 +94,7 @@ const db = [
 	new dbEntry(DBT_GAME,1, "Asteroids",          "Vertical Developments","","PD", "1979", 0, ""),
 	new dbEntry(DBT_GAME,1, "BlockySkies",        URL_ENABLE_SOFTWARE,"","FW",     "2016", 0, ""),
 	new dbEntry(DBT_GAME,1, "Crazy Sue",          "Jumpshoe,Hironymous","","PD",   "1991", 0, "Loading can take some time."),
-	new dbEntry(DBT_GAME,1, "Deluxe Galaga 2.4",  "Edgar Vigdal","","FW",          "1994", DBF_COL, ""),
+	new dbEntry(DBT_GAME,1, "Deluxe Galaga 2.4",  "Edgar Vigdal","","FW",          "1994", DBF_COL|DBF_CHIP1M, ""), /* crashes with slow + fast RAM (a computed jump uses a register it never set); without fast RAM, AROS leaves it too little memory */
 	new dbEntry(DBT_GAME,2, "Hoi",                URL_TEAM_HOI,"Hollyware","FW",   "1992", DBF_MDC, "Press the LMB to skip the intro and insert the 2nd disk manually.<br /><br /><span title=\"After the disk-change, place the \"LVL\"-pointer in the far lower right of the green quarter screen. The bottom \"L\" must be positioned in the corner precisely. Click the LMB, then shift the \"LVL\" pointer to the absolute top left of the screen (as far as it can be moved in that direction). Click the LMB again. Any of the first four levels may now be selected for game play. Press the F4 key during game play for twelve lives. Note: Level 5 can only be accessed by completing level 4.\">Cheat (move mouse-over)</span>"),
 	new dbEntry(DBT_GAME,1, "Norse Gods",         URL_LOEWENSTEIN,"","FW",         "1991", 0, ""),
 	new dbEntry(DBT_GAME,1, "Pollymorf",          "Andrew Campbell","","PD",       "1993", 0, "Loading takes some time, just wait."),
@@ -376,6 +377,11 @@ function setText(id, v) {
 	document.getElementById(id).value = typeof v === "string" ? v : String(v);
 }
 
+/* text from disks, files or the database must not be taken as HTML */
+function escapeHTML(s) {
+	return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 function setText2(id, v) {
 	document.getElementById(id).innerHTML = typeof v === "string" ? v : String(v);
 }
@@ -445,10 +451,10 @@ function switchScreenWindow(s) {
 	var e = document.getElementById("controls_sw");
 	if (s) {
 		e.innerHTML = "Window";
-		e.onclick = function() { screen(false); };
+		e.onclick = function() { screenMode(false); };
 	} else {
 		e.innerHTML = "Screen";
-		e.onclick = function() { screen(true); };
+		e.onclick = function() { screenMode(true); };
 	}
 }
 
@@ -602,6 +608,32 @@ function dbInit() {
 			}
 		}
 	}
+	/* the disk images are not part of the repository (db/README.md): ask the server once per
+	   group for its first image and mark groups without files, instead of an HTTP-404 alert
+	   for every entry the user picks */
+	for (var dbt = 1; dbt <= 4; dbt++)
+		dbProbeGroup(dbt);
+}
+function dbProbeGroup(dbt) {
+	for (var first = 0; first < db.length && db[first].type != dbt; first++);
+	if (first == db.length)
+		return;
+	var x = new XMLHttpRequest();
+	x.onload = function() {
+		if (x.status != 404)
+			return;
+		for (var k = 0; k < 2; k++) {
+			var s = document.getElementById(DB_IDS[k][dbt - 1]);
+			while (s.options.length > 1)
+				s.remove(1);
+			var option = document.createElement("option");
+			option.text = "(no disk images on this server)";
+			option.disabled = true;
+			s.add(option, null);
+		}
+	};
+	x.open("HEAD", DB_URLS[dbt - 1] + "/" + getDatabaseEntryFilename(db[first], 0, true));
+	x.send();
 }
 
 function dbFindTypeNamePos(type, name) {
@@ -635,6 +667,7 @@ function CacheItem(url) {
 	this.data = "";
 	this.size = 0;
 	this.crc32 = 0;
+	this.waiters = []; /* {dst, done} to fill when the download has finished */
 }
 function Cache() {
 	var items = [];
@@ -650,30 +683,52 @@ function Cache() {
 	function load(url, handler) {
 		var client = new XMLHttpRequest();
 		client.onload = handler;
+		/* network error, file:// or a stalled server: report it instead of "Loading..." forever */
+		client.onerror = client.ontimeout = function() { handler.call({ status: 0, responseText: "" }); };
 		client.open("GET", url);
+		client.timeout = 120000;
 		client.overrideMimeType("text\/plain; charset=x-user-defined"); /* we want binary data */
 		client.send();
 	}
 
-	this.req = function(path, name, size, crc, dst) {
+	/* done (optional) is called once dst holds the data: at once if cached, else after the
+	   download, also when another request has already started it */
+	this.req = function(path, name, size, crc, dst, done) {
 		var url = path + "/" + name;
 		var item = null;
 
 		if (dst !== false)
 			dst.clr();
 
-		if ((item = find(url)) !== false) {
-			if (dst !== false) {
+		if ((item = find(url)) !== false && item.state == S_ERROR) {
+			/* a failed download is tried again instead of blocking every later start */
+			items.splice(items.indexOf(item), 1);
+			item = false;
+		}
+		var fill = function(it, w) {
+			if (w.dst !== false) {
 				//dst.path = item.path;
-				dst.name = item.name;
-				dst.data = item.data;
-				dst.size = item.size;
-				dst.crc32 = item.crc32;
+				w.dst.name = it.name;
+				w.dst.data = it.data;
+				w.dst.size = it.size;
+				w.dst.crc32 = it.crc32;
 			}
+			if (typeof w.done === "function")
+				w.done();
+		};
+		if (item !== false) {
+			if (item.state != S_VALID) {
+				/* still downloading (e.g. disk 2 picked before the prefetch finished):
+				   copying now gave an empty drive */
+				item.waiters.push({ dst: dst, done: done });
+				return false;
+			}
+			fill(item, { dst: dst, done: done });
 			//console.log("cache.req() '"+url+"' is cached.");
 			return true;
 		}
 		item = new CacheItem(url);
+		item.waiters.push({ dst: dst, done: done });
 		items.push(item);
 
 		//console.log("cache.req() start downloading '"+url+"'...");
@@ -681,27 +736,22 @@ function Cache() {
 		load(url, function() {
 			if (this.status == 200) {
 				if (this.responseText.length == size) {
-					/*if (crc !== false) {
-						var hash = crc32(this.responseText);
-						if (hash != crc) {
-							item.state = S_ERROR;
-							alert(sprintf("Wrong checksum for '%s'\n\n(should be $%08x, but is $%08x)\n\nTry to flush the browser-cache with 'Ctrl+Shift+Del' and press F5 to reload...", url, crc, hash));
-							return;
-						}
-					}*/
+					var hash = crc32(this.responseText);
+					if (crc !== false && hash != crc) {
+						item.state = S_ERROR;
+						alert(sprintf("Wrong checksum for '%s'\n\n(should be $%08x, but is $%08x)\n\nTry to flush the browser-cache with 'Ctrl+Shift+Del' and press F5 to reload...", url, crc, hash));
+						return;
+					}
 					//item.path = path;
 					item.name = name;
 					item.data = this.responseText;
 					item.size = size;
-					item.crc32 = crc;
+					item.crc32 = hash; /* the computed one, not just the expected one */
 					item.state = S_VALID;
-					if (dst !== false) {
-						//dst.path = item.path;
-						dst.name = item.name;
-						dst.data = item.data;
-						dst.size = item.size;
-						dst.crc32 = item.crc32;
-					}
+					var waiters = item.waiters;
+					item.waiters = [];
+					for (var i = 0; i < waiters.length; i++)
+						fill(item, waiters[i]);
 					//console.log("cache.req() downloaded of '"+url+"' done.");
 				} else {
 					item.state = S_ERROR;
@@ -709,7 +759,8 @@ function Cache() {
 				}
 			} else {
 				item.state = S_ERROR;
-				var msg = sprintf("Error while downloading '%s' (http status: %d)", url, this.status);
+				var msg = this.status ? sprintf("Error while downloading '%s' (http status: %d)", url, this.status) :
+					sprintf("Could not download '%s' (no connection, or the page was opened as a file instead of over http)", url);
 				if (name == AROS_ROM_FILE || name == AROS_EXT_FILE)
 					msg += sprintf("\n\nThe AROS kickstart-replacement is missing. Put '%s' and '%s' into the '%s'-directory next to index.htm, or select a kickstart-rom at 'Config/ROM'.", AROS_ROM_FILE, AROS_EXT_FILE, URL_DATABASE);
 				alert(msg);
@@ -729,9 +780,40 @@ function Cache() {
 
 /*---------------------------------*/
 
-function loadFile(e, callback) {
+/* reads a local file as a binary string. With disk set (floppy images): gzip-packed images
+   (.adz, .adf.gz) are unpacked, ZIP archives are refused here, the emulator would stop on them */
+function loadFile(e, callback, disk) {
 	var reader = new FileReader();
-	reader.onload = callback;
+	if (!disk) {
+		reader.onload = callback;
+		reader.readAsBinaryString(e);
+		return;
+	}
+	reader.onload = function() {
+		var data = reader.result;
+		if (data.substr(0, 4) == "PK\x03\x04") {
+			alert(sprintf("'%s' is a ZIP archive. Unpack it first and select the disk image inside.", e.name));
+			return;
+		}
+		if (data.charCodeAt(0) != 0x1f || data.charCodeAt(1) != 0x8b) {
+			callback({ target: { result: data } });
+			return;
+		}
+		if (typeof DecompressionStream !== "function") {
+			alert(sprintf("'%s' is gzip-packed, and this browser cannot unpack it. Unpack it first.", e.name));
+			return;
+		}
+		var bytes = new Uint8Array(data.length);
+		for (var i = 0; i < data.length; i++) bytes[i] = data.charCodeAt(i);
+		new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer().then(function(buf) {
+			var u = new Uint8Array(buf), s = "";
+			for (var i = 0; i < u.length; i += 0x8000)
+				s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+			callback({ target: { result: s } });
+		}, function() {
+			alert(sprintf("'%s' looks gzip-packed but could not be unpacked.", e.name));
+		});
+	};
 	reader.readAsBinaryString(e);
 }
 
@@ -815,7 +897,7 @@ function getDatabaseConfig() {
 		else if (dbe.flags & DBF_ECS)
 			sae.setModel(SAEC_Model_A500P, 0); /* set an A500+ for ECS */
 		else
-			sae.setModel(SAEC_Model_A500, 0); /* set an A500 for OCS */
+			sae.setModel(SAEC_Model_A500, (dbe.flags & DBF_CHIP1M) ? 2 : 0); /* set an A500 for OCS (variant 2: ECS Agnus, 1 MB chip) */
 
 		if (dbe.flags & DBF_030)
 			cfg.cpu.model = SAEC_Config_CPU_Model_68030;
@@ -871,7 +953,7 @@ function setRomName() {
 			e.className = "orange";
 			setDisabled("cfg_rom_info", 1);
 		}
-		e.innerHTML = name.length > MAX_FILENAME ? name.substr(0, MAX_FILENAME)+" [...]" : name;
+		e.innerHTML = escapeHTML(name.length > MAX_FILENAME ? name.substr(0, MAX_FILENAME)+" [...]" : name);
 
 		styleDisplayInline("cfg_rom_remove", 1);
 		styleDisplayInline("cfg_rom_info", 1);
@@ -896,7 +978,7 @@ function setExtName() {
 			e.className = "orange";
 			setDisabled("cfg_ext_info", 1);
 		}
-		e.innerHTML = name.length > MAX_FILENAME ? name.substr(0, MAX_FILENAME)+" [...]" : name;
+		e.innerHTML = escapeHTML(name.length > MAX_FILENAME ? name.substr(0, MAX_FILENAME)+" [...]" : name);
 
 		styleDisplayInline("cfg_ext_remove", 1);
 		styleDisplayInline("cfg_ext_info", 1);
@@ -921,7 +1003,7 @@ function setKeyName() {
 			e.className = "orange";
 			setDisabled("cfg_key_info", 1);
 		}
-		e.innerHTML = name.length > MAX_FILENAME ? name.substr(0, MAX_FILENAME)+" [...]" : name;
+		e.innerHTML = escapeHTML(name.length > MAX_FILENAME ? name.substr(0, MAX_FILENAME)+" [...]" : name);
 
 		styleDisplayInline("cfg_key_remove", 1);
 		styleDisplayInline("cfg_key_info", 1);
@@ -951,7 +1033,7 @@ function setAMaxName() {
 			e.className = "orange";
 			setDisabled("cfg_amax_info", 1);
 		}
-		e.innerHTML = name.length > MAX_FILENAME ? name.substr(0, MAX_FILENAME)+" [...]" : name;
+		e.innerHTML = escapeHTML(name.length > MAX_FILENAME ? name.substr(0, MAX_FILENAME)+" [...]" : name);
 
 		styleDisplayInline("cfg_amax_remove", 1);
 		styleDisplayInline("cfg_amax_info", 1);
@@ -969,9 +1051,9 @@ function setFloppyName(n) {
 	if (cfg.floppy.drive[n].file.size) {
 		e.className = "";
 		if (cfg.floppy.drive[n].file.name.length > MAX_FILENAME)
-			e.innerHTML = cfg.floppy.drive[n].file.name.substr(0, MAX_FILENAME)+" [...]";
+			e.innerHTML = escapeHTML(cfg.floppy.drive[n].file.name.substr(0, MAX_FILENAME)+" [...]");
 		else
-			e.innerHTML = cfg.floppy.drive[n].file.name;
+			e.innerHTML = escapeHTML(cfg.floppy.drive[n].file.name);
 		styleDisplayInline("cfg_df"+n+"_eject", 1);
 		styleDisplayInline("cfg_df"+n+"_info", 1);
 	} else {
@@ -989,9 +1071,9 @@ function setMountName(n) {
 	if (ci.file.name.length) {
 		e.className = "";
 		if (ci.file.name.length > MAX_FILENAME)
-			e.innerHTML = ci.file.name.substr(0, MAX_FILENAME)+" [...]";
+			e.innerHTML = escapeHTML(ci.file.name.substr(0, MAX_FILENAME)+" [...]");
 		else
-			e.innerHTML = ci.file.name;
+			e.innerHTML = escapeHTML(ci.file.name);
 
 		styleDisplayInline("cfg_mount_"+n+"_remove", 1);
 		if (n < 4) styleDisplayInline("cfg_mount_"+n+"_setup", 1);
@@ -1520,7 +1602,7 @@ function advandedStart() {
 	}
 }
 
-function stop() {
+function stopEmulation() { /* not "stop": that would hide window.stop */
 	sae.stop(); /* send stop-request */
 }
 
@@ -1532,7 +1614,7 @@ function reset() {
 	sae.reset(false, false);
 }
 
-function screen(s) {
+function screenMode(s) { /* not "screen": that would hide window.screen */
 	sae.screen(s);
 
 	screened = s;
@@ -1798,7 +1880,8 @@ function preSelect(grp) {
 		if (tmp == href) break;
 		href = tmp;
 	}
-	href = window.location.protocol+"//" + window.location.hostname + "/#" + href;
+	/* keep port and path, so the link also works on a local server or below a subdirectory */
+	href = window.location.protocol + "//" + window.location.host + window.location.pathname + "#" + href;
 	var nameLink = dbe.name+" (<a target=\"_blank\" href=\""+href+"\">share</a>)";
 
 	var license = "";
@@ -2057,34 +2140,35 @@ function closeRomInfo() {
 
 function romSelect() {
 	var e = document.getElementById("cfg_rom_file").files[0];
-	if (e) {
-		loadFile(e, function (event) {
-			//cfg.memory.rom.path = e.path;
-			cfg.memory.rom.name = e.name;
-			cfg.memory.rom.data = event.target.result;
-			cfg.memory.rom.size = e.size;
-			cfg.memory.rom.crc32 = crc32(event.target.result);
+	if (e)
+		loadFile(e, function (event) { romLoaded(e.name, event.target.result); });
+}
+/* a Kickstart file was read (file dialog or drag and drop) */
+function romLoaded(name, data) {
+	//cfg.memory.rom.path = e.path;
+	cfg.memory.rom.name = name;
+	cfg.memory.rom.data = data;
+	cfg.memory.rom.size = data.length;
+	cfg.memory.rom.crc32 = crc32(data);
 
-			defRomInfo = new SAEO_RomInfo();
-			var err = sae.getRomInfo(defRomInfo, cfg.memory.rom);
-			if (err == SAEE_None) {
-				defRomEncrypted = defRomInfo.cloanto;
-				if (!(defRomInfo.type & SAEC_RomType_ALL_KICK))
-					alert("A 'Kickstart'-ROM is required, but you selected a/an '"+getRomType(defRomInfo)+"'-ROM.");
-			} else {
-				defRomInfo = null;
-				if (err != SAEE_Memory_RomUnknown) {
-					if (err == SAEE_Memory_RomKey || err == SAEE_Memory_RomDecode) {
-						defRomEncrypted = true;
-						setKeyName();
-						if (err == SAEE_Memory_RomDecode)
-							alert(saee2text(err));
-					}
-				}
+	defRomInfo = new SAEO_RomInfo();
+	var err = sae.getRomInfo(defRomInfo, cfg.memory.rom);
+	if (err == SAEE_None) {
+		defRomEncrypted = defRomInfo.cloanto;
+		if (!(defRomInfo.type & SAEC_RomType_ALL_KICK))
+			alert("A 'Kickstart'-ROM is required, but you selected a/an '"+getRomType(defRomInfo)+"'-ROM.");
+	} else {
+		defRomInfo = null;
+		if (err != SAEE_Memory_RomUnknown) {
+			if (err == SAEE_Memory_RomKey || err == SAEE_Memory_RomDecode) {
+				defRomEncrypted = true;
+				setKeyName();
+				if (err == SAEE_Memory_RomDecode)
+					alert(saee2text(err));
 			}
-			setRomName();
-		});
+		}
 	}
+	setRomName();
 }
 function romRemove() {
 	cfg.memory.rom.clr();
@@ -2314,10 +2398,10 @@ function floppyInsert(n) {
 			//file.path = e.path;
 			file.name = e.name;
 			file.data = event.target.result;
-			file.size = e.size;
+			file.size = event.target.result.length;
 			file.crc32 = crc32(event.target.result);
 			setFloppyName(n);
-		});
+		}, true);
 	}
 }
 
@@ -2379,7 +2463,7 @@ function floppyOpenInfo(n) {
 
 	floppyNum = n;
 
-	setText2("cfg_floppy_info_label", di.diskname.length ? di.diskname : span("gray", NA));
+	setText2("cfg_floppy_info_label", di.diskname.length ? escapeHTML(di.diskname) : span("gray", NA));
 	setText2("cfg_floppy_info_size", sprintf("%d (%dK)", file.size, file.size >> 10));
 	setText2("cfg_floppy_info_disktype", di.hd ? "High Density (HD)" : "Double Density (DD)");
 
@@ -2480,41 +2564,43 @@ function mountEnable(n) {
 
 function mountSelect(n) {
 	var e = document.getElementById("cfg_mount_"+n+"_file").files[0];
-	if (e) {
-		loadFile(e, function(event) {
-			var ci = cfg.mount.config[n].ci;
+	if (e)
+		loadFile(e, function(event) { mountLoaded(n, e.name, event.target.result); });
+}
+/* a hard-file for mount slot n was read (file dialog or drag and drop) */
+function mountLoaded(n, name, data) {
+	var ci = cfg.mount.config[n].ci;
+	var e = { name: name, size: data.length };
 
-			var ok = true;
-			if (e.size < 512) {
-				alert("The selected hard-file is too small. (512 bytes minimum)")
-				ok = false;
-			}
-			if (ci.controller_type == SAEC_Config_Mount_Controller_Type_PCMCIA_SRAM && e.size > 4 * 1024 * 1024) {
-				alert("The selected hard-file is too large for a PCMCIA SRAM-card. (4096K maximum)")
-				ok = false;
-			}
-			if (ok) {
-				ci.file.name = e.name;
-				ci.file.data = event.target.result;
-				ci.file.size = e.size;
-				ci.file.crc32 = false;
-
-				if (n < 4) {
-					var haveRDB = ci.file.data.substr(0, 4) == "RDSK";
-					if (haveRDB)
-						;//queryRDB(ci);
-					else {
-						var blocks = Math.floor(ci.file.size / ci.blocksize);
-						ci.highcyl = Math.floor(blocks / (ci.surfaces * ci.sectors));
-						ci.devname = "IDE"+String(n);
-					}
-					setDisabled("cfg_mount_"+n+"_setup", haveRDB);
-				}
-				setMountName(n);
-			} else
-				document.getElementById("cfg_mount_"+n+"_file").value = "";
-		});
+	var ok = true;
+	if (e.size < 512) {
+		alert("The selected hard-file is too small. (512 bytes minimum)")
+		ok = false;
 	}
+	if (ci.controller_type == SAEC_Config_Mount_Controller_Type_PCMCIA_SRAM && e.size > 4 * 1024 * 1024) {
+		alert("The selected hard-file is too large for a PCMCIA SRAM-card. (4096K maximum)")
+		ok = false;
+	}
+	if (ok) {
+		ci.file.name = e.name;
+		ci.file.data = event.target.result;
+		ci.file.size = e.size;
+		ci.file.crc32 = false;
+
+		if (n < 4) {
+			var haveRDB = ci.file.data.substr(0, 4) == "RDSK";
+			if (haveRDB)
+				;//queryRDB(ci);
+			else {
+				var blocks = Math.floor(ci.file.size / ci.blocksize);
+				ci.highcyl = Math.floor(blocks / (ci.surfaces * ci.sectors));
+				ci.devname = "IDE"+String(n);
+			}
+			setDisabled("cfg_mount_"+n+"_setup", haveRDB);
+		}
+		setMountName(n);
+	} else
+		document.getElementById("cfg_mount_"+n+"_file").value = "";
 }
 
 function mountRemove(n) {
@@ -2548,18 +2634,31 @@ function mountCloseSetup(use) {
 		var bootpri = getText("cfg_mount_bootpri");
 		var devname = getText("cfg_mount_devname", true);
 
-		if (blocksize < 512 || blocksize > 65536 || (blocksize & 511) != 0) {
-			alert("'Blocksize' must be smaller or equal 65536 and a multiple of 512.");
+		/* the fields hold Number(text): NaN for anything that is not a number, which passed
+		   every comparison below; surfaces or sectors 0 divided by zero later */
+		var isInt = function(v, lo, hi) { return Number.isInteger(v) && v >= lo && v <= hi; };
+		if (!isInt(surfaces, 1, 65535)) {
+			alert("'Surfaces' must be a whole number from 1 to 65535.");
+			document.getElementById("cfg_mount_surfaces").focus();
+			return;
+		}
+		if (!isInt(sectors, 1, 65535)) {
+			alert("'Sectors' must be a whole number from 1 to 65535.");
+			document.getElementById("cfg_mount_sectors").focus();
+			return;
+		}
+		if (!isInt(blocksize, 512, 65536) || (blocksize & (blocksize - 1)) != 0) {
+			alert("'Blocksize' must be a power of two from 512 to 65536.");
 			document.getElementById("cfg_mount_blocksize").focus();
 			return;
 		}
 		var blocks = Math.floor(ci.file.size / blocksize);
-		if (reserved >= blocks) {
-			alert("Number of 'Reserved'-blocks is beyond the disk-size.");
+		if (!isInt(reserved, 0, blocks - 1)) {
+			alert("'Reserved' must be a whole number of blocks, smaller than the disk.");
 			document.getElementById("cfg_mount_reserved").focus();
 			return;
 		}
-		if (isNaN(bootpri)) {
+		if (!Number.isInteger(bootpri)) {
 			alert("The value at 'Bootpri' is not a number.");
 			document.getElementById("cfg_mount_bootpri").focus();
 			return;
@@ -2650,7 +2749,7 @@ function portUpdate(n) {
 /* hooks */
 
 function hook_log_error(err, msg) {
-	stop();
+	stopEmulation();
 	if (msg.length)
 		alert(msg);
 }
@@ -2891,13 +2990,74 @@ function dskchgInsert() {
 				//file.path = e.path;
 				file.name = e.name;
 				file.data = event.target.result;
-				file.size = e.size;
+				file.size = event.target.result.length;
 				file.crc32 = crc32(event.target.result);
 				sae.insert(n);
-			});
+			}, true);
 		}
 	}
 }
+
+/* drag and drop anywhere on the page. A Kickstart (.rom, or 256/512 KB starting like one) and a
+   hard-file (.hdf, into the first free IDE slot) are taken before the start, as with their
+   file dialogs; anything else is a disk image for DF0: during the emulation a disk change,
+   before it the drive setup (gzip-packed images are unpacked) */
+function floppyDrop(e) {
+	var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+	if (!f)
+		return;
+	e.preventDefault();
+	var ext = (/\.([^.]*)$/.exec(f.name) || ["", ""])[1].toLowerCase();
+	if (ext == "rom" || ext == "hdf" || (ext != "adf" && ext != "adz" && ext != "dms" && (f.size == 0x40000 || f.size == 0x80000))) {
+		if (sae.running) {
+			alert(sprintf("'%s': Kickstart-ROMs and hard-files can only be changed before the start.", f.name));
+			return;
+		}
+		loadFile(f, function(event) {
+			var data = event.target.result;
+			if (ext == "hdf") {
+				for (var n = 0; n < 4; n++)
+					if (!getCheckbox("cfg_mount_" + n + "_enabled") || !cfg.mount.config[n].ci.file.size)
+						break;
+				if (n == 4) {
+					alert("All four IDE slots are in use. Remove one at 'Config/Mount' first.");
+					return;
+				}
+				if (!getCheckbox("cfg_mount_" + n + "_enabled")) {
+					setCheckbox("cfg_mount_" + n + "_enabled", true);
+					mountEnable(n);
+				}
+				mountLoaded(n, f.name, data);
+			} else
+				romLoaded(f.name, data);
+		});
+		return;
+	}
+	loadFile(f, function(event) {
+		var n = 0;
+		if (cfg.floppy.drive[n].type == SAEC_Config_Floppy_Type_None) {
+			cfg.floppy.drive[n].type = SAEC_Config_Floppy_Type_35_DD;
+			if (!sae.running) {
+				setCheckbox("cfg_df" + n + "_enabled", true);
+				floppyEnable(n);
+			}
+		}
+		var file = cfg.floppy.drive[n].file;
+		file.name = f.name;
+		file.data = event.target.result;
+		file.size = event.target.result.length;
+		file.crc32 = crc32(event.target.result);
+		if (sae.running)
+			sae.insert(n);
+		else
+			setFloppyName(n);
+	}, true);
+}
+document.addEventListener("dragover", function(e) {
+	if (e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types, "Files") >= 0)
+		e.preventDefault(); /* allow the drop instead of opening the file in the tab */
+});
+document.addEventListener("drop", floppyDrop);
 
 function dskchgSelect() {
 	if (dskchg) {
@@ -2906,8 +3066,8 @@ function dskchgSelect() {
 
 		dskchgClose();
 
-		if (cache.req(dbUrl, filename, 0xdc000, false, cfg.floppy.drive[n].file))
-			sae.insert(n);
+		/* insert when the data is there: at once if cached, else after the download */
+		cache.req(dbUrl, filename, 0xdc000, false, cfg.floppy.drive[n].file, function() { sae.insert(n); });
 	}
 }
 

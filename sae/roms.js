@@ -30,6 +30,7 @@ const SAEC_RomType_KEY				= 0x00001000;
 //const SAEC_RomType_ARCADIABIOS	= 0x00002000;
 //const SAEC_RomType_ARCADIAGAME	= 0x00004000;
 const SAEC_RomType_CD32CART		= 0x00008000;
+const SAEC_RomType_EXT				= 0x00020000; //OWN a plain extended ROM (AROS extension)
 //const SAEC_RomType_SPECIALKICK	= 0x00010000;
 
 /*const SAEC_RomType_CPUBOARD	0x00040000
@@ -132,7 +133,7 @@ const SAEC_RomType_SCRAMBLED	= 0x40000000;
 const SAEC_RomType_NONE		= 0x80000000;
 
 const SAEC_RomType_ALL_KICK	= (SAEC_RomType_KICK | SAEC_RomType_KICKCD32 | SAEC_RomType_CD32) >>> 0;
-const SAEC_RomType_ALL_EXT	= (SAEC_RomType_EXTCD32 | SAEC_RomType_EXTCDTV) >>> 0;
+const SAEC_RomType_ALL_EXT	= (SAEC_RomType_EXTCD32 | SAEC_RomType_EXTCDTV | SAEC_RomType_EXT) >>> 0;
 //const SAEC_RomType_ALL_CART	= (SAEC_RomType_AR | SAEC_RomType_HRTMON | SAEC_RomType_NORDIC | SAEC_RomType_XPOWER | SAEC_RomType_CD32CART) >>> 0;
 const SAEC_RomType_ALL_CART	= (SAEC_RomType_CD32CART) >>> 0;
 
@@ -202,7 +203,7 @@ function SAEO_Roms() {
 	const roms = [
 		//new romdata("AROS KS ROM (built-in)", 0, 0, 0, 0, "AROS", K512 * 2, 66, 0, 0, SAEC_RomType_KICK, 0, "", "", 0xffffffff, 0, 0, 0, 0, 0, "AROS"),
 		new romdata("AROS KS ROM (built-in)", 0, 0, 0, 0, "AROS", K512, 66, 0, 0, SAEC_RomType_KICK, 0, "", "", 0x3F4FCC0A, 0, 0, 0, 0, 0, "AROS"),
-		new romdata("AROS extended ROM (built-in)", 0, 0, 0, 0, "AROS", K512, 66, 0, 0, 0, 0, "", "", 0xF2E52B07, 0, 0, 0, 0, 0, "AROS"),
+		new romdata("AROS extended ROM (built-in)", 0, 0, 0, 0, "AROS", K512, 66, 0, 0, SAEC_RomType_EXT, 0, "", "", 0xF2E52B07, 0, 0, 0, 0, 0, "AROS"),
 		//new romdata("ROM Disabled", 0, 0, 0, 0, "NOROM", 0, 87, 0, 0, SAEC_RomType_NONE, 0, "", "", 0xffffffff, 0, 0, 0, 0, 0, "NOROM"),
 		//new romdata("Enabled", 0, 0, 0, 0, "ENABLED", 0, 142, 0, 0, SAEC_RomType_NOT, 0, "", "", 0xffffffff, 0, 0, 0, 0, 0, "ENABLED"),
 
@@ -574,7 +575,9 @@ function SAEO_Roms() {
 	function decode_rekick_rom(mem,memo, size, real_size) {
 		var d1 = 0xdeadfeed, d0;
 
-		for (var i = memo; i < memo + (size >> 3); i++) {
+		/* memo is a byte offset; the loop counted it in 8-byte steps (from byte memo * 8) */
+		for (var k = 0; k < (size >> 3); k++) {
+			var i = (memo >> 3) + k;
 			d0 = (((mem[i * 8 + 0] << 24) | (mem[i * 8 + 1] << 16) | (mem[i * 8 + 2] << 8) | mem[i * 8 + 3])) >>> 0;
 			d1 = (d1 ^ d0) >>> 0;
 			mem[i * 8 + 0] = d1 >>> 24;

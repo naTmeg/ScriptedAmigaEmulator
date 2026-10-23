@@ -495,7 +495,7 @@ function SAEO_Disk() {
 		d.zf = zf;
 		d.revs = Math.min(header[5], MAX_REVS);
 
-		floppy[drv].num_tracks = header[7] + 1; // *num_tracks = header[7] + 1;
+		floppy[drv].num_tracks = Math.min(header[7] + 1, MAX_TRACKS); // *num_tracks = header[7] + 1;
 		SAEF_log("disk.scp_open() ok, %d tracks", floppy[drv].num_tracks);
 		return true;
 	}
@@ -949,6 +949,10 @@ function SAEO_Disk() {
 		SAEF_ZFile_fread(buffer,0, 1, 4, drv.diskfile);
 		drv.num_tracks = buffer[2] * 256 + buffer[3];
 		var offs = 8 + 2 + 2 + drv.num_tracks * (2 + 2 + 4 + 4);
+		if (drv.num_tracks > MAX_TRACKS) { /* corrupt file: trackdata[] has MAX_TRACKS entries */
+			SAEF_warn("disk.read_header_ext2() %d tracks, only %d used", drv.num_tracks, MAX_TRACKS);
+			drv.num_tracks = MAX_TRACKS;
+		}
 
 		for (var i = 0; i < drv.num_tracks; i++) {
 			var tid = drv.trackdata[i];
@@ -3891,7 +3895,7 @@ function SAEO_Disk() {
 					if (_tcslen (n) >= sizeof (di.diskname)) n[sizeof (di.diskname) - 1] = 0;
 					di.diskname = n;
 					xfree(n);*/
-					var len = writebuffer[512 - 20 * 4]; //BSTR
+					var len = Math.min(writebuffer[512 - 20 * 4], 30); //BSTR, AmigaDOS names have at most 30 characters
 					var off = 512 - 20 * 4 + 1;
 					var n = "";
 					while (--len >= 0) n += String.fromCharCode(writebuffer[off++]);

@@ -651,6 +651,20 @@ function SAEO_Keyboard() {
 	}
 	function blur(e) { releaseAll(); }
 	function visibilitychange(e) { if (document.hidden) releaseAll(); }
+
+	/* Focus: a click into the emulator (the video element) captures the keyboard, a click
+	   anywhere else releases it, so that F5, Ctrl+R and the rest reach the browser again. It
+	   starts captured, as it always was. */
+	var captured = true;
+	function pointerdown(e) {
+		var el = document.getElementById(SAEV_config.video.id);
+		var inside = !!(el && e.target && el.contains(e.target));
+		if (inside != captured) {
+			captured = inside;
+			if (!captured)
+				releaseAll();
+		}
+	}
 	/*function fullscreenchange(e) {
 		SAEF_log("fullscreenchange()");
 	}*/
@@ -659,6 +673,8 @@ function SAEO_Keyboard() {
 		if (SAEV_config.keyboard.enabled) {
 			document.addEventListener("keydown", keydown, USECAPTURE);
 			document.addEventListener("keyup", keyup, USECAPTURE);
+			captured = true;
+			document.addEventListener("pointerdown", pointerdown, true);
 			window.addEventListener("blur", blur);
 			document.addEventListener("visibilitychange", visibilitychange);
 			//document.addEventListener("webkitfullscreenchange", fullscreenchange);
@@ -670,6 +686,7 @@ function SAEO_Keyboard() {
 			releaseAll();
 			document.removeEventListener("keydown", keydown, USECAPTURE);
 			document.removeEventListener("keyup", keyup, USECAPTURE);
+			document.removeEventListener("pointerdown", pointerdown, true);
 			window.removeEventListener("blur", blur);
 			document.removeEventListener("visibilitychange", visibilitychange);
 			//document.removeEventListener("webkitfullscreenchange", fullscreenchange);
@@ -983,7 +1000,9 @@ function SAEO_Keyboard() {
 			if (down) pressed[code] = true; else delete pressed[code];
 		}
 
-		/* joystick emul */
+		/* joystick emul. A key that moves an emulated joystick is not also an Amiga key
+		   (as in WinUAE): it was sent to both */
+		var joykey = false;
 		if (SAEV_config.ports[0].type == SAEC_Config_Ports_Type_JoyEmu) {
 			var l, u, r, d, f1, f2;
 			switch (SAEV_config.ports[0].move) {
@@ -1011,21 +1030,27 @@ function SAEO_Keyboard() {
 			switch (code) {
 				case f1:
 					SAER.input.registerEvent(0, SAEC_Input_Event_Press, SAEC_Input_Button_1, down);
+					joykey = true;
 					break;
 				case f2:
 					SAER.input.registerEvent(0, SAEC_Input_Event_Press, SAEC_Input_Button_2, down);
+					joykey = true;
 					break;
 				case l:
 					SAER.input.registerEvent(0, SAEC_Input_Event_JoystickMove, SAEC_Input_Direction_Left, down);
+					joykey = true;
 					break;
 				case u:
 					SAER.input.registerEvent(0, SAEC_Input_Event_JoystickMove, SAEC_Input_Direction_Up, down);
+					joykey = true;
 					break;
 				case r:
 					SAER.input.registerEvent(0, SAEC_Input_Event_JoystickMove, SAEC_Input_Direction_Right, down);
+					joykey = true;
 					break;
 				case d:
 					SAER.input.registerEvent(0, SAEC_Input_Event_JoystickMove, SAEC_Input_Direction_Down, down);
+					joykey = true;
 					break;
 			}
 		}
@@ -1056,26 +1081,32 @@ function SAEO_Keyboard() {
 			switch (code) {
 				case f1:
 					SAER.input.registerEvent(1, SAEC_Input_Event_Press, SAEC_Input_Button_1, down);
+					joykey = true;
 					break;
 				case f2:
 					SAER.input.registerEvent(1, SAEC_Input_Event_Press, SAEC_Input_Button_2, down);
+					joykey = true;
 					break;
 				case l:
 					SAER.input.registerEvent(1, SAEC_Input_Event_JoystickMove, SAEC_Input_Direction_Left, down);
+					joykey = true;
 					break;
 				case u:
 					SAER.input.registerEvent(1, SAEC_Input_Event_JoystickMove, SAEC_Input_Direction_Up, down);
+					joykey = true;
 					break;
 				case r:
 					SAER.input.registerEvent(1, SAEC_Input_Event_JoystickMove, SAEC_Input_Direction_Right, down);
+					joykey = true;
 					break;
 				case d:
 					SAER.input.registerEvent(1, SAEC_Input_Event_JoystickMove, SAEC_Input_Direction_Down, down);
+					joykey = true;
 					break;
 			}
 		}
 
-		if (!SAEV_config.keyboard.enabled)
+		if (joykey || !SAEV_config.keyboard.enabled)
 			return;
 
 		var rawkey = code2rawkey(code);
@@ -1115,6 +1146,14 @@ function SAEO_Keyboard() {
 			return;
 		}
 		if (e.code == "F11" || e.code == "F12")
+			return;
+		/* typing into a form field (the settings next to the emulator) is not for the Amiga
+		   and must reach the field. A key held down before still gets its keyup */
+		var t = e.target;
+		if (t && (t.isContentEditable || t.nodeName == "INPUT" || t.nodeName == "TEXTAREA" || t.nodeName == "SELECT") && (down || !(e.code in pressed)))
+			return;
+		/* keyboard released by a click outside the emulator: the key belongs to the browser */
+		if (!captured && (down || !(e.code in pressed)))
 			return;
 
 		//SAEF_log("Keyboard.newHandleKey() down %d, code %s, loc %d, alt %d, shift %d, ctrl %d, meta %d", down?1:0, e.code, e.location, e.altKey?1:0, e.shiftKey?1:0, e.ctrlKey?1:0, e.metaKey?1:0);
