@@ -5,6 +5,7 @@
           &df1=<path>                         optional second disk in DF1
           &model=A500|A500P|A600|A1200        default A500
           &rom=<path>                         Kickstart ROM instead of AROS, e.g. ../roms/kick13.rom
+          &ext=<path>                         extended ROM to go with &rom= (e.g. a newer AROS build)
           &fast=0                             no Zorro-II fast ram (some old games dislike it)
           &chip=512&slow=512                  chip and slow ram in KB (vAmigaTS: 512 chip, 0 slow)
           &compat=1                           cpu.compatible (prefetch core)
@@ -147,18 +148,26 @@ function init() {
 		});
 	};
 	if (rom) {
-		/* a Kickstart of your own: SAE identifies it by CRC32, no extended ROM */
+		/* a Kickstart of your own: SAE identifies it by CRC32; &ext= adds an extended ROM
+		   (another AROS build needs both) */
 		fetchBinary(rom, function(data) {
 			setFile(cfg.memory.rom, basename(rom), data, crc32(data));
 			cfg.memory.extRom.clr();
 			log("kickstart " + basename(rom) + " " + data.length + " bytes crc " + crc32(data).toString(16));
-			loadDisks();
+			var ext = param("ext", "");
+			if (!ext)
+				return loadDisks();
+			fetchBinary(ext, function(edata) {
+				setFile(cfg.memory.extRom, basename(ext), edata, crc32(edata));
+				log("extended rom " + basename(ext) + " " + edata.length + " bytes crc " + crc32(edata).toString(16));
+				loadDisks();
+			});
 		});
 	} else {
 		fetchBinary("../../db/aros-amiga-m68k-rom.bin", function(data) {
-			setFile(cfg.memory.rom, "aros-amiga-m68k-rom.bin", data, 0x3F4FCC0A);
+			setFile(cfg.memory.rom, "aros-amiga-m68k-rom.bin", data, 0x7AE94477);
 			fetchBinary("../../db/aros-amiga-m68k-ext.bin", function(ext) {
-				setFile(cfg.memory.extRom, "aros-amiga-m68k-ext.bin", ext, 0xF2E52B07);
+				setFile(cfg.memory.extRom, "aros-amiga-m68k-ext.bin", ext, 0x6F9A4AD2);
 				loadDisks();
 			});
 		});

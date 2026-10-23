@@ -7,7 +7,7 @@
  *   node tests/run-suite.mjs                         all tests in suite.json
  *   node tests/run-suite.mjs --filter CPU/Exceptions only tests whose path or group contains this
  *   node tests/run-suite.mjs --filter "CPU/Misc|CPU/Prefetch"   several alternatives
- *   node tests/run-suite.mjs --jobs 4                parallel browser pages (default: cores / 2, max 16)
+ *   node tests/run-suite.mjs --jobs 4                parallel browser pages (default: logical CPUs - 4)
  *   node tests/run-suite.mjs --frames 1200           emulated frames per test (default 1200, about 24 s of A500 time)
  *   node tests/run-suite.mjs --core normal           use the fast core (default: compatible, the only one with address errors)
  *   node tests/run-suite.mjs --extra "&model=A1200"  more run.htm parameters (no baseline comparison then)
@@ -37,12 +37,17 @@ function arg(name, def) {
 const filter = String(arg("filter", ""));
 const frames = +arg("frames", 1200);
 const core = String(arg("core", "compatible"));
-const jobs = Math.max(1, +arg("jobs", Math.min(16, Math.max(1, os.cpus().length >> 1))));
+const jobs = Math.max(1, +arg("jobs", Math.max(1, os.cpus().length - 4)));
 const check = !!arg("check", false);
 const writeBaseline = !!arg("write-baseline", false);
 const headed = !!arg("headed", false);
 /* 2D canvas: with WebGL all pages wait on the one software-rendering GPU process */
-const extra = (core === "compatible" ? "&compat=1" : "") + "&video=canvas" + String(arg("extra", ""));
+/* The suite boots the AROS build of 2019, not the one SAE ships: the vAmigaTS programs rely on
+   the hardware state the Kickstart leaves behind, and the newer AROS leaves interrupts and its
+   display running, which disturbs the screenshots (the IPL tests drop from ~80 % to ~18 %). The
+   baseline was recorded with this pair. --extra "&rom=...&ext=..." boots another one. */
+const suiteRom = /[?&]rom=/.test(String(arg("extra", ""))) ? "" : "&rom=../roms/aros-2019-svn55696-rom.bin&ext=../roms/aros-2019-svn55696-ext.bin";
+const extra = (core === "compatible" ? "&compat=1" : "") + "&video=canvas" + suiteRom + String(arg("extra", ""));
 const TOLERANCE = 0.005; /* a score may drop by this much before it counts as a regression */
 
 if (!fs.existsSync(suiteFile)) { console.error("missing tests/browser/suite.json, run: npm run fetch:vamigats"); process.exit(2); }
@@ -82,36 +87,48 @@ const browser = await chromium.launch({
 	args: ["--disable-background-timer-throttling", "--disable-renderer-backgrounding", "--disable-backgrounding-occluded-windows", "--autoplay-policy=no-user-gesture-required"],
 });
 const t0 = Date.now();
+const progress = setInterval(() => {
+	const s = (Date.now() - t0) / 1000, f = finished / list.length;
+	const left = f > 0.05 ? `, about ${Math.ceil((s / f) * (1 - f) / 60)} min left` : "";
+	console.log(`-- ${Math.floor(s / 60)} min: ${finished}/${list.length} tests${left}`);
+}, 60000);
 const results = {};
 let finished = 0;
-const chunk = Math.ceil(list.length / jobs);
-await Promise.all(Array.from({ length: Math.ceil(list.length / chunk) }, async (_, j) => {
-	const from = j * chunk, count = Math.min(chunk, list.length - from);
+/* a queue of small chunks: a fixed share per page would leave the pages that got the quick
+   tests idle while the others still work */
+const chunk = Math.max(1, Math.min(4, Math.ceil(list.length / jobs)));
+let nextFrom = 0;
+await Promise.all(Array.from({ length: Math.min(jobs, Math.ceil(list.length / chunk)) }, async (_, j) => {
 	/* one context per job: pages of one context share a renderer process (same site) and
 	   with it one main thread, so they would not really run in parallel */
 	const context = await browser.newContext();
 	const page = await context.newPage();
 	page.on("pageerror", (e) => console.error(`[page ${j}] ${e.message}`));
 	page.on("requestfailed", (r) => console.error(`[page ${j}] request failed: ${r.url().replace(/^https?:\/\/[^/]+/, "")} ${r.failure() ? r.failure().errorText : ""}`));
-	const url = `${base}?filter=${encodeURIComponent(filter)}&from=${from}&count=${count}&frames=${frames}&turbo=1&det=1${extra}`;
-	await page.goto(url);
-	let seen = 0;
-	for (;;) {
-		const st = await page.evaluate(() => ({ done: !!window.suiteDone, error: window.suiteError || null, results: window.suiteResults || {} }));
-		if (st.error) throw new Error(st.error);
-		for (const t of list.slice(from, from + count)) {
-			const r = st.results[t.id];
-			if (r && !results[t.id]) {
-				results[t.id] = r; finished++; seen++;
-				const s = r.score == null ? "  -   " : (r.score * 100).toFixed(2).padStart(6) + "%";
-				console.log(`${String(finished).padStart(4)}/${list.length} ${s}  ${t.id}${r.note ? "  (" + r.note + ")" : ""}`);
+	while (nextFrom < list.length) {
+		const from = nextFrom, count = Math.min(chunk, list.length - from);
+		nextFrom += count;
+		const url = `${base}?filter=${encodeURIComponent(filter)}&from=${from}&count=${count}&frames=${frames}&turbo=1&det=1${extra}`;
+		await page.goto(url);
+		let seen = 0;
+		for (;;) {
+			const st = await page.evaluate(() => ({ done: !!window.suiteDone, error: window.suiteError || null, results: window.suiteResults || {} }));
+			if (st.error) throw new Error(st.error);
+			for (const t of list.slice(from, from + count)) {
+				const r = st.results[t.id];
+				if (r && !results[t.id]) {
+					results[t.id] = r; finished++; seen++;
+					const s = r.score == null ? "  -   " : (r.score * 100).toFixed(2).padStart(6) + "%";
+					console.log(`${String(finished).padStart(4)}/${list.length} ${s}  ${t.id}${r.note ? "  (" + r.note + ")" : ""}`);
+				}
 			}
+			if (st.done) { if (seen < count) console.error(`[page ${j}] finished with ${count - seen} results missing`); break; }
+			await new Promise((r) => setTimeout(r, 500));
 		}
-		if (st.done) { if (seen < count) console.error(`[page ${j}] finished with ${count - seen} results missing`); break; }
-		await new Promise((r) => setTimeout(r, 500));
 	}
 	await context.close();
 }));
+clearInterval(progress);
 await browser.close();
 server.close();
 

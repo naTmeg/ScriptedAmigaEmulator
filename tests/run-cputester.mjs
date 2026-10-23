@@ -4,21 +4,28 @@
  * and read back through sae.getDisk(), so every disk gives "pass" or the first mismatch.
  *
  *   node tests/run-cputester.mjs                       all disks of the "address" set
+ *   node tests/run-cputester.mjs --set all             every set that was fetched, in one pool
+ *   node tests/run-cputester.mjs --set basic,address   several sets in one pool
  *   node tests/run-cputester.mjs --filter CLR          disks whose name contains CLR ("CLR|NEG": either)
- *   node tests/run-cputester.mjs --set basic --jobs 8
+ *   node tests/run-cputester.mjs --set basic --jobs 8  default: logical CPUs - 4
+ *   node tests/run-cputester.mjs --floppy orig         floppy at original speed (default: turbo)
  *   node tests/run-cputester.mjs --check               exit 1 if a disk does worse than tests/cputester-baseline.json
  *   node tests/run-cputester.mjs --write-baseline
  *   node tests/run-cputester.mjs --show                print the mismatch of every failing disk
  *
  * Needs the disks: node tests/tools/fetch-cputester.mjs. Machine: A500, compatible core,
- * 512 KB chip + 512 KB slow + 8 MB fast RAM (cputest needs the fast RAM), AROS ROM. */
+ * 512 KB chip + 512 KB slow + 8 MB fast RAM (cputest needs the fast RAM), AROS ROM.
+ *
+ * All disks of all requested sets share one pool of pages, the longest first (by the number
+ * of tests in the baseline): a single disk cannot be split, so the slowest ones would
+ * otherwise start last and leave the other pages idle at the end. */
 import fs from "node:fs";
 import http from "node:http";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
-import { readFile, replaceSmallFile } from "./tools/adf-ofs.mjs";
+import { readFile, replaceSmallFile, freeBlocks, deleteRootFile, findFile } from "./tools/adf-ofs.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "..");
@@ -28,35 +35,54 @@ function arg(n, d) {
 	const v = process.argv[i + 1];
 	return v === undefined || v.startsWith("--") ? true : v;
 }
-const set = String(arg("set", "address"));
+const adfRoot = path.resolve(here, ".cache/cputester-src/Cputester/ADF");
+const setArg = String(arg("set", "address"));
+const sets = setArg == "all" ? (fs.existsSync(adfRoot) ? fs.readdirSync(adfRoot).filter((d) => fs.statSync(path.join(adfRoot, d)).isDirectory()).sort() : []) : setArg.split(",");
 const filter = String(arg("filter", ""));
-const jobs = Math.max(1, +arg("jobs", Math.min(12, Math.max(1, os.cpus().length >> 1))));
+const jobs = Math.max(1, +arg("jobs", Math.max(1, os.cpus().length - 4)));
 const timeout = +arg("timeout", 900) * 1000;
+/* the floppy in turbo mode saves about 6 s of boot and loading per disk; the CPU tests do not
+   depend on it. A faster CPU (cpu.speed maximum) gained nothing: turbo=1 already runs the frames
+   back to back, so the host's emulation speed is the limit either way. */
+const floppy = String(arg("floppy", "turbo"));
 const check = !!arg("check", false), writeBaseline = !!arg("write-baseline", false), show = !!arg("show", false);
-const srcDir = path.resolve(here, ".cache/cputester-src/Cputester/ADF", set);
-const runDir = path.resolve(here, ".cache/cputester", set);
 const baselineFile = path.join(here, "cputester-baseline.json");
+const baseline = fs.existsSync(baselineFile) ? JSON.parse(fs.readFileSync(baselineFile, "utf8")) : {};
 const END = "CPUTEST-END";
 
-if (!fs.existsSync(srcDir)) {
-	console.error("missing " + srcDir + ", run: node tests/tools/fetch-cputester.mjs --sets " + set);
-	process.exit(2);
-}
-const disks = [];
-(function walk(d) {
-	for (const e of fs.readdirSync(d, { withFileTypes: true })) {
-		if (e.isDirectory()) walk(path.join(d, e.name));
-		else if (e.name.endsWith(".adf")) disks.push(path.join(d, e.name));
-	}
-})(srcDir);
-disks.sort();
 const filters = filter.split("|").filter(Boolean); /* alternatives: --filter "atCLR|atNEG" */
-const list = disks.filter((f) => !filters.length || filters.some((x) => path.basename(f).includes(x)));
+const list = []; /* { set, file, name } */
+for (const set of sets) {
+	const srcDir = path.join(adfRoot, set);
+	if (!fs.existsSync(srcDir)) {
+		console.error("missing " + srcDir + ", run: node tests/tools/fetch-cputester.mjs --sets " + set);
+		process.exit(2);
+	}
+	(function walk(d) {
+		for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+			if (e.isDirectory()) walk(path.join(d, e.name));
+			else if (e.name.endsWith(".adf") && (!filters.length || filters.some((x) => e.name.includes(x))))
+				list.push({ set, file: path.join(d, e.name), name: path.basename(e.name, ".adf") });
+		}
+	})(srcDir);
+}
+/* longest first: the tests a disk got through last time (a timeout counts as long) */
+const weight = (t) => { const b = (baseline[t.set] || {})[t.name]; return !b ? 1e6 : b.status == "timeout" ? 1e7 : b.tests || 0; };
+list.sort((x, y) => weight(y) - weight(x) || x.name.localeCompare(y.name));
 
-/* patch s/startup-sequence: cputest output to out.txt, then an end marker */
-fs.mkdirSync(runDir, { recursive: true });
-for (const f of list) {
+/* patch s/startup-sequence: cputest output to out.txt, then an end marker. A few disks are
+   full (atAND.L_1: one free block), so out.txt stayed empty and they looked like a hang. Those
+   get room by deleting the Stack and Echo commands from their copy: both are resident in the
+   AROS shell, which looks there first. (A second drive is no way out: AROS's trackdisk.device
+   drops a modified track buffer when it switches to the other drive, so out.txt loses its
+   data as soon as DF1 is read after cputest has written. Kickstart 3.1 does not.) */
+for (const { set, file: f } of list) {
+	const runDir = path.resolve(here, ".cache/cputester", set);
+	fs.mkdirSync(runDir, { recursive: true });
 	const adf = new Uint8Array(fs.readFileSync(f));
+	if (freeBlocks(adf) < 8)
+		for (const cmd of ["Stack", "Echo"])
+			if (findFile(adf, cmd)) deleteRootFile(adf, cmd);
 	const ss = Buffer.from(readFile(adf, "s/startup-sequence")).toString("latin1");
 	const lines = ss.split("\n").filter((l) => l.trim() && !/^echo\b/i.test(l.trim()));
 	const out = lines.map((l) => (/^cputest\b/i.test(l.trim()) ? l.trim() + " >out.txt" : l)).join("\n") +
@@ -98,67 +124,85 @@ function parse(txt) {
 }
 
 const browser = await chromium.launch({ args: ["--disable-background-timer-throttling", "--disable-renderer-backgrounding"] });
-const results = {};
+const results = {}; /* set -> name -> result */
+for (const set of sets) results[set] = {};
 let next = 0, done = 0;
 const t0 = Date.now();
+/* a status line every minute: share of the work done, weighted by the baseline's test counts
+   (a disk counts once it has finished), and the time left at that rate */
+const work = (t) => { const b = (baseline[t.set] || {})[t.name]; return b && b.tests ? b.tests : 20000; };
+const allWork = list.reduce((s, t) => s + work(t), 0);
+let doneWork = 0;
+const progress = setInterval(() => {
+	const s = (Date.now() - t0) / 1000, f = doneWork / allWork;
+	const left = f > 0.05 ? `, about ${Math.ceil((s / f) * (1 - f) / 60)} min left` : "";
+	console.log(`-- ${Math.floor(s / 60)} min: ${done}/${list.length} disks, ${(f * 100).toFixed(0)} % of the tests${left}`);
+}, 60000);
 async function worker() {
 	const ctx = await browser.newContext();
 	await ctx.addInitScript(reader);
 	while (next < list.length) {
-		const f = list[next++], name = path.basename(f, ".adf");
+		const { set, name } = list[next++];
 		const page = await ctx.newPage();
+		const t1 = Date.now();
 		let txt = null;
 		try {
 			const adf = encodeURIComponent("../.cache/cputester/" + set + "/" + name + ".adf");
-			await page.goto(`${base}?adf=${adf}&model=A500&compat=1&chip=512&slow=512&fast=8&turbo=1&det=1&video=canvas`);
+			const unit = 0;
+			await page.goto(`${base}?adf=${adf}&model=A500&compat=1&chip=512&slow=512&fast=8&turbo=1&det=1&video=canvas&speed=${floppy}`);
 			const lim = Date.now() + timeout;
 			while (Date.now() < lim) {
-				await new Promise((r) => setTimeout(r, 2000));
-				txt = await page.evaluate(() => {
+				await new Promise((r) => setTimeout(r, 500));
+				txt = await page.evaluate((unit) => {
 					if (!window.sae || !window.sae.running) return null;
-					const d = window.sae.getDisk(0);
+					const d = window.sae.getDisk(unit);
 					const out = d && window.__ofs.readFile(d.data, "out.txt");
 					return out ? new TextDecoder("latin1").decode(out) : null;
-				});
+				}, unit);
 				if (txt && txt.includes(END)) break;
 			}
 		} catch (e) {
-			console.error(`[${name}] ${e.message}`);
+			console.error(`[${set}/${name}] ${e.message}`);
 		}
 		await page.close();
 		const r = parse(txt);
-		results[name] = r;
+		r.seconds = Math.round((Date.now() - t1) / 1000);
+		results[set][name] = r;
 		done++;
-		console.log(`${String(done).padStart(3)}/${list.length} ${r.status.padEnd(9)} ${name}${r.tests !== undefined ? "  (" + r.tests + " tests)" : ""}`);
+		doneWork += work(list.find((t) => t.set === set && t.name === name));
+		console.log(`${String(done).padStart(3)}/${list.length} ${r.status.padEnd(9)} ${sets.length > 1 ? set + "/" : ""}${name}${r.tests !== undefined ? "  (" + r.tests + " tests, " + r.seconds + " s)" : ""}`);
 	}
 	await ctx.close();
 }
 await Promise.all(Array.from({ length: Math.min(jobs, list.length) }, worker));
+clearInterval(progress);
 await browser.close();
 server.close();
 
-const baseline = fs.existsSync(baselineFile) ? JSON.parse(fs.readFileSync(baselineFile, "utf8")) : {};
-const was = baseline[set] || {};
 /* a disk is better the further it gets; passing beats any failure */
 const rank = (r) => (r.status === "pass" ? 1e9 + (r.tests || 0) : (r.tests || 0));
+const count = (rs, s) => Object.values(rs).filter((r) => r.status === s).length;
 const regressions = [], better = [];
-for (const [n, r] of Object.entries(results)) {
-	const b = was[n];
-	if (!b) continue;
-	if (rank(r) < rank(b)) regressions.push(`${n}: ${r.status} after ${r.tests || 0} tests, baseline ${b.status} after ${b.tests || 0}`);
-	else if (rank(r) > rank(b)) better.push(`${n}: ${r.status} after ${r.tests || 0} tests (was ${b.status} after ${b.tests || 0})`);
-}
-const count = (s) => Object.values(results).filter((r) => r.status === s).length;
-console.log(`\n${list.length} disks: ${count("pass")} pass, ${count("fail")} fail, ${count("timeout")} timeout, ${count("no-output")} no output, ` +
-	`${((Date.now() - t0) / 1000).toFixed(0)} s, ${jobs} jobs`);
-if (show) for (const [n, r] of Object.entries(results)) if (r.status !== "pass") console.log(`\n== ${n} (${r.status}, ${r.tests || 0} tests)\n${r.mismatch || ""}`);
-if (better.length) console.log("\nBetter than the baseline:\n  " + better.join("\n  "));
+const out = { ...baseline };
 fs.mkdirSync(path.join(here, "results"), { recursive: true });
-fs.writeFileSync(path.join(here, "results/cputester-" + set + ".json"), JSON.stringify(results, null, 1));
-if (writeBaseline) {
-	const out = { ...baseline, [set]: { ...was } };
-	for (const [n, r] of Object.entries(results)) out[set][n] = { status: r.status, tests: r.tests || 0 };
+for (const set of sets) {
+	const rs = results[set], was = baseline[set] || {};
+	for (const [n, r] of Object.entries(rs)) {
+		const b = was[n];
+		if (!b) continue;
+		if (rank(r) < rank(b)) regressions.push(`${set}/${n}: ${r.status} after ${r.tests || 0} tests, baseline ${b.status} after ${b.tests || 0}`);
+		else if (rank(r) > rank(b)) better.push(`${set}/${n}: ${r.status} after ${r.tests || 0} tests (was ${b.status} after ${b.tests || 0})`);
+	}
+	console.log(`\n${set}: ${Object.keys(rs).length} disks: ${count(rs, "pass")} pass, ${count(rs, "fail")} fail, ${count(rs, "timeout")} timeout, ${count(rs, "no-output")} no output`);
+	if (show) for (const [n, r] of Object.entries(rs)) if (r.status !== "pass") console.log(`\n== ${set}/${n} (${r.status}, ${r.tests || 0} tests)\n${r.mismatch || ""}`);
+	fs.writeFileSync(path.join(here, "results/cputester-" + set + ".json"), JSON.stringify(rs, null, 1));
+	out[set] = { ...was };
+	for (const [n, r] of Object.entries(rs)) out[set][n] = { status: r.status, tests: r.tests || 0 };
 	out[set] = Object.fromEntries(Object.entries(out[set]).sort(([a], [b]) => a.localeCompare(b)));
+}
+console.log(`\n${list.length} disks in ${((Date.now() - t0) / 1000).toFixed(0)} s, ${jobs} jobs`);
+if (better.length) console.log("\nBetter than the baseline:\n  " + better.join("\n  "));
+if (writeBaseline) {
 	fs.writeFileSync(baselineFile, JSON.stringify(out, null, 1) + "\n");
 	console.log("baseline written: " + path.relative(process.cwd(), baselineFile));
 }

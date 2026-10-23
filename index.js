@@ -160,9 +160,9 @@ var dbNum = 0;
 /*---------------------------------*/
 
 const AROS_ROM_FILE = "aros-amiga-m68k-rom.bin";
-const AROS_ROM_CRC = 0x3F4FCC0A; /* also edit roms.js on change */
+const AROS_ROM_CRC = 0x7AE94477; /* also edit roms.js on change */
 const AROS_EXT_FILE = "aros-amiga-m68k-ext.bin";
-const AROS_EXT_CRC = 0xF2E52B07;
+const AROS_EXT_CRC = 0x6F9A4AD2;
 
 /*---------------------------------*/
 
