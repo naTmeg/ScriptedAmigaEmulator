@@ -929,7 +929,7 @@ function SAEO_IDE() {
 		}
 		check_maxtransfer(ide, 1);
 		SAER.gui.flicker_led(SAEC_GUI_LED_HD, ide.num, 2);
-		nsec = get_nsec(ide);
+		var nsec = get_nsec(ide);
 		//get_lbachs(ide, &lba, &cyl, &head, &sec);
 		get_lbachs(ide, ptr);
 		if (ptr.lba * ide.blocksize >= ide.hdhfd.size) {

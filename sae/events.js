@@ -75,7 +75,7 @@ function SAEO_Events() {
 		this.oldcycles = 0;
 		this.handler = null;
 	};
-	var eventtab = new Array(EV_MAX); for (i = 0; i < EV_MAX; i++) eventtab[i] = new Event();
+	var eventtab = new Array(EV_MAX); for (var i = 0; i < EV_MAX; i++) eventtab[i] = new Event();
 	SAER_Events_eventtab = eventtab;
 
 	const EV2_MISC = 2;
@@ -86,7 +86,7 @@ function SAEO_Events() {
 		this.data = null;
 		this.handler = null;
 	};
-	var eventtab2 = new Array(EV2_MAX); for (i = 0; i < EV2_MAX; i++) eventtab2[i] = new Event2();
+	var eventtab2 = new Array(EV2_MAX); for (var i = 0; i < EV2_MAX; i++) eventtab2[i] = new Event2();
 
 	//var currcycle = 0; -> SAEV_Events_currcycle
 	var nextevent = 0;

@@ -246,7 +246,7 @@ function SAEO_DMS() {
 				DROPBITS(1);
 				c = GETBITS(8); DROPBITS(8);
 				j = d_code[c] + 3;
-				u = d_len[c];
+				var u = d_len[c];
 				c = ((c << u) | GETBITS(u)) & 0xff; DROPBITS(u);
 				u = d_len[c];
 				c = (d_code[c] << 8) | (((c << u) | GETBITS(u)) & 0xff); DROPBITS(u);
@@ -970,7 +970,7 @@ function SAEO_DMS() {
 				SAEF_ZFile_fread(p,0, 512 * 22, 1, fo);
 				addextra("BigFakeBootBlock", extra, p, 512 * 22);
 				//xfree(p);
-				delete p;
+				p = null;
 			}
 			SAEF_ZFile_fseek(fo, number * 512 * 22 * ((dmsflags & DMSFLAG_HD) ? 2 : 1), SEEK_SET);
 			if (SAEF_ZFile_fwrite(b2,0, 1, unpklen, fo) != unpklen)
@@ -1024,8 +1024,8 @@ function SAEO_DMS() {
 			free(b2);
 			return ERR_NOMEMORY;
 		}*/
-		b1 = new Uint8Array(TRACK_BUFFER_LEN);
-		b2 = new Uint8Array(TRACK_BUFFER_LEN);
+		var b1 = new Uint8Array(TRACK_BUFFER_LEN);
+		var b2 = new Uint8Array(TRACK_BUFFER_LEN);
 		dms_text = new Uint8Array(TEMP_BUFFER_LEN);
 
 		if (SAEF_ZFile_fread(b1,0, 1, HEADLEN, fi) != HEADLEN) {

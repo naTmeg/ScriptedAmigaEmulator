@@ -138,7 +138,7 @@ var SAEV_Memory_defaultXLate_recursive = 0;
 function SAEF_Memory_defaultXLate(addr) {
 	if (SAEV_Memory_defaultXLate_recursive) {
 		SAER.m68k.cpu_halt(SAEC_CPU_halt_OPCODE_FETCH_FROM_NON_EXISTING_ADDRESS);
-		return kickmem_xlate(2);
+		return SAER.memory.kickmem_xlate(2);
 	}
 	SAEV_Memory_defaultXLate_recursive++;
 	var size = SAEV_config.cpu.model >= SAEC_Config_CPU_Model_68020 ? 4 : 2;
@@ -170,7 +170,7 @@ function SAEF_Memory_defaultXLate(addr) {
 		}
 	}
 	SAEV_Memory_defaultXLate_recursive--;
-	return kickmem_xlate(2); /* So we don't crash. */
+	return SAER.memory.kickmem_xlate(2); /* So we don't crash. */
 }
 
 /*---------------------------------*/
@@ -2603,6 +2603,11 @@ function SAEO_Memory() {
 		}
 		return true;
 	}
+	/* used outside this closure: by SAEF_Memory_defaultXLate (opcode fetch from a
+	   non-existing address) and by expansion.js (Z3 remapping) */
+	this.kickmem_xlate = function(addr) { return kickmem_xlate(addr); }
+	this.map_banks = function(bank, start, size, realsize) { map_banks(bank, start, size, realsize); }
+
 	this.map_banks_z3 = function(bank, start, size) {
 		if (validate_banks_z3(bank, start, size))
 			map_banks(bank, start, size, 0);

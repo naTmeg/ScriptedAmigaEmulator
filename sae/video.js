@@ -1319,7 +1319,7 @@ function SAEO_Video() {
 		//var ret = 0;
 		var err = 0;
 
-		remembered_vblank = -1;
+		var remembered_vblank = -1;
 		if (wasfullwindow_a == 0)
 			wasfullwindow_a = SAEV_config.video.apmode[0].gfx_fullscreen == SAEC_Config_Video_AP_Fullscreen_FULLWINDOW ? 1 : -1;
 		if (wasfullwindow_p == 0)

@@ -31,6 +31,27 @@ The first run downloads the corpus (about 193 MB). `tests/cpu/sst-baseline.json`
 failure count per file. When a fix makes tests pass, update it with
 `node tests/cpu/run-sst.mjs --write-baseline`.
 
+Address errors need care. For the cases that vAmigaTS checks against photos of a real A500
+(`CPU/Exceptions/StackFrame/addrerr1-10`), the corpus expects a different stacked PC (2 or 4
+less) and, for MOVE to -(An), a different IR word than the hardware shows; SAE follows the
+hardware. Most address-error failures are therefore not SAE bugs. To look at the rest:
+
+    node tests/cpu/run-sst.mjs --ae-ignore-pc                     # leave the stacked PC out
+    node tests/cpu/run-sst.mjs --ae-ignore-pc --show 5 --kind ae  # print expected and actual frames
+    node tests/cpu/run-sst.mjs --limit 0 --ae-report              # stacked PC per instruction and mode
+
+The same holds for jumps to odd addresses (Bcc, BSR, DBcc, JMP, JSR, RTS, RTE, RTR): SAE
+raises the address error with the right stack layout, but the corpus expects the branch
+target minus 4 as stacked PC and the I/N bit set in the SSW, while WinUAE stacks the target
+and leaves I/N clear. Without hardware evidence SAE keeps its frame.
+
+Other known deviations from the corpus, all deliberate:
+
+- ASR with a count above the operand width and a negative operand: the corpus expects C = 0,
+  WinUAE (checked on real CPUs with its cputester) and Musashi set C = X = sign. SAE follows
+  WinUAE (3736 tests).
+- Two ASL.b tests expect a register value that no byte shift can produce.
+
 ## vAmigaTS screenshot tests (browser)
 
 [vAmigaTS](https://github.com/dirkwhoffmann/vAmigaTS) contains small Amiga programs with a

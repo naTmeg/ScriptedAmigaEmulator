@@ -388,8 +388,8 @@ function SAEO_M68K() {
 				|| (opcode & 0xffc0) == 0x4e80 	/* JSR */
 				|| (opcode & 0xffc0) == 0x4ec0 	/* JMP */
 				|| (opcode & 0xff00) == 0x6100	/* BSR */
-				|| ((opcode & 0xf000) == 0x6000 && ccTab[(opcode >> 8) & 0xf]()) /* Bcc */
-				|| ((opcode & 0xf0f0) == 0x5050 && !ccTab[(opcode >> 8) & 0xf]() && SAER_CPU_regs.d[opcode & 7] & 0xffff != 0) /* DBcc */
+				|| ((opcode & 0xf000) == 0x6000 && SAER.cpu.cctrue((opcode >> 8) & 0xf)) /* Bcc */
+				|| ((opcode & 0xf0f8) == 0x50c8 && !SAER.cpu.cctrue((opcode >> 8) & 0xf) && (SAER_CPU_regs.d[opcode & 7] & 0xffff) != 0) /* DBcc */
 			) {
 				//last_trace_ad = SAER_CPU_getPC();
 				SAEF_clrSpcFlags(SAEC_spcflag_TRACE);

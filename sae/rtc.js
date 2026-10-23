@@ -184,7 +184,7 @@ function SAEO_RTC() {
 
 	this.hardreset = function() { //rtc_hardreset()
 		switch (SAEV_config.chipset.rtc.type) {
-			case SAEC_Config_RTC_Type_None: type = "none"; break;
+			case SAEC_Config_RTC_Type_None: var type = "none"; break;
 			case SAEC_Config_RTC_Type_MSM6242B: type = "MSM6242B"; break;
 			case SAEC_Config_RTC_Type_RF5C01A: type = "RF5C01A"; break;
 			case SAEC_Config_RTC_Type_MSM6242B_A2000: type = "MSM6242B A2000"; break;

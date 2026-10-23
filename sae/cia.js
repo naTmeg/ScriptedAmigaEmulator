@@ -970,7 +970,6 @@ function SAEO_CIA() {
 				else
 					return (getciatod(ciaatod) >>> 16) & 0xff;
 			}
-			break;
 		case 11:
 			if (SAEV_config.chipset.cia.type6526) {
 				if (!ciaatlatch) {

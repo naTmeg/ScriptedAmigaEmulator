@@ -2315,8 +2315,8 @@ function floppyOpenInfo(n) {
 	setText2("cfg_floppy_info_crc32", sprintf("%08X", di.crc32));
 
 	var bb = "";
-	for (j = 0; j < 42; j++) {
-		for (i = 0; i < 24; i++) {
+	for (var j = 0; j < 42; j++) {
+		for (var i = 0; i < 24; i++) {
 			var chr = di.bootblock[j * 24 + i];
 			bb += sprintf("%02X", chr);
 		}

@@ -289,7 +289,7 @@ function SAEO_Disk() {
 			amax_data = v;
 		else {
 			var v = amax_rom[addr * 2 + amax_rom_oddeven];
-			val = 0;
+			var val = 0;
 			for (i = 0; i < 8; i++) {
 				if (v & (1 << data_scramble[i]))
 					val |= 1 << i;
@@ -3910,7 +3910,7 @@ function SAEO_Disk() {
 		var dn = disk_name;
 		if (dn.length > 30)
 			dn = dn.substr(0, 30);
-		dn2 = dn;
+		var dn2 = dn;
 		if (dn2.length == 0)
 			dn2 = "empty";
 		//memset(sector, 0, FS_FLOPPY_BLOCKSIZE);

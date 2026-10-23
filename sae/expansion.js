@@ -702,7 +702,7 @@ function SAEO_Expansion() {
 		if (expamem_z3hack(SAEV_config)) {
 			if (z3fs && start != z3fs) {
 				SAEF_warn("memory.expamem_map_z3fastmem_2() Z3MEM mapping changed from $%08x to $%08x", start, z3fs);
-				map_banks(SAEV_Memory_dummyBank, start >>> 16, size >>> 16, allocated);
+				SAER.memory.map_banks(SAEV_Memory_dummyBank, start >>> 16, size >>> 16, allocated);
 				ptr.start = z3fs;
 				SAER.memory.map_banks_z3(bank, start >>> 16, size >>> 16);
 			}
@@ -1170,7 +1170,7 @@ function SAEO_Expansion() {
 		if (!SAEV_config.cpu.addressSpace24) {
 			if (z3fastmem_bank.baseaddr !== null) {
 				var alwaysmapz3 = SAEV_config.memory.z3Mapping != SAEC_Config_Memory_z3Mapping_Real;
-				z3num = 0;
+				var z3num = 0;
 				cards[cardno].flags = 2 | 1;
 				cards[cardno].name = "Z3Fast";
 				cards[cardno].initnum = expamem_init_z3fastmem;

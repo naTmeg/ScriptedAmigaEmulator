@@ -937,6 +937,9 @@ function SAEO_CPU() {
 		regs.irc = irc & 0xffff;
 	}
 
+	/* condition code test for the T0 trace check in m68k.js (ccTab lives in this closure) */
+	this.cctrue = function(cc) { return ccTab[cc](); }
+
 	this.getPC_normal = function() { //m68k_getpc_normal()
 		if (SAEV_config.cpu.compatible)
 			return getPCi();
@@ -1115,10 +1118,20 @@ function SAEO_CPU() {
 		return (smode == 2 || smode == 3 || smode == 4) ? 2 : 0;
 	}
 
+	/* The IR word of the frame. MOVE to -(An) on the 68000 prefetches the next instruction
+	 * before its write cycle, so a faulting write stacks the next opcode, which is in IRC
+	 * at that point (vAmigaTS addrerr4, photo of a real A500: IR $337C, not $353C). */
+	function address_error_ir(op, write) {
+		if (write && SAEV_config.cpu.model == SAEC_Config_CPU_Model_68000 &&
+			((op & 0xF000) == 0x1000 || (op & 0xF000) == 0x3000) && ((op >> 6) & 7) == 4) /* .b/.w; .l unverified */
+			return regs.irc;
+		return op;
+	}
+
 	function address_error(addr, write) {
 		last_addr_for_exception_3 = add32(coreGetPC(), address_error_pc_extra(regs.opcode, write));
 		last_fault_for_exception_3 = addr;
-		last_op_for_exception_3 = regs.opcode;
+		last_op_for_exception_3 = address_error_ir(regs.opcode, write);
 		last_writeaccess_for_exception_3 = write;
 		last_instructionaccess_for_exception_3 = false;
 		last_notinstruction_for_exception_3 = false;
@@ -1700,7 +1713,7 @@ function SAEO_CPU() {
 		if (opcode == 0xFF0D && inrt) {
 			// User-mode STOP replacement
 			SAEF_log("cpu.illegal() STOP replacement, pc %08x", pc);
-			m68k_setstopped();
+			SAER.m68k.m68k_setstopped();
 			return true;
 		}
 		if ((opcode & 0xF000) == 0xA000 && inrt) {
@@ -1997,7 +2010,7 @@ function SAEO_CPU() {
 		var tmp, res, mask;
 		var data = [0,0];
 
-		offs = offset & 7;
+		var offs = offset & 7;
 		mask = (0xffffffff << (32 - width)) >>> 0;
 
 		switch ((offs + width + 7) >> 3) {
@@ -2047,7 +2060,7 @@ function SAEO_CPU() {
 	function putBitfield(addr, offset, width, data, val) {
 		var out8, out16, out32;
 
-		offs = (offset & 7) + width;
+		var offs = (offset & 7) + width;
 		switch ((offs + 7) >> 3) {
 			case 1:
 				out8 = ((data[0] | (val << (8 - offs))) >>> 0) & 0xff;
@@ -2485,7 +2498,7 @@ function SAEO_CPU() {
 		this.width = 0;
 		this.reloc = true;
 	}
-	config_da = new config_da_def();
+	var config_da = new config_da_def();
 
 	function setPC_da(pc) {
 		regs_da.pc = pc;
@@ -4749,107 +4762,70 @@ function SAEO_CPU() {
 	/*-----------------------------------------------------------------------*/
 	/* Shift and Rotate */
 
-	function I_ASL_32(p) {
-		var d = regs.d[p.Dy], _d = d;
-		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			var sign = (d & 0x80000000) != 0;
-			var mask = ~((1 << (32 - n)) - 1) >>> 0;
-			//var mask = (0xffffffff << (31 - n)) >>> 0;
-			regs.x = regs.c = (d & (1 << (32-n))) != 0;
-			regs.v = sign ? (((d & mask) >>> 0) != mask) : (((d & mask) >>> 0) != 0);
-			//regs.v = ((d & mask) >>> 0) != mask && ((d & mask) >>> 0) != 0;
-			d = ((d << n) & 0xffffffff) >>> 0;
-			regs.d[p.Dy] = d;
-		} else regs.v = regs.c = false;
-		regs.n = (d & 0x80000000) != 0;
+	/* ASL Dn: V is set if the most significant bit changes at any time during the shift,
+	 * i.e. if the top n+1 bits were not all equal; counts up to 63 shift everything out
+	 * (C and X get the last bit shifted out, 0 beyond the operand width). With a count
+	 * of 0, C and V are cleared and X is unchanged. Bit by bit, like ROXL/ROXR. */
+	function asl(d, n, bits) {
+		var c = 0, v = false;
+		for (var i = 0; i < n; i++) {
+			c = (d >>> (bits - 1)) & 1;
+			d = bits == 32 ? (d << 1) >>> 0 : (d << 1) & ((1 << bits) - 1);
+			if (((d >>> (bits - 1)) & 1) != c) v = true;
+		}
+		regs.c = c != 0;
+		if (n) regs.x = regs.c;
+		regs.v = v;
+		regs.n = ((d >>> (bits - 1)) & 1) != 0;
 		regs.z = d == 0;
-		//if (sign) SAEF_log(("I_ASL.L %08x << %d = %08x, sign %d, mask %x, V %d -> %08x", _d, n, d, sign?1:0, mask, regs.v?1:0, (_d & mask)>>>0));
+		return d;
+	}
+	function I_ASL_32(p) {
+		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
+		regs.d[p.Dy] = asl(regs.d[p.Dy] >>> 0, n, 32);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_ASL_16(p) {
-		var d = regs.d[p.Dy] & 0xffff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			var sign = (d & 0x8000) != 0;
-			var mask = ~((1 << (16 - n)) - 1) & 0xffff;
-			//var mask = (0xffff << (15 - n)) & 0xffff;
-			regs.x = regs.c = (d & (1 << (16-n))) != 0;
-			regs.v = sign ? (d & mask) != mask : (d & mask) != 0;
-			//regs.v = (d & mask) != mask && (d & mask) != 0;
-			d = ((d << n) & 0xffff) >>> 0;
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | d;
-		} else regs.v = regs.c = false;
-		regs.n = (d & 0x8000) != 0;
-		regs.z = d == 0;
-		//if (sign) SAEF_log(("I_ASL.W %08x << %d = %08x, sign %d, mask %x, V %d", _d, n, d, sign?1:0, mask, regs.v?1:0));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | asl(regs.d[p.Dy] & 0xffff, n, 16);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_ASL_8(p) {
-		var d = regs.d[p.Dy] & 0xff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			var sign = (d & 0x80) != 0;
-			var mask = ~((1 << (8 - n)) - 1) & 0xff;
-			//var mask = (0xff << (7 - n)) & 0xff;
-			regs.x = regs.c = (d & (1 << (8-n))) != 0;
-			regs.v = sign ? (d & mask) != mask : (d & mask) != 0;
-			//regs.v = (d & mask) != mask && (d & mask) != 0;
-			d = ((d << n) & 0xff) >>> 0;
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | d;
-		} else regs.v = regs.c = false;
-		regs.n = (d & 0x80) != 0;
-		regs.z = d == 0;
-		//if (sign) SAEF_log(("I_ASL.B %08x << %d = %08x, sign %d, mask %x, V %d", _d, n, d, sign?1:0, mask, regs.v?1:0));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | asl(regs.d[p.Dy] & 0xff, n, 8);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
+	/* ASR: the sign bit is shifted in; C and X get the last bit shifted out (the sign once
+	 * the count reaches the operand width); a count of 0 clears C and keeps X */
+	function asr(d, n, bits) {
+		var c = 0, sign = (d >>> (bits - 1)) & 1;
+		for (var i = 0; i < n; i++) {
+			c = d & 1;
+			d = ((d >>> 1) | (sign << (bits - 1))) >>> 0;
+		}
+		regs.c = c != 0;
+		if (n) regs.x = regs.c;
+		shiftFlags(d, bits);
+		return d;
+	}
 	function I_ASR_32(p) {
-		var d = regs.d[p.Dy], _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.x = regs.c = (d & (1 << (n-1))) != 0;
-			d = (d >> n) >>> 0; //js 32
-			regs.d[p.Dy] = d;
-		} else regs.c = false;
-		regs.n = (d & 0x80000000) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_ASR.L %08x >> %d = %08x", _d, n, d));
+		regs.d[p.Dy] = asr(regs.d[p.Dy] >>> 0, n, 32);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_ASR_16(p) {
-		var d = regs.d[p.Dy] & 0xffff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.x = regs.c = (d & (1 << (n-1))) != 0;
-			d = extWord(d); d = ((d >> n) & 0xffff) >>> 0; //js 32
-			//d >>= n;
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | d;
-		} else regs.c = false;
-		regs.n = (d & 0x8000) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_ASR.W %08x >> %d = %08x", _d, n, d));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | asr(regs.d[p.Dy] & 0xffff, n, 16);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_ASR_8(p) {
-		var d = regs.d[p.Dy] & 0xff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.x = regs.c = (d & (1 << (n-1))) != 0;
-			d = extByte(d); d = ((d >> n) & 0xff) >>> 0; //js 32
-			//d >>= n;
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | d;
-		} else regs.c = false;
-		regs.n = (d & 0x80) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_ASR.B %08x >> %d = %08x", _d, n, d));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | asr(regs.d[p.Dy] & 0xff, n, 8);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
@@ -4881,93 +4857,70 @@ function SAEO_CPU() {
 		return p.cyc;
 	}
 
-	function I_LSL_32(p) {
-		var d = regs.d[p.Dy], _d = d;
-		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.x = regs.c = (d & (1 << (32-n))) != 0;
-			d = ((d << n) & 0xffffffff) >>> 0;
-			regs.d[p.Dy] = d;
-		} else regs.c = false;
-		regs.n = (d & 0x80000000) != 0;
+	/* Register shifts and rotates bit by bit: JS shifts modulo 32, and counts up to 63 must
+	 * shift everything out (LSL.L #32 gives 0, C = last bit shifted out). Rare enough that
+	 * the loop does not matter. N and Z from the result, V = 0. */
+	function shiftFlags(d, bits) {
+		regs.n = ((d >>> (bits - 1)) & 1) != 0;
 		regs.z = d == 0;
 		regs.v = false;
-		//SAEF_log(("I_LSL.L %08x << %d = %08x", _d, n, d));
+	}
+	/* LSL/LSR: C and X get the last bit shifted out; a count of 0 clears C and keeps X */
+	function lsl(d, n, bits) {
+		var c = 0;
+		for (var i = 0; i < n; i++) {
+			c = (d >>> (bits - 1)) & 1;
+			d = bits == 32 ? (d << 1) >>> 0 : (d << 1) & ((1 << bits) - 1);
+		}
+		regs.c = c != 0;
+		if (n) regs.x = regs.c;
+		shiftFlags(d, bits);
+		return d;
+	}
+	function lsr(d, n, bits) {
+		var c = 0;
+		for (var i = 0; i < n; i++) {
+			c = d & 1;
+			d = d >>> 1;
+		}
+		regs.c = c != 0;
+		if (n) regs.x = regs.c;
+		shiftFlags(d, bits);
+		return d;
+	}
+	function I_LSL_32(p) {
+		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
+		regs.d[p.Dy] = lsl(regs.d[p.Dy] >>> 0, n, 32);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_LSL_16(p) {
-		var d = regs.d[p.Dy] & 0xffff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.x = regs.c = (d & (1 << (16-n))) != 0;
-			d = ((d << n) & 0xffff) >>> 0;
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | d;
-		} else regs.c = false;
-		regs.n = (d & 0x8000) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_LSL.W %08x << %d = %08x", _d, n, d));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | lsl(regs.d[p.Dy] & 0xffff, n, 16);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_LSL_8(p) {
-		var d = regs.d[p.Dy] & 0xff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.x = regs.c = (d & (1 << (8-n))) != 0;
-			d = ((d << n) & 0xff) >>> 0;
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | d;
-		} else regs.c = false;
-		regs.n = (d & 0x80) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_LSL.B %08x << %d = %08x", _d, n, d));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | lsl(regs.d[p.Dy] & 0xff, n, 8);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_LSR_32(p) {
-		var d = regs.d[p.Dy], _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.x = regs.c = (d & (1 << (n-1))) != 0;
-			d = d >>> n;
-			regs.d[p.Dy] = d;
-		} else regs.c = false;
-		regs.n = (d & 0x80000000) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_LSR.L %08x >> %d = %08x", _d, n, d));
+		regs.d[p.Dy] = lsr(regs.d[p.Dy] >>> 0, n, 32);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_LSR_16(p) {
-		var d = regs.d[p.Dy] & 0xffff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.x = regs.c = (d & (1 << (n-1))) != 0;
-			d >>= n;
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | d;
-		} else regs.c = false;
-		regs.n = (d & 0x8000) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_LSR.W %08x >> %d = %08x", _d, n, d));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | lsr(regs.d[p.Dy] & 0xffff, n, 16);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_LSR_8(p) {
-		var d = regs.d[p.Dy] & 0xff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.x = regs.c = (d & (1 << (n-1))) != 0;
-			d >>= n;
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | d;
-		} else regs.c = false;
-		regs.n = (d & 0x80) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_LSR.B %08x >> %d = %08x", _d, n, d));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | lsr(regs.d[p.Dy] & 0xff, n, 8);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
@@ -4998,93 +4951,60 @@ function SAEO_CPU() {
 		return p.cyc;
 	}
 
+	/* ROL/ROR: C gets the last bit rotated out, X is not affected; a count of 0 clears C */
+	function rol(d, n, bits) {
+		var c = 0;
+		for (var i = 0; i < n; i++) {
+			c = (d >>> (bits - 1)) & 1;
+			d = bits == 32 ? ((d << 1) | c) >>> 0 : ((d << 1) | c) & ((1 << bits) - 1);
+		}
+		regs.c = c != 0;
+		shiftFlags(d, bits);
+		return d;
+	}
+	function ror(d, n, bits) {
+		var c = 0;
+		for (var i = 0; i < n; i++) {
+			c = d & 1;
+			d = ((d >>> 1) | (c << (bits - 1))) >>> 0;
+		}
+		regs.c = c != 0;
+		shiftFlags(d, bits);
+		return d;
+	}
 	function I_ROL_32(p) {
-		var d = regs.d[p.Dy], _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.c = (d & (1 << (32-n))) != 0;
-			d = (((d << n) | (d >>> (32-n))) & 0xffffffff) >>> 0;
-			regs.d[p.Dy] = d;
-		} else regs.c = false;
-		regs.n = (d & 0x80000000) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_ROL.L %08x << %d = %08x", _d, n, d));
+		regs.d[p.Dy] = rol(regs.d[p.Dy] >>> 0, n, 32);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_ROL_16(p) {
-		var d = regs.d[p.Dy] & 0xffff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.c = (d & (1 << (16-n))) != 0;
-			d = (((d << n) | (d >> (16-n))) & 0xffff) >>> 0;
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | d;
-		} else regs.c = false;
-		regs.n = (d & 0x8000) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_ROL.W %08x << %d = %08x", _d, n, d));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | rol(regs.d[p.Dy] & 0xffff, n, 16);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_ROL_8(p) {
-		var d = regs.d[p.Dy] & 0xff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.c = (d & (1 << (8-n))) != 0;
-			d = (((d << n) | (d >> (8-n))) & 0xff) >>> 0;
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | d;
-		} else regs.c = false;
-		regs.n = (d & 0x80) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_ROL.B %08x << %d = %08x", _d, n, d));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | rol(regs.d[p.Dy] & 0xff, n, 8);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_ROR_32(p) {
-		var d = regs.d[p.Dy], _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.c = (d & (1 << (n-1))) != 0;
-			d = (((d << (32-n)) | (d >>> n)) & 0xffffffff) >>> 0;
-			regs.d[p.Dy] = d;
-		} else regs.c = false;
-		regs.n = (d & 0x80000000) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_ROR.L %08x >> %d = %08x", _d, n, d));
+		regs.d[p.Dy] = ror(regs.d[p.Dy] >>> 0, n, 32);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_ROR_16(p) {
-		var d = regs.d[p.Dy] & 0xffff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.c = (d & (1 << (n-1))) != 0;
-			d = (((d << (16-n)) | (d >>> n)) & 0xffff) >>> 0;
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | d;
-		} else regs.c = false;
-		regs.n = (d & 0x8000) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_ROR.W %08x >> %d = %08x", _d, n, d));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | ror(regs.d[p.Dy] & 0xffff, n, 16);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_ROR_8(p) {
-		var d = regs.d[p.Dy] & 0xff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.c = (d & (1 << (n-1))) != 0;
-			d = (((d << (8-n)) | (d >>> n)) & 0xff) >>> 0;
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | d;
-		} else regs.c = false;
-		regs.n = (d & 0x80) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_ROR.B %08x >> %d = %08x", _d, n, d));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | ror(regs.d[p.Dy] & 0xff, n, 8);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
@@ -5115,105 +5035,71 @@ function SAEO_CPU() {
 		return p.cyc;
 	}
 
-	function I_ROXL_32(p) {
-		var d = regs.d[p.Dy], _d = d;
-		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.c = (d & (1 << (32-n))) != 0;
-			d = (((d << n) | (d >>> (32-n))) & 0xffffffff) >>> 0;
-			d = ((d & 0xfffffffe) | (regs.x ? 1 : 0)) >>> 0;
-			regs.d[p.Dy] = d;
-			regs.x = regs.c;
-		} else regs.c = regs.x;
-		regs.n = (d & 0x80000000) != 0;
+	/* ROXL/ROXR Dn: rotate through X, i.e. over size + 1 bits, so the count is taken
+	 * modulo 33/17/9 (after the & 63 of a register count). C = X afterwards; X only changes
+	 * if bits were actually rotated. Bit by bit: rare instructions, obviously correct. */
+	function roxl(d, n, bits) {
+		var cnt = n % (bits + 1), x = regs.x ? 1 : 0;
+		for (var i = 0; i < cnt; i++) {
+			var top = (d >>> (bits - 1)) & 1;
+			d = bits == 32 ? ((d << 1) | x) >>> 0 : ((d << 1) | x) & ((1 << bits) - 1);
+			x = top;
+		}
+		if (cnt) regs.x = x != 0;
+		roxFlags(d, bits);
+		return d;
+	}
+	function roxr(d, n, bits) {
+		var cnt = n % (bits + 1), x = regs.x ? 1 : 0;
+		for (var i = 0; i < cnt; i++) {
+			var low = d & 1;
+			d = ((d >>> 1) | (x << (bits - 1))) >>> 0;
+			x = low;
+		}
+		if (cnt) regs.x = x != 0;
+		roxFlags(d, bits);
+		return d;
+	}
+	function roxFlags(d, bits) {
+		regs.c = regs.x;
+		regs.n = ((d >>> (bits - 1)) & 1) != 0;
 		regs.z = d == 0;
 		regs.v = false;
-		//SAEF_log(("I_ROXL.L %08x << %d = %08x", _d, n, d));
+	}
+
+	function I_ROXL_32(p) {
+		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
+		regs.d[p.Dy] = roxl(regs.d[p.Dy] >>> 0, n, 32);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_ROXL_16(p) {
-		var d = regs.d[p.Dy] & 0xffff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.c = (d & (1 << (16-n))) != 0;
-			d = ((d << n) | (d >> (16-n))) & 0xffff;
-			d = (d & 0xfffe) | (regs.x ? 1 : 0);
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | d;
-			regs.x = regs.c;
-		} else regs.c = regs.x;
-		regs.n = (d & 0x8000) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_ROXL.W %08x << %d = %08x", _d, n, d));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | roxl(regs.d[p.Dy] & 0xffff, n, 16);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_ROXL_8(p) {
-		var d = regs.d[p.Dy] & 0xff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.c = (d & (1 << (8-n))) != 0;
-			d = ((d << n) | (d >> (8-n))) & 0xff;
-			d = (d & 0xfe) | (regs.x ? 1 : 0);
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | d;
-			regs.x = regs.c;
-		} else regs.c = regs.x;
-		regs.n = (d & 0x80) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_ROXL.B %08x << %d = %08x", _d, n, d));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | roxl(regs.d[p.Dy] & 0xff, n, 8);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_ROXR_32(p) {
-		var d = regs.d[p.Dy], _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.c = (d & (1 << (n-1))) != 0;
-			d = (((d << (32-n)) | (d >>> n)) & 0xffffffff) >>> 0;
-			d = ((regs.x ? 0x80000000 : 0) | (d & 0x7fffffff)) >>> 0;
-			regs.d[p.Dy] = d;
-			regs.x = regs.c;
-		} else regs.c = regs.x;
-		regs.n = (d & 0x80000000) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_ROXR.L %08x >> %d = %08x", _d, n, d));
+		regs.d[p.Dy] = roxr(regs.d[p.Dy] >>> 0, n, 32);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_ROXR_16(p) {
-		var d = regs.d[p.Dy] & 0xffff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.c = (d & (1 << (n-1))) != 0;
-			d = ((d << (16-n)) | (d >>> n)) & 0xffff;
-			d = (regs.x ? 0x8000 : 0) | (d & 0x7fff);
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | d;
-			regs.x = regs.c;
-		} else regs.c = regs.x;
-		regs.n = (d & 0x8000) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_ROXR.W %08x >> %d = %08x", _d, n, d));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | roxr(regs.d[p.Dy] & 0xffff, n, 16);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
 	function I_ROXR_8(p) {
-		var d = regs.d[p.Dy] & 0xff, _d = d;
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
-		if (n) {
-			regs.c = (d & (1 << (n-1))) != 0;
-			d = ((d << (8-n)) | (d >>> n)) & 0xff;
-			d = (regs.x ? 0x80 : 0) | (d & 0x7f);
-			regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | d;
-			regs.x = regs.c;
-		} else regs.c = regs.x;
-		regs.n = (d & 0x80) != 0;
-		regs.z = d == 0;
-		regs.v = false;
-		//SAEF_log(("I_ROXR.B %08x >> %d = %08x", _d, n, d));
+		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | roxr(regs.d[p.Dy] & 0xff, n, 8);
 		coreSyncPC();
 		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
 	}
@@ -5455,7 +5341,7 @@ function SAEO_CPU() {
 			bdata[0] = (tmp & ((1 << (32 - width)) - 1)) >>> 0;
 		} else {
 			if (offset & 0x80000000) offset -= 0x100000000;
-			addr = exEAtab[p.ea](1);
+			var addr = exEAtab[p.ea](1);
 			if (offset) addr += Math.truncate(offset / 8);
 			var bf = getBitfield(addr, Math.abs(offset), width);
 			tmp = bf[0];
@@ -5520,108 +5406,92 @@ function SAEO_CPU() {
 	/*-----------------------------------------------------------------------*/
 	/* Binary-Coded Decimal */
 
-	function I_ABCD_D(p) {
-		var s = regs.d[p.Ry] & 0xff;
-		var d = regs.d[p.Rx] & 0xff;
-		var lo = (s & 0x0f) + (d & 0x0f) + (regs.x?1:0);
-		var hi = (s & 0xf0) + (d & 0xf0);
-		var r = hi + lo;
-		if (lo > 9) r += 6;
-		if ((r & 0x3f0) > 0x90) {
-			r = (r + 0x60) & 0xff;
-			regs.x = regs.c = true;
-		} else regs.x = regs.c = false;
+	/* BCD arithmetic as in WinUAE's gencpu (uae_u16 intermediates, masked here because JS
+	 * keeps negative values). N and V are "undefined" in the manual but well defined:
+	 * 68000/68010 set N from the result and V from the decimal correction, 68020/68030
+	 * set N and clear V, 68040/060 leave both alone. Z is only cleared, never set. */
+	function bcdFlags(r, v) {
 		if (r) regs.z = false;
-		//n,v undef
+		if (SAEV_config.cpu.model >= SAEC_Config_CPU_Model_68040)
+			return;
+		regs.n = (r & 0x80) != 0;
+		regs.v = SAEV_config.cpu.model < SAEC_Config_CPU_Model_68020 ? v : false;
+	}
+	function bcdAdd(s, d) { /* d + s + X */
+		var x = regs.x ? 1 : 0;
+		var lo = (s & 0x0f) + (d & 0x0f) + x;
+		var hi = (s & 0xf0) + (d & 0xf0);
+		var t = hi + lo, r = t;
+		if (lo > 9) r += 6;
+		var c = (r & 0x3f0) > 0x90;
+		if (c) r += 0x60;
+		regs.x = regs.c = c;
+		bcdFlags(r & 0xff, (t & 0x80) == 0 && (r & 0x80) != 0);
+		return r & 0xff;
+	}
+	function bcdSub(s, d) { /* d - s - X */
+		var x = regs.x ? 1 : 0;
+		var lo = ((d & 0x0f) - (s & 0x0f) - x) & 0xffff;
+		var hi = ((d & 0xf0) - (s & 0xf0)) & 0xffff;
+		var t = (hi + lo) & 0xffff, r = t, bcd = 0;
+		if (lo & 0xf0) { r = (r - 6) & 0xffff; bcd = 6; }
+		if ((((d & 0xff) - (s & 0xff) - x) & 0x100) > 0xff) r = (r - 0x60) & 0xffff;
+		var c = (((d & 0xff) - (s & 0xff) - bcd - x) & 0x300) > 0xff;
+		regs.x = regs.c = c;
+		bcdFlags(r & 0xff, (t & 0x80) != 0 && (r & 0x80) == 0);
+		return r & 0xff;
+	}
+	function bcdNeg(d) { /* 0 - d - X */
+		var x = regs.x ? 1 : 0;
+		var lo = (-(d & 0x0f) - x) & 0xffff;
+		var hi = (-(d & 0xf0)) & 0xffff;
+		var t = hi + lo;
+		if (lo > 9) lo -= 6;
+		var r = (hi + lo) & 0xffff;
+		var c = (r & 0x1f0) > 0x90;
+		if (c) r = (r - 0x60) & 0xffff;
+		regs.x = regs.c = c;
+		bcdFlags(r & 0xff, (t & 0x80) != 0 && (r & 0x80) == 0);
+		return r & 0xff;
+	}
+
+	function I_ABCD_D(p) {
+		var r = bcdAdd(regs.d[p.Ry] & 0xff, regs.d[p.Rx] & 0xff);
 		regs.d[p.Rx] = (regs.d[p.Rx] & 0xffffff00) | r;
-		//SAEF_log(("I_ABCD_D.B %02x + %02x = %02x carry %d", s,d,r,regs.c?1:0));
 		coreSyncPC();
 		return p.cyc;
 	}
 	function I_ABCD_A(p) {
 		regs.a[p.Ry] -= aIncDec[1][p.Ry]; var s = coreGet8(regs.a[p.Ry]);
 		regs.a[p.Rx] -= aIncDec[1][p.Rx]; var d = coreGet8(regs.a[p.Rx]);
-		var lo = (s & 0x0f) + (d & 0x0f) + (regs.x?1:0);
-		var hi = (s & 0xf0) + (d & 0xf0);
-		var r = hi + lo;
-		if (lo > 9) r += 6;
-		if ((r & 0x3f0) > 0x90) {
-			r = (r + 0x60) & 0xff;
-			regs.x = regs.c = true;
-		} else regs.x = regs.c = false;
-		if (r) regs.z = false;
-		//n,v undef
-		corePut8(regs.a[p.Rx], r);
-		//SAEF_log(("I_ABCD_A.B %02x + %02x = %02x carry %d", s,d,r,regs.c?1:0));
+		corePut8(regs.a[p.Rx], bcdAdd(s, d));
 		coreSyncPC();
 		return p.cyc;
 	}
 
 	function I_SBCD_D(p) {
-		var s = regs.d[p.Rx] & 0xff;
-		var d = regs.d[p.Ry] & 0xff;
-		var lo = (d & 0x0f) - (s & 0x0f) - (regs.x?1:0);
-		var hi = (d & 0xf0) - (s & 0xf0);
-		var r = hi + lo, bcd = 0;
-		if (lo & 0xf0) { r -= 6; bcd = 6; };
-		if ((((d & 0xff) - (s & 0xff) - (regs.x?1:0)) & 0x100) > 0xff) r = (r - 0x60) & 0xff;
-		regs.x = regs.c = (((d & 0xff) - (s & 0xff) - bcd - (regs.x?1:0)) & 0x300) > 0xff;
-		if (r) regs.z = false;
-		//n,v undef
+		var r = bcdSub(regs.d[p.Rx] & 0xff, regs.d[p.Ry] & 0xff);
 		regs.d[p.Ry] = (regs.d[p.Ry] & 0xffffff00) | r;
-		//SAEF_log(("I_SBCD_D.B %02x - %02x = %02x carry %d", d,s,r,regs.c?1:0));
 		coreSyncPC();
 		return p.cyc;
 	}
 	function I_SBCD_A(p) {
 		regs.a[p.Rx] -= aIncDec[1][p.Rx]; var s = coreGet8(regs.a[p.Rx]);
 		regs.a[p.Ry] -= aIncDec[1][p.Ry]; var d = coreGet8(regs.a[p.Ry]);
-		var lo = (d & 0x0f) - (s & 0x0f) - (regs.x?1:0);
-		var hi = (d & 0xf0) - (s & 0xf0);
-		var r = hi + lo, bcd = 0;
-		if (lo & 0xf0) { r -= 6; bcd = 6; };
-		if ((((d & 0xff) - (s & 0xff) - (regs.x?1:0)) & 0x100) > 0xff) r = (r - 0x60) & 0xff;
-		regs.x = regs.c = (((d & 0xff) - (s & 0xff) - bcd - (regs.x?1:0)) & 0x300) > 0xff;
-		if (r) regs.z = false;
-		//n,v undef
-		corePut8(regs.a[p.Ry], r);
-		//SAEF_log(("I_SBCD_A.B %02x - %02x = %02x carry %d", d,s,r,regs.c?1:0));
+		corePut8(regs.a[p.Ry], bcdSub(s, d));
 		coreSyncPC();
 		return p.cyc;
 	}
 
 	function I_NBCD_D(p) {
-		var d = regs.d[p.Dd] & 0xff;
-		var lo = -(d & 0x0f) - (regs.x?1:0);
-		var hi = -(d & 0xf0);
-		if (lo > 9) { lo -= 6; }
-		var r = hi + lo;
-		if ((r & 0x1f0) > 0x90) {
-			r = (r - 0x60) & 0xff;
-			regs.x = regs.c = true;
-		} else regs.x = regs.c = false;
-		if (r) regs.z = false;
-		//n,v undef
+		var r = bcdNeg(regs.d[p.Dd] & 0xff);
 		regs.d[p.Dd] = (regs.d[p.Dd] & 0xffffff00) | r;
-		//SAEF_log(("I_NBCD_D.B 0 - %02x = %02x carry %d", d,r,regs.c?1:0));
 		coreSyncPC();
 		return p.cyc;
 	}
 	function I_NBCD_E(p) {
 		var a = exEAtab[p.ea](1);
-		var d = coreGet8(a);
-		var lo = -(d & 0x0f) - (regs.x?1:0);
-		var hi = -(d & 0xf0);
-		if (lo > 9) { lo -= 6; }
-		var r = hi + lo;
-		if ((r & 0x1f0) > 0x90) {
-			r = (r - 0x60) & 0xff;
-			regs.x = regs.c = true;
-		} else regs.x = regs.c = false;
-		if (r) regs.z = false;
-		//n,v undef
-		corePut8(a, r);
-		//SAEF_log(("I_NBCD_E.B 0 - %02x = %02x carry %d", d,r,regs.c?1:0));
+		corePut8(a, bcdNeg(coreGet8(a)));
 		coreSyncPC();
 		return p.cyc;
 	}
@@ -5678,12 +5548,15 @@ function SAEO_CPU() {
 		var pc = coreGetPC();
 		var dp;
 
+		/* displacement $FF selects a 32-bit displacement only from the 68020 on;
+		   the 68000/68010 take it as the 8-bit displacement -1 (odd target) */
+		var dl = p.dp == 255 && SAEV_config.cpu.model >= SAEC_Config_CPU_Model_68020;
 		if (p.dp == 0) dp = coreNext16();
-		else if (p.dp == 255) dp = coreNext32(); /* 68020 only*/
+		else if (dl) dp = coreNext32();
 
 		if (ccTab[p.cc]()) {
 			if (p.dp == 0) pc = add32(pc, extWord(dp));
-			else if (p.dp == 255) pc = add32(pc, dp);
+			else if (dl) pc = add32(pc, dp);
 			else pc = add32(pc, extByte(p.dp));
 			//SAEF_log(("I_Bcc pc $%08x", pc));
 			if (pc & 1) return coreException3i(p.op, pc);
@@ -5742,7 +5615,7 @@ function SAEO_CPU() {
 		var dp, pc = coreGetPC();
 
 		if (p.dp == 0) dp = extWord(coreNext16());
-		else if (p.dp == 255) dp = coreNext32(); /* 68020 only */
+		else if (p.dp == 255 && SAEV_config.cpu.model >= SAEC_Config_CPU_Model_68020) dp = coreNext32(); /* 68000/010: -1 */
 		else dp = extByte(p.dp);
 		pc = add32(pc, dp);
 		if (pc & 1) return coreException3i(p.op, pc);
@@ -5755,10 +5628,16 @@ function SAEO_CPU() {
 		var dp, pc = coreGetPC();
 
 		if (p.dp == 0) dp = extWord(coreNext16());
-		else if (p.dp == 255) dp = coreNext32(); /* 68020 only */
+		else if (p.dp == 255 && SAEV_config.cpu.model >= SAEC_Config_CPU_Model_68020) dp = coreNext32(); /* 68000/010: -1 */
 		else dp = extByte(p.dp);
 		pc = add32(pc, dp);
-		if (pc & 1) return coreException3i(p.op, pc);
+		if (pc & 1) {
+			/* 68000: the return address is pushed before the prefetch from the odd target
+			   faults (WinUAE gencpu i_BSR, SingleStepTests) */
+			if (SAEV_config.cpu.model == SAEC_Config_CPU_Model_68000)
+				stackPut32(coreGetPC());
+			return coreException3i(p.op, pc);
+		}
 		//SAEF_log(("I_BSR $%08x -> $%08x", coreGetPC(), pc));
 		stackPut32(coreGetPC());
 		coreSetPC(pc);
@@ -6507,8 +6386,17 @@ function SAEO_CPU() {
 	}
 
 	function I_TAS(p) {
-		var d = ldEA8tab[p.ea]();
-		stEA8tab[p.ea](0x80 | d);
+		/* compute a memory address once: reading through ldEA8tab and writing through
+		   stEA8tab evaluated (An)+/-(An) twice and read d16/d8/abs extension words twice */
+		var d;
+		if (p.ea < 8) {
+			d = regs.d[p.ea] & 0xff;
+			regs.d[p.ea] = (regs.d[p.ea] & 0xffffff00) | 0x80 | d;
+		} else {
+			var a = exEAtab[p.ea](1);
+			d = coreGet8(a);
+			corePut8(a, 0x80 | d);
+		}
 		regs.n = (d & 0x80) != 0;
 		regs.z = d == 0;
 		regs.v = false;
@@ -6678,6 +6566,11 @@ function SAEO_CPU() {
 		if ((dp & 0x800) == 0)
 			//regd = (uae_s32)(uae_s16)regd;
 			regd = extWord(regd & 0xffff);
+
+		/* 68000/68010 (get_disp_ea_000): brief format only. Bit 8 (full format) and the
+		   scale bits 9-10 do not exist there and are ignored. */
+		if (SAEV_config.cpu.model < SAEC_Config_CPU_Model_68020)
+			return add32(add32(base, extByte(dp & 0xff)), regd);
 
 		//regd <<= (dp >> 9) & 3;
 		if (scale) regd = ((regd << scale) & 0xffffffff) >>> 0;
@@ -9324,15 +9217,15 @@ function SAEO_CPU() {
 		//Bcc
 		{
 			for (var cc = 2; cc < 16; cc++) {
-				for (var dp = 0; dp < (model >= 68020 ? 256 : 255); dp++) { /* 0xff = long, 68020 only */
+				for (var dp = 0; dp < 256; dp++) { /* 0xff: 32-bit displacement from the 68020 on, -1 before */
 					op = (6 << 12) | (cc << 8) | dp;
 					if (iTab[op].op === -1) {
-						iTab[op] = mkI(op, "B"+ccNames[cc], dp == 255 ? [12,1,0] : [8,1,0]);
+						iTab[op] = mkI(op, "B"+ccNames[cc], (dp == 255 && model >= 68020) ? [12,1,0] : [8,1,0]);
 						iTab[op].p.cc = cc;
 						iTab[op].p.dp = dp;
 						iTab[op].p.cycTaken = [10,2,2];
 						iTab[op].f = I_Bcc;
-						iTab[op].d = mkDiss(0, false,false, D_IME_DP,dp, dp == 255 ? 2 : 1,0);
+						iTab[op].d = mkDiss(0, false,false, D_IME_DP,dp, (dp == 255 && model >= 68020) ? 2 : 1,0);
 						cnt++;
 					} else {
 						SAEF_error("cpu.mkITab() op exists B"+ccNames[cc]+" "+op);
@@ -9389,13 +9282,13 @@ function SAEO_CPU() {
 		}
 		//BRA
 		{
-			for (var dp = 0; dp < (model >= 68020 ? 256 : 255); dp++) { /* 0xff = 68020 only */
+			for (var dp = 0; dp < 256; dp++) { /* 0xff: 32-bit displacement from the 68020 on, -1 before */
 				op = (96 << 8) | dp;
 				if (iTab[op].op === -1) {
 					iTab[op] = mkI(op, "BRA", [10,2,0]);
 					iTab[op].p.dp = dp;
 					iTab[op].f = I_BRA;
-					iTab[op].d = mkDiss(0, false,false, D_IME_DP,dp, dp == 0 ? 2 : (dp == 255 ? 4 : 1),0);
+					iTab[op].d = mkDiss(0, false,false, D_IME_DP,dp, dp == 0 ? 2 : ((dp == 255 && model >= 68020) ? 4 : 1),0);
 					cnt++;
 				} else {
 					SAEF_error("cpu.mkITab() op exists BRA "+op);
@@ -9405,13 +9298,13 @@ function SAEO_CPU() {
 		}
 		//BSR
 		{
-			for (var dp = 0; dp < (model >= 68020 ? 256 : 255); dp++) { /* 0xff = 68020 only */
+			for (var dp = 0; dp < 256; dp++) { /* 0xff: 32-bit displacement from the 68020 on, -1 before */
 				op = (97 << 8) | dp;
 				if (iTab[op].op === -1) {
 					iTab[op] = mkI(op, "BSR", [18,2,2]);
 					iTab[op].p.dp = dp;
 					iTab[op].f = I_BSR;
-					iTab[op].d = mkDiss(0, false,false, D_IME_DP,dp, dp == 0 ? 2 : (dp == 255 ? 4 : 1),0);
+					iTab[op].d = mkDiss(0, false,false, D_IME_DP,dp, dp == 0 ? 2 : ((dp == 255 && model >= 68020) ? 4 : 1),0);
 					cnt++;
 				} else {
 					SAEF_error("cpu.mkITab() op exists BSR " + op);

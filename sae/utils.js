@@ -279,7 +279,7 @@ var sprintfWrapper = {
 		var newString = "";
 		var match;
 
-		while (match = exp.exec(string)) {
+		while ((match = exp.exec(string))) {
 			if (match[9]) {
 				convCount += 1;
 			}
