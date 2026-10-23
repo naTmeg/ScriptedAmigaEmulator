@@ -150,7 +150,8 @@ function SAEO_Custom() {
 	/*---------------------------------*/
 
 	function INTREQR() {
-		return SAEV_Custom_intreq;
+		/* bits 3 and 13 are level-sensitive inputs driven by the CIA /IRQ lines */
+		return SAEV_Custom_intreq | SAER.cia.irqbits();
 	}
 	this.INTREQ_0 = function(v) {
 		var old = SAEV_Custom_intreq;
@@ -165,7 +166,7 @@ function SAEO_Custom() {
 		if (old == SAEV_Custom_intreq && old2 == intreq_internal)
 			return false;
 		if (v & 0x8000)
-			SAER.m68k.doint();
+			SAER.m68k.doint_delayed();
 		return true;
 	}
 	this.INTREQ = function(v) {
@@ -192,7 +193,7 @@ function SAEO_Custom() {
 
 		intena_internal = SAEV_Custom_intena;
 		if (v & 0x8000)
-			SAER.m68k.doint();
+			SAER.m68k.doint_delayed();
 	}
 
 	/*---------------------------------*/
@@ -228,7 +229,7 @@ function SAEO_Custom() {
 	}*/
 
 	this.intlev = function() {
-		var imask = intreq_internal & intena_internal;
+		var imask = (intreq_internal | SAER.cia.irqbits()) & intena_internal;
 		/*if (irq_nmi) {
 			irq_nmi = 0;
 			return 7;

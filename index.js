@@ -17,7 +17,7 @@
 | Note: This file does not contain any emulator-code.
 -------------------------------------------------------------------------*/
 
-const URL_DATABASE = window.location.protocol+"//"+window.location.hostname+"/db";
+const URL_DATABASE = "db"; /* relative to index.htm, so host, port and sub-directory are preserved */
 const URL_DATABASE_GAMES = URL_DATABASE+"/games";
 const URL_DATABASE_DEMOS = URL_DATABASE+"/demos";
 const URL_DATABASE_DEMOS_AGA = URL_DATABASE+"/demos_aga";
@@ -709,7 +709,10 @@ function Cache() {
 				}
 			} else {
 				item.state = S_ERROR;
-				alert(sprintf("Error while downloading '%s' (http status: %d)", url, this.status));
+				var msg = sprintf("Error while downloading '%s' (http status: %d)", url, this.status);
+				if (name == AROS_ROM_FILE || name == AROS_EXT_FILE)
+					msg += sprintf("\n\nThe AROS kickstart-replacement is missing. Put '%s' and '%s' into the '%s'-directory next to index.htm, or select a kickstart-rom at 'Config/ROM'.", AROS_ROM_FILE, AROS_EXT_FILE, URL_DATABASE);
+				alert(msg);
 			}
 		});
 		return false;

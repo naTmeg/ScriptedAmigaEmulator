@@ -76,9 +76,15 @@ function SAEO_CIA() {
 
 	/*-----------------------------------------------------------------------*/
 
+	/* The CIA /IRQ outputs drive Paula's INT2 (CIA-A) and INT6 (CIA-B) inputs.
+	 * Those inputs are level-sensitive: INTREQ bits 3 and 13 mirror the lines
+	 * and are not latched by Paula. Hence a program may clear INTREQ before it
+	 * reads the ICR (releasing the line) in any order without the interrupt
+	 * re-triggering. We therefore never set those bits in SAEV_Custom_intreq.
+	 * custom.INTREQR() and custom.intlev() OR in this.irqbits() instead, and
+	 * here we only ask the CPU to re-evaluate the interrupt level. (Issue #32) */
 	function ICR(data) {
-		if (!(SAEV_Custom_intreq & data))
-			SAER.custom.INTREQ_0(SAEC_Custom_INTF_SETCLR | data);
+		SAER.m68k.doint_delayed();
 	}
 
 	function ICRA() {
@@ -121,6 +127,18 @@ function SAEO_CIA() {
 	this.rethink = function() { //rethink_cias()
 		if (ciaaicr & 0x40) ICRA();
 		if (ciabicr & 0x40) ICRB();
+	}
+
+	/* INTREQ bits currently asserted by the CIA /IRQ lines. Bit 7 of the ICR
+	 * is the IR flag, which is set while the line is low and cleared by reading
+	 * the ICR. (Issue #32) */
+	this.irqbits = function() {
+		var v = 0;
+		if (ciaaicr & 0x80)
+			v |= 0x0008;
+		if (ciabicr & 0x80)
+			v |= (SAEV_config.chipset.compatible == SAEC_Config_Chipset_Compatible_A1000V) ? 0x0008 : 0x2000; /* Both CIAs in Velvet are connected to level 2 */
+		return v;
 	}
 
 	/* Figure out how many CIA timer cycles have passed for each timer since the last call of CIA_calctimers.  */
@@ -971,6 +989,7 @@ function SAEO_CIA() {
 		case 13:
 			tmp = ciaaicr & ~(0x40 | 0x20);
 			ciaaicr = 0;
+			SAER.m68k.doint(); /* /IRQ line released, re-evaluate the interrupt level */
 			return tmp;
 		case 14:
 			return ciaacra;
@@ -1090,6 +1109,7 @@ function SAEO_CIA() {
 		case 13:
 			tmp = ciabicr & ~(0x40 | 0x20);
 			ciabicr = 0;
+			SAER.m68k.doint(); /* /IRQ line released, re-evaluate the interrupt level */
 			return tmp;
 		case 14:
 			return ciabcra;

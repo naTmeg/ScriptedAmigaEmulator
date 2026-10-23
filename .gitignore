@@ -5,5 +5,7 @@ db/games/index.htm
 db/demos_aga/index.htm
 db/demos/index.htm
 *.bin
+!db/aros-amiga-m68k-rom.bin
+!db/aros-amiga-m68k-ext.bin
 scriptedamigaemulator.js
 scriptedamigaemulator.js.map
