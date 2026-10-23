@@ -70,10 +70,10 @@ function switchScreenWindow(s) {
 	var e = document.getElementById("controls_sw");
 	if (s) {
 		e.innerHTML = "Window";
-		e.onclick = function() { screenMode(false); };
+		e.onclick = function() { fullscreen(false); };
 	} else {
 		e.innerHTML = "Screen";
-		e.onclick = function() { screenMode(true); };
+		e.onclick = function() { fullscreen(true); };
 	}
 }
 

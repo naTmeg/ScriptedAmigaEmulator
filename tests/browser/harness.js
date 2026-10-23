@@ -110,31 +110,33 @@ function init() {
 	harnessState.phase = "loading";
 
 	var start = function() {
-		var err = sae.start();
-		if (err != SAEE_None) { harnessState.error = "start() failed: " + err; log(harnessState.error); return; }
-		harnessState.phase = "running";
-		/* ?stopframe=N: pause right after emulated frame N, so the picture is exactly that frame
-		   (the run loop checks the pause command at the next vsync) */
-		var stopFrame = +param("stopframe", "0");
-		if (stopFrame > 0) {
-			/* only the last frames matter: skip the canvas upload before that. In headless
-			   Chromium all pages share one software-rendering GPU process, which otherwise
-			   limits how many tests can run in parallel */
-			var show = SAER.video.show_screen;
-			SAER.video.show_screen = function() {
-				if (harnessFrames() >= stopFrame - 2) return show.apply(this, arguments);
-			};
-			var fw = SAER.events.framewait;
-			SAER.events.framewait = function() {
-				var r = fw.apply(this, arguments);
-				if (harnessState.phase == "running" && harnessFrames() >= stopFrame) {
-					sae.pause(true);
-					harnessState.phase = "stopped";
-				}
-				return r;
-			};
-		}
-		log("running: " + (adf || "(no disk)") + (df1 ? " + DF1 " + df1 : "") + " on " + model + " with " + cfg.memory.rom.name);
+		sae.start().then(function(err) { /* send start-request */
+			if (err != SAEE_None) { harnessState.error = "start() failed: " + err; log(harnessState.error); return; }
+
+			harnessState.phase = "running";
+			/* ?stopframe=N: pause right after emulated frame N, so the picture is exactly that frame
+				(the run loop checks the pause command at the next vsync) */
+			var stopFrame = +param("stopframe", "0");
+			if (stopFrame > 0) {
+				/* only the last frames matter: skip the canvas upload before that. In headless
+					Chromium all pages share one software-rendering GPU process, which otherwise
+					limits how many tests can run in parallel */
+				var show = SAER.video.show_screen;
+				SAER.video.show_screen = function() {
+					if (harnessFrames() >= stopFrame - 2) return show.apply(this, arguments);
+				};
+				var fw = SAER.events.framewait;
+				SAER.events.framewait = function() {
+					var r = fw.apply(this, arguments);
+					if (harnessState.phase == "running" && harnessFrames() >= stopFrame) {
+						sae.pause(true);
+						harnessState.phase = "stopped";
+					}
+					return r;
+				};
+			}
+			log("running: " + (adf || "(no disk)") + (df1 ? " + DF1 " + df1 : "") + " on " + model + " with " + cfg.memory.rom.name);
+		});		
 	};
 	var loadDisks = function() {
 		if (!adf) return start();
