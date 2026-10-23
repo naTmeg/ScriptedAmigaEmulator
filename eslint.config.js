@@ -66,5 +66,5 @@ export default [
 		languageOptions: { ecmaVersion: "latest", sourceType: "module", globals: globals.node },
 	},
 	/* page.evaluate() callbacks run in the browser */
-	{ files: ["tests/run-suite.mjs"], languageOptions: { globals: { window: "readonly" } } },
+	{ files: ["tests/run-suite.mjs", "tests/run-cputester.mjs"], languageOptions: { globals: { window: "readonly" } } },
 ];

@@ -1097,25 +1097,40 @@ function SAEO_CPU() {
 	 * next word has already been prefetched, so the stacked PC is 2 higher than
 	 * the extension words consumed so far. Rules as in WinUAE's gencpu
 	 * (exception_pc_offset_extra_000 and the MOVE special cases). */
+	/* Stacked PC of a faulting operand read, relative to the PC after the extension words
+	 * fetched so far, by addressing mode of the operand (cputester, checked on real 68000s):
+	 * (An), (An)+ and abs.W: 0; -(An): +2 for a word, 0 for a long (the low word at An-2 is
+	 * read first); (d16,An), (d8,An,Xn), (d16,PC), (d8,PC,Xn): -2. */
+	var address_error_long = false; /* the faulting access is the first word of a long */
+	function address_error_read_extra(mode, reg) {
+		if (mode == 5 || mode == 6 || (mode == 7 && (reg == 2 || reg == 3)))
+			return -2;
+		if (mode == 4)
+			return address_error_long ? 0 : 2;
+		return 0;
+	}
+
 	function address_error_pc_extra(op, write) {
 		if (SAEV_config.cpu.model != SAEC_Config_CPU_Model_68000)
 			return 0;
 		var smode = (op >> 3) & 7, dmode = (op >> 6) & 7;
 		if ((op & 0xC000) == 0 && (op & 0x3000) != 0) { /* MOVE, MOVEA */
 			if (!write)
-				return (smode == 2 || smode == 3 || smode == 4) ? 2 : 0;
+				return address_error_read_extra(smode, op & 7);
 			var srcmem = smode >= 2 && !(smode == 7 && (op & 7) == 4); /* memory source, not #imm */
 			if (srcmem && dmode == 7 && (op & 0x0E00) == 0x0200) /* (xxx).L destination */
 				return -2;
 			return dmode >= 5 ? 0 : 2;
 		}
-		if ((op & 0xFFC0) == 0x40C0) /* MOVE from SR: dummy read first */
-			return (smode == 4 || smode == 7) ? 0 : -2;
 		if ((op & 0xF1F8) == 0xC108 || (op & 0xF1F8) == 0x8108 || /* ABCD/SBCD -(Ay),-(Ax) */
 			(op & 0xF138) == 0xD108 || (op & 0xF138) == 0x9108 || /* ADDX/SUBX -(Ay),-(Ax) */
 			(op & 0xF138) == 0xB108) /* CMPM (Ay)+,(Ax)+ */
 			return 2;
-		return (smode == 2 || smode == 3 || smode == 4) ? 2 : 0;
+		if ((op & 0xFB80) == 0x4880) /* MOVEM (vAmigaTS addrerr7-10, cputester): reads with an index -2 */
+			return ((op & 0x0400) && (smode == 6 || (smode == 7 && (op & 7) == 3))) ? -2 : 2;
+		if (write)
+			return (smode == 2 || smode == 3 || smode == 4) ? 2 : 0;
+		return address_error_read_extra(smode, op & 7);
 	}
 
 	/* The IR word of the frame. MOVE to -(An) on the 68000 prefetches the next instruction
@@ -1128,13 +1143,39 @@ function SAEO_CPU() {
 		return op;
 	}
 
-	function address_error(addr, write) {
-		last_addr_for_exception_3 = add32(coreGetPC(), address_error_pc_extra(regs.opcode, write));
+	/* (An)+ of a read-modify-write operand (exEAtab) is incremented before the access; the
+	   68000 leaves An unchanged when that access faults (cputester) */
+	var ae_pi_reg = -1, ae_pi_old = 0, ae_pi_ipc = -1;
+
+	/* stacked PC for a fault on an odd SP, relative to the PC after the extension words
+	   (cputester "stack" set, checked on real 68000s): BSR.W -2, PEA +2 (abs 0), LINK +2,
+	   others 0 */
+	function address_error_stack_extra(op) {
+		if ((op & 0xFF00) == 0x6100) return (op & 0xFF) == 0 ? -2 : 0; /* BSR.W / BSR.B */
+		if ((op & 0xFFC0) == 0x4840) return (op & 0x3E) == 0x38 ? 0 : 2; /* PEA (abs.W/abs.L: 0) */
+		return 0; /* JSR, RTS, RTR, RTE, LINK, ... */
+	}
+
+	function address_error(addr, write, pcExtra) {
+		if (ae_stack && pcExtra === undefined && SAEV_config.cpu.model == SAEC_Config_CPU_Model_68000)
+			pcExtra = address_error_stack_extra(regs.opcode);
+		ae_stack = false;
+		last_addr_for_exception_3 = add32(coreGetPC(), pcExtra !== undefined ? pcExtra : address_error_pc_extra(regs.opcode, write));
+		address_error_long = false;
+		if (ae_pi_reg >= 0 && ae_pi_ipc === regs.instruction_pc)
+			regs.a[ae_pi_reg] = ae_pi_old;
+		ae_pi_reg = -1;
 		last_fault_for_exception_3 = addr;
 		last_op_for_exception_3 = address_error_ir(regs.opcode, write);
 		last_writeaccess_for_exception_3 = write;
-		last_instructionaccess_for_exception_3 = false;
-		last_notinstruction_for_exception_3 = false;
+		/* operand reads relative to the PC run as program accesses (FC 2/6) */
+		last_instructionaccess_for_exception_3 = !write && ((regs.opcode >> 3) & 7) == 7 && ((regs.opcode & 7) == 2 || (regs.opcode & 7) == 3);
+		/* the next opcode is already in IR (MOVE to -(An)); if it is one that only raises an
+		   exception (ILLEGAL, line A/F), the CPU is already in exception processing and
+		   reports "not instruction" (cputester atMOVE4.W) */
+		var nextop = last_op_for_exception_3;
+		last_notinstruction_for_exception_3 = nextop !== regs.opcode &&
+			(nextop == 0x4AFC || (nextop & 0xF000) == 0xA000 || (nextop & 0xF000) == 0xF000);
 		throw new Exception23(3);
 	}
 	function address_error_fault() {
@@ -1158,6 +1199,10 @@ function SAEO_CPU() {
 		return v;
 	}
 	function get32_prefetch(addr) { //OWN
+		if (addr & 1) {
+			address_error_long = true;
+			address_error(addr, false);
+		}
 		return ((get16_prefetch(addr) << 16) |  get16_prefetch(addr + 2)) >>> 0;
 	}
 
@@ -1171,6 +1216,10 @@ function SAEO_CPU() {
 		SAER_Memory_put16(addr, v);
 	}
 	function put32_prefetch(addr, v) { //OWN
+		if (addr & 1) {
+			address_error_long = true;
+			address_error(addr, true);
+		}
 		put16_prefetch(addr, v >>> 16);
 		put16_prefetch(addr + 2, v & 0xffff);
 	}
@@ -1605,7 +1654,17 @@ function SAEO_CPU() {
 		if (newpc & 1) {
 			if (nr == 2 || nr == 3)
 				SAER.m68k.cpu_halt(SAEC_CPU_halt_DOUBLE_FAULT);
-			else
+			else if (SAEV_config.cpu.model == SAEC_Config_CPU_Model_68000) {
+				/* odd handler address (cputester "vector" set, checked on real 68000s): the
+				   prefetch from it faults; the frame holds the handler address, the address of
+				   the vector as PC, the opcode (the vector number for interrupts) as IR, and
+				   I/N set for group-1 exceptions (illegal, privilege, trace, line A/F,
+				   interrupts) but not for TRAP, TRAPV, CHK and DIV */
+				if (interrupt)
+					regs.intmask = nr - 24;
+				var group1 = interrupt || nr == 4 || nr == 8 || nr == 9 || nr == 10 || nr == 11;
+				exception3f(interrupt ? vector_nr : regs.opcode, newpc, false, true, group1, (regs.vbr + 4 * vector_nr) >>> 0, false);
+			} else
 				exception3_notinstruction(regs.ir, newpc);
 			return;
 		}
@@ -1640,6 +1699,10 @@ function SAEO_CPU() {
 		last_writeaccess_for_exception_3 = writeaccess;
 		last_instructionaccess_for_exception_3 = instructionaccess;
 		last_notinstruction_for_exception_3 = notinstruction;
+		/* the frame PC is taken; drop the extension-word offset of the aborted instruction
+		   (JMP/JSR (d16,An) etc.), or the first instruction of the handler runs with a wrong
+		   PC (as address_error_fault() already does for data accesses) */
+		pc_offset = PC_OFFSET;
 		exception(3);
 	}
 	function exception3_notinstruction(opcode, addr) {
@@ -2910,21 +2973,32 @@ function SAEO_CPU() {
 	/* SECT instruction core. Implementation based on M68000PRM.pdf          */
 	/*-----------------------------------------------------------------------*/
 
+	/* stack accesses of instructions are marked, an odd SP gives its own stacked PC
+	   (address_error_stack_extra) */
+	var ae_stack = false;
 	function stackPut16(v) {
 		regs.a[7] -= 2; /* pre-decrement */
+		ae_stack = true;
 		corePut16(regs.a[7], v);
+		ae_stack = false;
 	}
 	function stackPut32(v) {
 		regs.a[7] -= 4; /* pre-decrement */
+		ae_stack = true;
 		corePut32(regs.a[7], v);
+		ae_stack = false;
 	}
 	function stackGet16() {
+		ae_stack = true;
 		var v = coreGet16(regs.a[7]);
+		ae_stack = false;
 		regs.a[7] += 2; /* post-increment */
 		return v;
 	}
 	function stackGet32() {
+		ae_stack = true;
 		var v = coreGet32(regs.a[7]);
+		ae_stack = false;
 		regs.a[7] += 4; /* post-increment */
 		return v;
 	}
@@ -3081,6 +3155,13 @@ function SAEO_CPU() {
 
 	function I_LINK(p) {
 		var dp = extWord(coreNext16());
+		if (((regs.a[7] - 4) & 1) && coreGet32 === get32_prefetch) {
+			/* odd SP: An already holds SP-4 when the push faults, SP is unchanged (cputester) */
+			var sp = (regs.a[7] - 4) >>> 0;
+			regs.a[p.An] = sp; /* also for LINK A7: A7 = SP-4 */
+			address_error_long = true;
+			address_error(sp, true, 2);
+		}
 		stackPut32(regs.a[p.An]);
 		regs.a[p.An] = regs.a[7];
 		regs.a[7] = add32(regs.a[7], dp);
@@ -3101,6 +3182,8 @@ function SAEO_CPU() {
 	}
 
 	function I_UNLK(p) {
+		if ((regs.a[p.An] & 1) && coreGet32 === get32_prefetch)
+			address_error(regs.a[p.An], false, 2); /* SP unchanged (cputester) */
 		regs.a[7] = regs.a[p.An];
 		regs.a[p.An] = stackGet32();
 		//SAEF_log(("I_UNLK A%d", p.An));
@@ -3111,23 +3194,66 @@ function SAEO_CPU() {
 
 	function I_MOVE_8(p) {
 		var s = ldEA8tab[p.sea]();
+		flgLogical(s, p.zm); /* before the write: a faulting write stacks the new flags */
 		stEA8tab[p.dea](s);
-		flgLogical(s, p.zm);
 		//SAEF_log(("I_MOVE.B $%08x", s));
 		coreSyncPC();
 		return p.cyc;
 	}
 	function I_MOVE_16(p) {
 		var s = ldEA16tab[p.sea]();
+		flgLogical(s, p.zm); /* before the write: a faulting write stacks the new flags */
 		stEA16tab[p.dea](s);
-		flgLogical(s, p.zm);
 		//SAEF_log(("I_MOVE.W $%08x", s));
 		coreSyncPC();
 		return p.cyc;
 	}
+	/* MOVE.L whose first write faults (68000): the flags are partly updated, depending on
+	 * the addressing modes (WinUAE gencpu move_68000_bus_error, cputester), and -(An) is
+	 * restored because the low word at An-2 is written first. */
+	function move32_address_error(s, sea, dea) {
+		var sm = sea >> 3, dm = dea >> 3;
+		var absDst = dea == (7 << 3 | 0) || dea == (7 << 3 | 1);
+		var hi = s >>> 16;
+		if (sm <= 1) { /* Dn, An */
+			if (dm == 5 || dm == 6) { /* high word: N, Z only cleared */
+				regs.n = (s & 0x80000000) != 0;
+				if (hi) regs.z = false;
+			} else if (dm == 4 || absDst)
+				flgLogical(s, 0x80000000);
+		} else if (sea == (7 << 3 | 4)) { /* #imm */
+			if (dm == 5 || dm == 6) { /* high word: N, Z */
+				if (hi & 0x8000) { regs.n = true; regs.z = false; }
+				else if (hi) { regs.n = false; regs.z = false; }
+				else regs.n = false;
+			} else if (dm == 4 || absDst)
+				flgLogical(s, 0x80000000);
+		} else { /* memory source */
+			if (dm == 2 || dm == 3 || dea == (7 << 3 | 1)) { /* low word: Z, N (abs.L too, cputester) */
+				regs.c = regs.v = false;
+				regs.z = (s & 0xffff) == 0;
+				regs.n = (s & 0x8000) != 0;
+			} else if (dm == 4 || dm == 5 || dm == 6 || dea == (7 << 3 | 0)) /* abs.W: normal */
+				flgLogical(s, 0x80000000);
+		}
+		if (dm == 4) {
+			regs.a[dea & 7] = (regs.a[dea & 7] + 4) >>> 0;
+			last_fault_for_exception_3 = (last_fault_for_exception_3 + 2) >>> 0;
+		}
+	}
+
 	function I_MOVE_32(p) {
 		var s = ldEA32tab[p.sea]();
-		stEA32tab[p.dea](s);
+		if (coreGet32 === get32_prefetch) {
+			try {
+				stEA32tab[p.dea](s);
+			} catch (e) {
+				if (e instanceof Exception23 && e.num == 3)
+					move32_address_error(s, p.sea, p.dea);
+				throw e;
+			}
+		} else
+			stEA32tab[p.dea](s);
 		flgLogical(s, p.zm);
 		//SAEF_log(("I_MOVE.L $%08x", s));
 		coreSyncPC();
@@ -3174,7 +3300,7 @@ function SAEO_CPU() {
 				if (list & (1 << Xn)) pre += 2;
 			}
 			/* the first bus cycle is the write at An-2; on an odd address it faults there */
-			if ((a & 1) && model < 68020 && SAEV_config.cpu.compatible)
+			if (list && (a & 1) && model < 68020 && SAEV_config.cpu.compatible)
 				address_error(a - 2, true);
 			a -= pre;
 			/* p. 4-128: The MC68000 and MC68010 write the initial register value (not decremented). */
@@ -3210,7 +3336,7 @@ function SAEO_CPU() {
 				if (list & (1 << Xn)) pre += 4;
 			}
 			/* the first bus cycle is the write at An-2; on an odd address it faults there */
-			if ((a & 1) && model < 68020 && SAEV_config.cpu.compatible)
+			if (list && (a & 1) && model < 68020 && SAEV_config.cpu.compatible)
 				address_error(a - 2, true);
 			a -= pre;
 			/* p. 4-128: The MC68000 and MC68010 write the initial register value (not decremented). */
@@ -3239,6 +3365,10 @@ function SAEO_CPU() {
 		var An = p.ea & 7;
 		var a = exEAtab[ripo ? (2<<3|An) : p.ea](2);
 		var n = 0;
+		/* the 68000 always reads one word more than the list needs, so even an empty
+		   list accesses the address and faults if it is odd (cputester) */
+		if (list == 0 && coreGet16 === get16_prefetch)
+			coreGet16(a);
 
 		for (var Xn = 0; Xn < 16; Xn++) {
 			if (list & (1 << Xn)) {
@@ -3262,6 +3392,10 @@ function SAEO_CPU() {
 		var An = p.ea & 7;
 		var a = exEAtab[ripo ? (2<<3|An) : p.ea](4);
 		var n = 0;
+		/* the 68000 always reads one word more than the list needs, so even an empty
+		   list accesses the address and faults if it is odd (cputester) */
+		if (list == 0 && coreGet16 === get16_prefetch)
+			coreGet16(a);
 
 		for (var Xn = 0; Xn < 16; Xn++) {
 			if (list & (1 << Xn)) {
@@ -3485,19 +3619,37 @@ function SAEO_CPU() {
 	}
 
 	function I_CLR_32(p) {
-		stEA32tab[p.ea](0);
+		if (p.ea >= 16 && SAEV_config.cpu.model == SAEC_Config_CPU_Model_68000) {
+			/* the 68000 reads the operand before it clears it (an address error is a read) */
+			var a = exEAtab[p.ea](4);
+			coreGet32(a);
+			corePut32(a, 0);
+		} else
+			stEA32tab[p.ea](0);
 		regs.z = true; regs.n = regs.v = regs.c = false;
 		coreSyncPC();
 		return p.cyc;
 	}
 	function I_CLR_16(p) {
-		stEA16tab[p.ea](0);
+		if (p.ea >= 16 && SAEV_config.cpu.model == SAEC_Config_CPU_Model_68000) {
+			/* the 68000 reads the operand before it clears it (an address error is a read) */
+			var a = exEAtab[p.ea](2);
+			coreGet16(a);
+			corePut16(a, 0);
+		} else
+			stEA16tab[p.ea](0);
 		regs.z = true; regs.n = regs.v = regs.c = false;
 		coreSyncPC();
 		return p.cyc;
 	}
 	function I_CLR_8(p) {
-		stEA8tab[p.ea](0);
+		if (p.ea >= 16 && SAEV_config.cpu.model == SAEC_Config_CPU_Model_68000) {
+			/* the 68000 reads the operand before it clears it (an address error is a read) */
+			var a = exEAtab[p.ea](1);
+			coreGet8(a);
+			corePut8(a, 0);
+		} else
+			stEA8tab[p.ea](0);
 		regs.z = true; regs.n = regs.v = regs.c = false;
 		coreSyncPC();
 		return p.cyc;
@@ -3649,11 +3801,37 @@ function SAEO_CPU() {
 		return p.cyc;
 	}
 
+	/* "undefined" flags of DIVU/DIVS.W (WinUAE divbyzero_special / setdiv?flags, confirmed
+	   by cputester on real 68000s): division by zero on 68000/68010 clears N, Z, V, C and
+	   sets Z (DIVS) or N/Z from the high word of the dividend (DIVU); 68020/030 also set V
+	   for DIVU. An overflow on 68000/68010 sets N and V and clears Z and C. */
+	function div_zero_flags(signed, dst) {
+		if (SAEV_config.cpu.model >= SAEC_Config_CPU_Model_68040)
+			return;
+		regs.n = regs.z = regs.v = regs.c = false;
+		if (signed)
+			regs.z = true;
+		else {
+			regs.n = (dst & 0x80000000) != 0;
+			regs.z = (dst >>> 16) == 0;
+			if (SAEV_config.cpu.model >= SAEC_Config_CPU_Model_68020)
+				regs.v = true;
+		}
+	}
+	function div_overflow_flags() {
+		regs.v = true;
+		if (SAEV_config.cpu.model <= SAEC_Config_CPU_Model_68010) {
+			regs.n = true;
+			regs.z = false;
+		}
+	}
+
 	function I_DIVS(p) {
 		var s = ldEA16tab[p.ea]();
 
 		regs.c = false;
 		if (s == 0) {
+			div_zero_flags(true, regs.d[p.Dn]);
 			//SAEF_log(("I_DIVS.W %08x / 0 (coreException 5)", regs.d[p.Dn]));
 			//coreSyncPC();
 			return coreException(5);
@@ -3664,7 +3842,7 @@ function SAEO_CPU() {
 			if (d & 0x80000000) d = -d + 0x100000000;
 			var quo = (d / s) >>> 0;
 			if (sign ? quo > 0x8000 : quo > 0x7fff) {
-				regs.v = true;
+				div_overflow_flags();
 				//SAEF_log(("I_DIVS.W %d / %d = %d OVERFLOW", d,s, quo));
 			} else {
 				var rem = d % s;
@@ -3686,6 +3864,7 @@ function SAEO_CPU() {
 
 		regs.c = false;
 		if (s == 0) {
+			div_zero_flags(false, regs.d[p.Dn]);
 			//SAEF_log(("I_DIVU.%s %08x / 0 (coreException 5)", regs.d[p.Dn]));
 			//coreSyncPC();
 			return coreException(5);
@@ -3693,7 +3872,7 @@ function SAEO_CPU() {
 			var d = regs.d[p.Dn];
 			var quo = (d / s) >>> 0;
 			if (quo > 0xffff) {
-				regs.v = true;
+				div_overflow_flags();
 				//SAEF_log(("I_DIVU.W %d / %d = %d OVERFLOW", d,s, quo));
 			} else {
 				var rem = d % s;
@@ -3829,9 +4008,22 @@ function SAEO_CPU() {
 		return p.cyc;
 	}
 
+	/* -(An) long read of ADDX/SUBX: the 68000 reads the low word at An-2 first and updates
+	   An afterwards, so with an odd An the address error reports An-2 and An is unchanged
+	   (cputester, checked on real 68000s) */
+	function getPreDec32(r) {
+		var a = regs.a[r];
+		if ((a & 1) && coreGet32 === get32_prefetch) {
+			address_error_long = true;
+			address_error((a - 2) >>> 0, false);
+		}
+		regs.a[r] = (a - 4) >>> 0;
+		return coreGet32(regs.a[r]);
+	}
+
 	function I_ADDX_M_32(p) {
-		regs.a[p.Ry] -= 4; var s = coreGet32(regs.a[p.Ry]);
-		regs.a[p.Rx] -= 4; var d = coreGet32(regs.a[p.Rx]);
+		var s = getPreDec32(p.Ry);
+		var d = getPreDec32(p.Rx);
 		var r = s + d + (regs.x ? 1:0); if (r > 0xffffffff) r -= 0x100000000;
 		corePut32(regs.a[p.Rx], r);
 		//SAEF_log(("I_ADDX_M.L %08x + %08x + %d = %08x", s, d, regs.x?1:0, r));
@@ -3892,8 +4084,8 @@ function SAEO_CPU() {
 	}
 
 	function I_SUBX_M_32(p) {
-		regs.a[p.Rx] -= 4; var s = coreGet32(regs.a[p.Rx]);
-		regs.a[p.Ry] -= 4; var d = coreGet32(regs.a[p.Ry]);
+		var s = getPreDec32(p.Rx);
+		var d = getPreDec32(p.Ry);
 		var r = d - s - (regs.x ? 1:0); if (r < 0) r += 0x100000000;
 		corePut32(regs.a[p.Ry], r);
 		//SAEF_log(("I_SUBX_M.L %08x - %08x - %d = %08x", d, s, regs.x?1:0, r));
@@ -5575,6 +5767,13 @@ function SAEO_CPU() {
 
 		if (!ccTab[p.cc]()) {
 			var dr = (regs.d[p.Dn] & 0xffff) - 1; if (dr < 0) dr += 0x10000;
+			if (model == 68000 && (add32(pc, extWord(dp)) & 1)) {
+				/* the 68000 prefetches from the target before it checks the counter: an odd
+				   target faults even if the loop ends, Dn is not written, PC = target+2 (cputester) */
+				var t = add32(pc, extWord(dp));
+				exception3f(p.op, t, false, true, false, add32(t, 2), false);
+				return [0,0,0];
+			}
 			regs.d[p.Dn] = (regs.d[p.Dn] & 0xffff0000) | dr;
 
 			if (dr != 0xffff) {
@@ -5634,8 +5833,13 @@ function SAEO_CPU() {
 		if (pc & 1) {
 			/* 68000: the return address is pushed before the prefetch from the odd target
 			   faults (WinUAE gencpu i_BSR, SingleStepTests) */
-			if (SAEV_config.cpu.model == SAEC_Config_CPU_Model_68000)
+			if (SAEV_config.cpu.model == SAEC_Config_CPU_Model_68000) {
 				stackPut32(coreGetPC());
+				/* both the access address and the stacked PC are the branch target
+				   (cputester, checked on real 68000s; WinUAE gencpu i_BSR) */
+				exception3f(p.op, pc, false, true, false, pc, false);
+				return [0,0,0];
+			}
 			return coreException3i(p.op, pc);
 		}
 		//SAEF_log(("I_BSR $%08x -> $%08x", coreGetPC(), pc));
@@ -5656,7 +5860,13 @@ function SAEO_CPU() {
 
 	function I_JSR(p) {
 		var pc = exEAtab[p.ea](4);
-		if (pc & 1) return coreException3i(p.op, pc);
+		if (pc & 1) {
+			if (model == 68000 && (p.ea == (7 << 3 | 0) || p.ea == (7 << 3 | 1))) { /* abs.W/abs.L (cputester) */
+				exception3f(p.op, pc, false, true, false, coreGetPC(), false);
+				return [0,0,0];
+			}
+			return coreException3i(p.op, pc);
+		}
 		stackPut32(coreGetPC());
 		coreSetPC(pc);
 		//ccna
@@ -5845,7 +6055,14 @@ function SAEO_CPU() {
 		if (regs.s || model == 68000) { /* This instruction is not privileged for the MC68000 and MC68008 */
 			var sr = coreGetSR();
 			//SAEF_log(("I_MOVE_SR2.W sr $%04x", sr));
-			stEA16tab[p.ea](sr);
+			if (p.ea >= 16 && model == 68000) {
+				/* the 68000 reads the destination first and ignores the value (an address
+				   error is a read) */
+				var a = exEAtab[p.ea](2);
+				coreGet16(a);
+				corePut16(a, sr);
+			} else
+				stEA16tab[p.ea](sr);
 			coreSyncPC();
 			//ccna
 			return p.cyc;
@@ -6636,14 +6853,14 @@ function SAEO_CPU() {
 		exEAtab[(2<<3)|5] = function() { return regs.a[5]; }
 		exEAtab[(2<<3)|6] = function() { return regs.a[6]; }
 		exEAtab[(2<<3)|7] = function() { return regs.a[7]; }
-		exEAtab[(3<<3)|0] = function(z) { var a = regs.a[0]; regs.a[0] += aIncDec[z][0]; return a; };  //ripo
-		exEAtab[(3<<3)|1] = function(z) { var a = regs.a[1]; regs.a[1] += aIncDec[z][1]; return a; };
-		exEAtab[(3<<3)|2] = function(z) { var a = regs.a[2]; regs.a[2] += aIncDec[z][2]; return a; };
-		exEAtab[(3<<3)|3] = function(z) { var a = regs.a[3]; regs.a[3] += aIncDec[z][3]; return a; };
-		exEAtab[(3<<3)|4] = function(z) { var a = regs.a[4]; regs.a[4] += aIncDec[z][4]; return a; };
-		exEAtab[(3<<3)|5] = function(z) { var a = regs.a[5]; regs.a[5] += aIncDec[z][5]; return a; };
-		exEAtab[(3<<3)|6] = function(z) { var a = regs.a[6]; regs.a[6] += aIncDec[z][6]; return a; };
-		exEAtab[(3<<3)|7] = function(z) { var a = regs.a[7]; regs.a[7] += aIncDec[z][7]; return a; };
+		exEAtab[(3<<3)|0] = function(z) { var a = regs.a[0]; ae_pi_reg = 0; ae_pi_old = a; ae_pi_ipc = regs.instruction_pc; regs.a[0] += aIncDec[z][0]; return a; };  //ripo
+		exEAtab[(3<<3)|1] = function(z) { var a = regs.a[1]; ae_pi_reg = 1; ae_pi_old = a; ae_pi_ipc = regs.instruction_pc; regs.a[1] += aIncDec[z][1]; return a; };
+		exEAtab[(3<<3)|2] = function(z) { var a = regs.a[2]; ae_pi_reg = 2; ae_pi_old = a; ae_pi_ipc = regs.instruction_pc; regs.a[2] += aIncDec[z][2]; return a; };
+		exEAtab[(3<<3)|3] = function(z) { var a = regs.a[3]; ae_pi_reg = 3; ae_pi_old = a; ae_pi_ipc = regs.instruction_pc; regs.a[3] += aIncDec[z][3]; return a; };
+		exEAtab[(3<<3)|4] = function(z) { var a = regs.a[4]; ae_pi_reg = 4; ae_pi_old = a; ae_pi_ipc = regs.instruction_pc; regs.a[4] += aIncDec[z][4]; return a; };
+		exEAtab[(3<<3)|5] = function(z) { var a = regs.a[5]; ae_pi_reg = 5; ae_pi_old = a; ae_pi_ipc = regs.instruction_pc; regs.a[5] += aIncDec[z][5]; return a; };
+		exEAtab[(3<<3)|6] = function(z) { var a = regs.a[6]; ae_pi_reg = 6; ae_pi_old = a; ae_pi_ipc = regs.instruction_pc; regs.a[6] += aIncDec[z][6]; return a; };
+		exEAtab[(3<<3)|7] = function(z) { var a = regs.a[7]; ae_pi_reg = 7; ae_pi_old = a; ae_pi_ipc = regs.instruction_pc; regs.a[7] += aIncDec[z][7]; return a; };
 		exEAtab[(4<<3)|0] = function(z) { regs.a[0] -= aIncDec[z][0]; return regs.a[0]; } //ripr
 		exEAtab[(4<<3)|1] = function(z) { regs.a[1] -= aIncDec[z][1]; return regs.a[1]; }
 		exEAtab[(4<<3)|2] = function(z) { regs.a[2] -= aIncDec[z][2]; return regs.a[2]; }
@@ -6764,14 +6981,14 @@ function SAEO_CPU() {
 		ldEA16tab[(2<<3)|5] = function() { return coreGet16(regs.a[5]); }
 		ldEA16tab[(2<<3)|6] = function() { return coreGet16(regs.a[6]); }
 		ldEA16tab[(2<<3)|7] = function() { return coreGet16(regs.a[7]); }
-		ldEA16tab[(3<<3)|0] = function() { var a = regs.a[0]; regs.a[0] += 2; return coreGet16(a); } //ripo
-		ldEA16tab[(3<<3)|1] = function() { var a = regs.a[1]; regs.a[1] += 2; return coreGet16(a); }
-		ldEA16tab[(3<<3)|2] = function() { var a = regs.a[2]; regs.a[2] += 2; return coreGet16(a); }
-		ldEA16tab[(3<<3)|3] = function() { var a = regs.a[3]; regs.a[3] += 2; return coreGet16(a); }
-		ldEA16tab[(3<<3)|4] = function() { var a = regs.a[4]; regs.a[4] += 2; return coreGet16(a); }
-		ldEA16tab[(3<<3)|5] = function() { var a = regs.a[5]; regs.a[5] += 2; return coreGet16(a); }
-		ldEA16tab[(3<<3)|6] = function() { var a = regs.a[6]; regs.a[6] += 2; return coreGet16(a); }
-		ldEA16tab[(3<<3)|7] = function() { var a = regs.a[7]; regs.a[7] += 2; return coreGet16(a); }
+		ldEA16tab[(3<<3)|0] = function() { var v = coreGet16(regs.a[0]); regs.a[0] += 2; return v; } //ripo
+		ldEA16tab[(3<<3)|1] = function() { var v = coreGet16(regs.a[1]); regs.a[1] += 2; return v; }
+		ldEA16tab[(3<<3)|2] = function() { var v = coreGet16(regs.a[2]); regs.a[2] += 2; return v; }
+		ldEA16tab[(3<<3)|3] = function() { var v = coreGet16(regs.a[3]); regs.a[3] += 2; return v; }
+		ldEA16tab[(3<<3)|4] = function() { var v = coreGet16(regs.a[4]); regs.a[4] += 2; return v; }
+		ldEA16tab[(3<<3)|5] = function() { var v = coreGet16(regs.a[5]); regs.a[5] += 2; return v; }
+		ldEA16tab[(3<<3)|6] = function() { var v = coreGet16(regs.a[6]); regs.a[6] += 2; return v; }
+		ldEA16tab[(3<<3)|7] = function() { var v = coreGet16(regs.a[7]); regs.a[7] += 2; return v; }
 		ldEA16tab[(4<<3)|0] = function() { regs.a[0] -= 2; return coreGet16(regs.a[0]); } //ripr
 		ldEA16tab[(4<<3)|1] = function() { regs.a[1] -= 2; return coreGet16(regs.a[1]); }
 		ldEA16tab[(4<<3)|2] = function() { regs.a[2] -= 2; return coreGet16(regs.a[2]); }
@@ -6827,14 +7044,14 @@ function SAEO_CPU() {
 		ldEA32tab[(2<<3)|5] = function() { return coreGet32(regs.a[5]); }
 		ldEA32tab[(2<<3)|6] = function() { return coreGet32(regs.a[6]); }
 		ldEA32tab[(2<<3)|7] = function() { return coreGet32(regs.a[7]); }
-		ldEA32tab[(3<<3)|0] = function() { var a = regs.a[0]; regs.a[0] += 4; return coreGet32(a); } //ripo
-		ldEA32tab[(3<<3)|1] = function() { var a = regs.a[1]; regs.a[1] += 4; return coreGet32(a); }
-		ldEA32tab[(3<<3)|2] = function() { var a = regs.a[2]; regs.a[2] += 4; return coreGet32(a); }
-		ldEA32tab[(3<<3)|3] = function() { var a = regs.a[3]; regs.a[3] += 4; return coreGet32(a); }
-		ldEA32tab[(3<<3)|4] = function() { var a = regs.a[4]; regs.a[4] += 4; return coreGet32(a); }
-		ldEA32tab[(3<<3)|5] = function() { var a = regs.a[5]; regs.a[5] += 4; return coreGet32(a); }
-		ldEA32tab[(3<<3)|6] = function() { var a = regs.a[6]; regs.a[6] += 4; return coreGet32(a); }
-		ldEA32tab[(3<<3)|7] = function() { var a = regs.a[7]; regs.a[7] += 4; return coreGet32(a); }
+		ldEA32tab[(3<<3)|0] = function() { var v = coreGet32(regs.a[0]); regs.a[0] += 4; return v; } //ripo
+		ldEA32tab[(3<<3)|1] = function() { var v = coreGet32(regs.a[1]); regs.a[1] += 4; return v; }
+		ldEA32tab[(3<<3)|2] = function() { var v = coreGet32(regs.a[2]); regs.a[2] += 4; return v; }
+		ldEA32tab[(3<<3)|3] = function() { var v = coreGet32(regs.a[3]); regs.a[3] += 4; return v; }
+		ldEA32tab[(3<<3)|4] = function() { var v = coreGet32(regs.a[4]); regs.a[4] += 4; return v; }
+		ldEA32tab[(3<<3)|5] = function() { var v = coreGet32(regs.a[5]); regs.a[5] += 4; return v; }
+		ldEA32tab[(3<<3)|6] = function() { var v = coreGet32(regs.a[6]); regs.a[6] += 4; return v; }
+		ldEA32tab[(3<<3)|7] = function() { var v = coreGet32(regs.a[7]); regs.a[7] += 4; return v; }
 		ldEA32tab[(4<<3)|0] = function() { regs.a[0] -= 4; return coreGet32(regs.a[0]); } //ripr
 		ldEA32tab[(4<<3)|1] = function() { regs.a[1] -= 4; return coreGet32(regs.a[1]); }
 		ldEA32tab[(4<<3)|2] = function() { regs.a[2] -= 4; return coreGet32(regs.a[2]); }
@@ -9424,8 +9641,8 @@ function SAEO_CPU() {
 		}
 		//TST
 		{
-			var en = [M_rdd, M_rda, M_ria, M_ripo, M_ripr, M_rid, M_rii, M_absw, M_absl, M_imm];
-			if (model >= 68020) en.push(M_pcid, M_pcii);
+			var en = [M_rdd, M_ria, M_ripo, M_ripr, M_rid, M_rii, M_absw, M_absl];
+			if (model >= 68020) en.push(M_rda, M_imm, M_pcid, M_pcii); /* 68000/010: data alterable only */
 			for (var z = 0; z < 3; z++) {
 				var z2 = z == 0 ? 1 : (z == 1 ? 2 : 4);
 				for (var ea = 0; ea < 61; ea++) {

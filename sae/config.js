@@ -582,6 +582,9 @@ function SAEO_Config() {
 		id: "",
 		enabled: false,
 		cursor: 0,
+		/* pause while the page is hidden (other tab, minimised window) and resume when it is
+		   visible again; browsers throttle timers in hidden pages to about 1 Hz anyway */
+		pauseInBackground: true,
 
 		scandoubler: false, //gfx_scandoubler
 		framerate: 0, //gfx_framerate
@@ -739,6 +742,7 @@ function SAEO_Config() {
 			stopped: function() {},
 			reseted: function(hard) {},
 			paused: function(paused) {},
+			diskModified: function(unit) {}, /* first write to the disk in a drive */
 			screened: function(screened) {}
 		},
 		serial: {

@@ -1,0 +1,1700 @@
+{
+ "address": {
+  "aRTE": {
+   "status": "pass",
+   "tests": 10368
+  },
+  "aRTR": {
+   "status": "pass",
+   "tests": 1312
+  },
+  "atABCD.B": {
+   "status": "pass",
+   "tests": 32128
+  },
+  "atADD.B": {
+   "status": "pass",
+   "tests": 53876
+  },
+  "atADD.L_1": {
+   "status": "pass",
+   "tests": 58464
+  },
+  "atADD.L_2": {
+   "status": "pass",
+   "tests": 59648
+  },
+  "atADD.L_3": {
+   "status": "pass",
+   "tests": 6336
+  },
+  "atADD.L_4": {
+   "status": "pass",
+   "tests": 50748
+  },
+  "atADD.L_5": {
+   "status": "pass",
+   "tests": 40196
+  },
+  "atADD.W_1": {
+   "status": "pass",
+   "tests": 83204
+  },
+  "atADD.W_2": {
+   "status": "pass",
+   "tests": 35748
+  },
+  "atADD.W_3": {
+   "status": "pass",
+   "tests": 81944
+  },
+  "atADDA.L": {
+   "status": "pass",
+   "tests": 74992
+  },
+  "atADDA.W": {
+   "status": "pass",
+   "tests": 72144
+  },
+  "atAND.B_1": {
+   "status": "pass",
+   "tests": 21344
+  },
+  "atAND.B_2": {
+   "status": "pass",
+   "tests": 18228
+  },
+  "atAND.L_1": {
+   "status": "timeout",
+   "tests": 0
+  },
+  "atAND.L_2": {
+   "status": "pass",
+   "tests": 75436
+  },
+  "atAND.W_1": {
+   "status": "pass",
+   "tests": 82512
+  },
+  "atAND.W_2": {
+   "status": "pass",
+   "tests": 60148
+  },
+  "atANDSR.B": {
+   "status": "pass",
+   "tests": 8728
+  },
+  "atANDSR.W": {
+   "status": "pass",
+   "tests": 8316
+  },
+  "atASL.B": {
+   "status": "pass",
+   "tests": 3072
+  },
+  "atASL.L": {
+   "status": "pass",
+   "tests": 3072
+  },
+  "atASL.W": {
+   "status": "pass",
+   "tests": 3072
+  },
+  "atASLW.W": {
+   "status": "pass",
+   "tests": 23344
+  },
+  "atASR.B": {
+   "status": "pass",
+   "tests": 49152
+  },
+  "atASR.L": {
+   "status": "pass",
+   "tests": 49152
+  },
+  "atASR.W": {
+   "status": "pass",
+   "tests": 49152
+  },
+  "atASRW.W": {
+   "status": "pass",
+   "tests": 373952
+  },
+  "atBCC.B": {
+   "status": "timeout",
+   "tests": 0
+  },
+  "atBCC.W": {
+   "status": "pass",
+   "tests": 261440
+  },
+  "atBCHG.B": {
+   "status": "pass",
+   "tests": 49784
+  },
+  "atBCHG.L": {
+   "status": "pass",
+   "tests": 11328
+  },
+  "atBCLR.B": {
+   "status": "pass",
+   "tests": 51560
+  },
+  "atBCLR.L": {
+   "status": "pass",
+   "tests": 11328
+  },
+  "atBSET.B": {
+   "status": "pass",
+   "tests": 50984
+  },
+  "atBSET.L": {
+   "status": "pass",
+   "tests": 11328
+  },
+  "atBSR.B": {
+   "status": "pass",
+   "tests": 439296
+  },
+  "atBSR.W": {
+   "status": "pass",
+   "tests": 66688
+  },
+  "atBTST.B": {
+   "status": "pass",
+   "tests": 545728
+  },
+  "atBTST.L": {
+   "status": "pass",
+   "tests": 120832
+  },
+  "atCHK.W": {
+   "status": "pass",
+   "tests": 106596
+  },
+  "atCLR.B": {
+   "status": "pass",
+   "tests": 124480
+  },
+  "atCLR.L": {
+   "status": "pass",
+   "tests": 375040
+  },
+  "atCLR.W": {
+   "status": "pass",
+   "tests": 375424
+  },
+  "atCMP.B": {
+   "status": "pass",
+   "tests": 26120
+  },
+  "atCMP.L_1": {
+   "status": "pass",
+   "tests": 26196
+  },
+  "atCMP.L_2": {
+   "status": "pass",
+   "tests": 75268
+  },
+  "atCMP.W": {
+   "status": "pass",
+   "tests": 86528
+  },
+  "atCMPA.L": {
+   "status": "pass",
+   "tests": 74636
+  },
+  "atCMPA.W": {
+   "status": "pass",
+   "tests": 71568
+  },
+  "atCMPM.B": {
+   "status": "pass",
+   "tests": 2368
+  },
+  "atCMPM.L": {
+   "status": "pass",
+   "tests": 5632
+  },
+  "atCMPM.W": {
+   "status": "pass",
+   "tests": 5696
+  },
+  "atDBCC.W": {
+   "status": "pass",
+   "tests": 309032
+  },
+  "atDIVS.W": {
+   "status": "pass",
+   "tests": 71056
+  },
+  "atDIVU.W": {
+   "status": "pass",
+   "tests": 145452
+  },
+  "atEOR.B": {
+   "status": "pass",
+   "tests": 15760
+  },
+  "atEOR.L_1": {
+   "status": "pass",
+   "tests": 86232
+  },
+  "atEOR.L_2": {
+   "status": "pass",
+   "tests": 77080
+  },
+  "atEOR.W": {
+   "status": "pass",
+   "tests": 70148
+  },
+  "atEORSR.B": {
+   "status": "pass",
+   "tests": 8968
+  },
+  "atEORSR.W": {
+   "status": "pass",
+   "tests": 6704
+  },
+  "atEXG.L": {
+   "status": "pass",
+   "tests": 46336
+  },
+  "atEXT.L": {
+   "status": "pass",
+   "tests": 2048
+  },
+  "atEXT.W": {
+   "status": "pass",
+   "tests": 2048
+  },
+  "atILLEGAL": {
+   "status": "pass",
+   "tests": 139520
+  },
+  "atJMP": {
+   "status": "pass",
+   "tests": 6990
+  },
+  "atJSR": {
+   "status": "pass",
+   "tests": 7178
+  },
+  "atLEA.L": {
+   "status": "pass",
+   "tests": 68864
+  },
+  "atLINK.W": {
+   "status": "pass",
+   "tests": 3264
+  },
+  "atLSL.B": {
+   "status": "pass",
+   "tests": 1024
+  },
+  "atLSL.L": {
+   "status": "pass",
+   "tests": 1024
+  },
+  "atLSL.W": {
+   "status": "pass",
+   "tests": 1024
+  },
+  "atLSLW.W": {
+   "status": "pass",
+   "tests": 15616
+  },
+  "atLSR.B": {
+   "status": "pass",
+   "tests": 2048
+  },
+  "atLSR.L": {
+   "status": "pass",
+   "tests": 2048
+  },
+  "atLSR.W": {
+   "status": "pass",
+   "tests": 2048
+  },
+  "atLSRW.W": {
+   "status": "pass",
+   "tests": 15652
+  },
+  "atMOVE.B1": {
+   "status": "pass",
+   "tests": 130432
+  },
+  "atMOVE0.L": {
+   "status": "pass",
+   "tests": 185476
+  },
+  "atMOVE0.W": {
+   "status": "pass",
+   "tests": 146464
+  },
+  "atMOVE2.B": {
+   "status": "pass",
+   "tests": 42060
+  },
+  "atMOVE2.L": {
+   "status": "pass",
+   "tests": 128068
+  },
+  "atMOVE2.W": {
+   "status": "pass",
+   "tests": 124508
+  },
+  "atMOVE3.L": {
+   "status": "pass",
+   "tests": 127608
+  },
+  "atMOVE3.W": {
+   "status": "pass",
+   "tests": 124464
+  },
+  "atMOVE4.L": {
+   "status": "pass",
+   "tests": 118724
+  },
+  "atMOVE4.W": {
+   "status": "pass",
+   "tests": 116028
+  },
+  "atMOVE5_1.L": {
+   "status": "pass",
+   "tests": 66924
+  },
+  "atMOVE5_1.W": {
+   "status": "pass",
+   "tests": 66964
+  },
+  "atMOVE5_2.L": {
+   "status": "pass",
+   "tests": 60016
+  },
+  "atMOVE5_2.W": {
+   "status": "pass",
+   "tests": 59872
+  },
+  "atMOVE5_3.L": {
+   "status": "pass",
+   "tests": 16744
+  },
+  "atMOVE5_3.W": {
+   "status": "pass",
+   "tests": 14540
+  },
+  "atMOVE6_1.L": {
+   "status": "pass",
+   "tests": 75292
+  },
+  "atMOVE6_1.W": {
+   "status": "pass",
+   "tests": 75200
+  },
+  "atMOVE6_2.L": {
+   "status": "pass",
+   "tests": 62092
+  },
+  "atMOVE6_2.W": {
+   "status": "pass",
+   "tests": 61908
+  },
+  "atMOVE6_3.L": {
+   "status": "pass",
+   "tests": 17768
+  },
+  "atMOVE6_3.W": {
+   "status": "pass",
+   "tests": 15432
+  },
+  "atMOVE7.L": {
+   "status": "pass",
+   "tests": 92896
+  },
+  "atMOVE7.W": {
+   "status": "pass",
+   "tests": 91844
+  },
+  "atMOVE8.L": {
+   "status": "pass",
+   "tests": 87316
+  },
+  "atMOVE8.W": {
+   "status": "pass",
+   "tests": 116264
+  },
+  "atMOVEA.L_1": {
+   "status": "pass",
+   "tests": 73152
+  },
+  "atMOVEA.L_2": {
+   "status": "pass",
+   "tests": 17792
+  },
+  "atMOVEA.L_3": {
+   "status": "pass",
+   "tests": 143036
+  },
+  "atMOVEA.W_1": {
+   "status": "pass",
+   "tests": 73344
+  },
+  "atMOVEA.W_2": {
+   "status": "pass",
+   "tests": 17792
+  },
+  "atMOVEA.W_3": {
+   "status": "pass",
+   "tests": 136704
+  },
+  "atMULS.W": {
+   "status": "pass",
+   "tests": 145576
+  },
+  "atMULU.W": {
+   "status": "pass",
+   "tests": 145688
+  },
+  "atMV2SR.B": {
+   "status": "pass",
+   "tests": 16612
+  },
+  "atMV2SR.W": {
+   "status": "pass",
+   "tests": 40288
+  },
+  "atMVMEL.L": {
+   "status": "pass",
+   "tests": 18836
+  },
+  "atMVMEL.W": {
+   "status": "pass",
+   "tests": 18964
+  },
+  "atMVMLE.L": {
+   "status": "pass",
+   "tests": 19236
+  },
+  "atMVMLE.W": {
+   "status": "pass",
+   "tests": 19520
+  },
+  "atMVPMR.L": {
+   "status": "pass",
+   "tests": 40364
+  },
+  "atMVPMR.W": {
+   "status": "pass",
+   "tests": 40188
+  },
+  "atMVPRM.L": {
+   "status": "pass",
+   "tests": 26272
+  },
+  "atMVPRM.W": {
+   "status": "pass",
+   "tests": 26376
+  },
+  "atMVR2USP.L": {
+   "status": "pass",
+   "tests": 320
+  },
+  "atMVSR2.W": {
+   "status": "pass",
+   "tests": 47616
+  },
+  "atMVUSP2R.L": {
+   "status": "pass",
+   "tests": 300
+  },
+  "atNBCD.B": {
+   "status": "pass",
+   "tests": 12764
+  },
+  "atNEG.B": {
+   "status": "pass",
+   "tests": 12676
+  },
+  "atNEG.L": {
+   "status": "pass",
+   "tests": 39516
+  },
+  "atNEG.W": {
+   "status": "pass",
+   "tests": 39508
+  },
+  "atNEGX.B": {
+   "status": "pass",
+   "tests": 12964
+  },
+  "atNEGX.L": {
+   "status": "pass",
+   "tests": 39392
+  },
+  "atNEGX.W": {
+   "status": "pass",
+   "tests": 39484
+  },
+  "atNOP": {
+   "status": "pass",
+   "tests": 8
+  },
+  "atNOT.B": {
+   "status": "pass",
+   "tests": 12600
+  },
+  "atNOT.L": {
+   "status": "pass",
+   "tests": 39448
+  },
+  "atNOT.W": {
+   "status": "pass",
+   "tests": 39436
+  },
+  "atOR.B": {
+   "status": "pass",
+   "tests": 37240
+  },
+  "atOR.L_1": {
+   "status": "pass",
+   "tests": 80148
+  },
+  "atOR.L_2": {
+   "status": "pass",
+   "tests": 74760
+  },
+  "atOR.W_1": {
+   "status": "pass",
+   "tests": 79952
+  },
+  "atOR.W_2": {
+   "status": "pass",
+   "tests": 59884
+  },
+  "atORSR.B": {
+   "status": "pass",
+   "tests": 138368
+  },
+  "atORSR.W": {
+   "status": "pass",
+   "tests": 139776
+  },
+  "atPEA.L": {
+   "status": "pass",
+   "tests": 224768
+  },
+  "atRESET": {
+   "status": "pass",
+   "tests": 64
+  },
+  "atROL.B": {
+   "status": "pass",
+   "tests": 81920
+  },
+  "atROL.L": {
+   "status": "pass",
+   "tests": 81920
+  },
+  "atROL.W": {
+   "status": "pass",
+   "tests": 81920
+  },
+  "atROLW.W": {
+   "status": "pass",
+   "tests": 626240
+  },
+  "atROR.B": {
+   "status": "pass",
+   "tests": 81920
+  },
+  "atROR.L": {
+   "status": "pass",
+   "tests": 81920
+  },
+  "atROR.W": {
+   "status": "pass",
+   "tests": 81920
+  },
+  "atRORW.W": {
+   "status": "pass",
+   "tests": 625024
+  },
+  "atROXL.B": {
+   "status": "pass",
+   "tests": 81920
+  },
+  "atROXL.L": {
+   "status": "pass",
+   "tests": 81920
+  },
+  "atROXL.W": {
+   "status": "pass",
+   "tests": 81920
+  },
+  "atROXLW.W": {
+   "status": "pass",
+   "tests": 624448
+  },
+  "atROXR.B": {
+   "status": "pass",
+   "tests": 81920
+  },
+  "atROXR.L": {
+   "status": "pass",
+   "tests": 81920
+  },
+  "atROXR.W": {
+   "status": "pass",
+   "tests": 81920
+  },
+  "atROXRW.W": {
+   "status": "pass",
+   "tests": 373632
+  },
+  "atRTS": {
+   "status": "pass",
+   "tests": 5312
+  },
+  "atSBCD.B": {
+   "status": "pass",
+   "tests": 52992
+  },
+  "atSTOP": {
+   "status": "pass",
+   "tests": 327680
+  },
+  "atSUB.B": {
+   "status": "pass",
+   "tests": 104632
+  },
+  "atSUB.L_1": {
+   "status": "pass",
+   "tests": 115212
+  },
+  "atSUB.L_2": {
+   "status": "pass",
+   "tests": 109860
+  },
+  "atSUB.L_3": {
+   "status": "pass",
+   "tests": 13056
+  },
+  "atSUB.L_4": {
+   "status": "pass",
+   "tests": 12672
+  },
+  "atSUB.L_5": {
+   "status": "pass",
+   "tests": 99120
+  },
+  "atSUB.L_6": {
+   "status": "pass",
+   "tests": 78276
+  },
+  "atSUB.W_1": {
+   "status": "pass",
+   "tests": 115456
+  },
+  "atSUB.W_2": {
+   "status": "pass",
+   "tests": 110016
+  },
+  "atSUB.W_3": {
+   "status": "pass",
+   "tests": 13056
+  },
+  "atSUB.W_4": {
+   "status": "pass",
+   "tests": 12672
+  },
+  "atSUB.W_5": {
+   "status": "pass",
+   "tests": 74736
+  },
+  "atSUB.W_6": {
+   "status": "pass",
+   "tests": 72716
+  },
+  "atSUBA.L": {
+   "status": "pass",
+   "tests": 150344
+  },
+  "atSUBA.W": {
+   "status": "pass",
+   "tests": 144352
+  },
+  "atSUBX.B": {
+   "status": "pass",
+   "tests": 52992
+  },
+  "atSUBX.L": {
+   "status": "pass",
+   "tests": 64896
+  },
+  "atSUBX.W": {
+   "status": "pass",
+   "tests": 64896
+  },
+  "atTAS.B": {
+   "status": "pass",
+   "tests": 32128
+  },
+  "atTRAP": {
+   "status": "pass",
+   "tests": 4096
+  },
+  "atTRAPV": {
+   "status": "pass",
+   "tests": 128
+  },
+  "atTST.B": {
+   "status": "pass",
+   "tests": 83584
+  },
+  "atTST.L": {
+   "status": "pass",
+   "tests": 252352
+  },
+  "atTST.W": {
+   "status": "pass",
+   "tests": 252480
+  },
+  "atUNLK.L": {
+   "status": "pass",
+   "tests": 2368
+  }
+ },
+ "basic": {
+  "ABCD.B": {
+   "status": "pass",
+   "tests": 450
+  },
+  "ADD.B": {
+   "status": "pass",
+   "tests": 26296
+  },
+  "ADD.L": {
+   "status": "pass",
+   "tests": 17262
+  },
+  "ADD.W": {
+   "status": "pass",
+   "tests": 15458
+  },
+  "ADDA.L": {
+   "status": "pass",
+   "tests": 9550
+  },
+  "ADDA.W": {
+   "status": "pass",
+   "tests": 8840
+  },
+  "ADDX.B": {
+   "status": "pass",
+   "tests": 470
+  },
+  "ADDX.W": {
+   "status": "pass",
+   "tests": 436
+  },
+  "AND.B": {
+   "status": "pass",
+   "tests": 19714
+  },
+  "AND.L": {
+   "status": "pass",
+   "tests": 15282
+  },
+  "AND.W": {
+   "status": "pass",
+   "tests": 12610
+  },
+  "ANDSR.B": {
+   "status": "pass",
+   "tests": 131072
+  },
+  "ANDSR.W": {
+   "status": "pass",
+   "tests": 196608
+  },
+  "ASL.B": {
+   "status": "pass",
+   "tests": 768
+  },
+  "ASL.L": {
+   "status": "pass",
+   "tests": 768
+  },
+  "ASL.W": {
+   "status": "pass",
+   "tests": 768
+  },
+  "ASLW.W": {
+   "status": "pass",
+   "tests": 710
+  },
+  "ASR.B": {
+   "status": "pass",
+   "tests": 768
+  },
+  "ASR.L": {
+   "status": "pass",
+   "tests": 768
+  },
+  "ASR.W": {
+   "status": "pass",
+   "tests": 768
+  },
+  "ASRW.W": {
+   "status": "pass",
+   "tests": 646
+  },
+  "atSCC.B_1": {
+   "status": "pass",
+   "tests": 122240
+  },
+  "atSCC.B_2": {
+   "status": "pass",
+   "tests": 210560
+  },
+  "atSCC.B_3": {
+   "status": "pass",
+   "tests": 251648
+  },
+  "atSCC.B_4": {
+   "status": "pass",
+   "tests": 102400
+  },
+  "BCC.B": {
+   "status": "pass",
+   "tests": 159840
+  },
+  "BCC.W": {
+   "status": "pass",
+   "tests": 11616
+  },
+  "BCHG.B": {
+   "status": "pass",
+   "tests": 7008
+  },
+  "BCHG.L": {
+   "status": "pass",
+   "tests": 1200
+  },
+  "BCLR.B": {
+   "status": "pass",
+   "tests": 6472
+  },
+  "BCLR.L": {
+   "status": "pass",
+   "tests": 1200
+  },
+  "BSET.B": {
+   "status": "pass",
+   "tests": 6052
+  },
+  "BSET.L": {
+   "status": "pass",
+   "tests": 1200
+  },
+  "BSR.B": {
+   "status": "pass",
+   "tests": 666
+  },
+  "BSR.W": {
+   "status": "pass",
+   "tests": 56640
+  },
+  "BTST.B": {
+   "status": "pass",
+   "tests": 8148
+  },
+  "BTST.L": {
+   "status": "pass",
+   "tests": 1200
+  },
+  "CHK.W": {
+   "status": "pass",
+   "tests": 7712
+  },
+  "CLR.B": {
+   "status": "pass",
+   "tests": 1316
+  },
+  "CLR.L": {
+   "status": "pass",
+   "tests": 744
+  },
+  "CLR.W": {
+   "status": "pass",
+   "tests": 734
+  },
+  "CMP.B": {
+   "status": "pass",
+   "tests": 15776
+  },
+  "CMP.L": {
+   "status": "pass",
+   "tests": 11824
+  },
+  "CMP.W": {
+   "status": "pass",
+   "tests": 10324
+  },
+  "CMPA.L": {
+   "status": "pass",
+   "tests": 8714
+  },
+  "CMPA.W": {
+   "status": "pass",
+   "tests": 8098
+  },
+  "CMPM.B": {
+   "status": "pass",
+   "tests": 70
+  },
+  "CMPM.L": {
+   "status": "pass",
+   "tests": 28
+  },
+  "CMPM.W": {
+   "status": "pass",
+   "tests": 28
+  },
+  "DBcc.W": {
+   "status": "pass",
+   "tests": 23952
+  },
+  "DIVS.W": {
+   "status": "pass",
+   "tests": 21650
+  },
+  "DIVU.W": {
+   "status": "pass",
+   "tests": 21746
+  },
+  "EOR.B": {
+   "status": "pass",
+   "tests": 8518
+  },
+  "EOR.L": {
+   "status": "pass",
+   "tests": 6988
+  },
+  "EOR.W": {
+   "status": "pass",
+   "tests": 5086
+  },
+  "EORSR.B": {
+   "status": "pass",
+   "tests": 131072
+  },
+  "EORSR.W": {
+   "status": "pass",
+   "tests": 196608
+  },
+  "EXG.L": {
+   "status": "pass",
+   "tests": 1152
+  },
+  "EXT.L": {
+   "status": "pass",
+   "tests": 48
+  },
+  "EXT.W": {
+   "status": "pass",
+   "tests": 48
+  },
+  "ILLEGAL": {
+   "status": "pass",
+   "tests": 2
+  },
+  "ILLEGAL.B": {
+   "status": "pass",
+   "tests": 34878
+  },
+  "JMP": {
+   "status": "pass",
+   "tests": 688
+  },
+  "JSR": {
+   "status": "pass",
+   "tests": 664
+  },
+  "LEA.L": {
+   "status": "pass",
+   "tests": 17424
+  },
+  "LINK.W": {
+   "status": "pass",
+   "tests": 816
+  },
+  "LSL.B": {
+   "status": "pass",
+   "tests": 768
+  },
+  "LSL.L": {
+   "status": "pass",
+   "tests": 768
+  },
+  "LSL.W": {
+   "status": "pass",
+   "tests": 768
+  },
+  "LSLW.W": {
+   "status": "pass",
+   "tests": 672
+  },
+  "LSR.B": {
+   "status": "pass",
+   "tests": 768
+  },
+  "LSR.L": {
+   "status": "pass",
+   "tests": 768
+  },
+  "LSR.W": {
+   "status": "pass",
+   "tests": 768
+  },
+  "LSRW.W": {
+   "status": "pass",
+   "tests": 756
+  },
+  "MOVE0.B": {
+   "status": "pass",
+   "tests": 9010
+  },
+  "MOVE0.L": {
+   "status": "pass",
+   "tests": 4164
+  },
+  "MOVE0.W": {
+   "status": "pass",
+   "tests": 3962
+  },
+  "MOVE1.L": {
+   "status": "pass",
+   "tests": 4164
+  },
+  "MOVE1.W": {
+   "status": "pass",
+   "tests": 3962
+  },
+  "MOVE10.B": {
+   "status": "pass",
+   "tests": 4726
+  },
+  "MOVE10.L": {
+   "status": "pass",
+   "tests": 1798
+  },
+  "MOVE10.W": {
+   "status": "pass",
+   "tests": 1872
+  },
+  "MOVE11.B": {
+   "status": "pass",
+   "tests": 2678
+  },
+  "MOVE11.L": {
+   "status": "pass",
+   "tests": 16304
+  },
+  "MOVE11.W": {
+   "status": "pass",
+   "tests": 1906
+  },
+  "MOVE2.B": {
+   "status": "pass",
+   "tests": 4168
+  },
+  "MOVE2.L": {
+   "status": "pass",
+   "tests": 1634
+  },
+  "MOVE2.W": {
+   "status": "pass",
+   "tests": 1140
+  },
+  "MOVE3.B": {
+   "status": "pass",
+   "tests": 4294
+  },
+  "MOVE3.L": {
+   "status": "pass",
+   "tests": 1638
+  },
+  "MOVE3.W": {
+   "status": "pass",
+   "tests": 1142
+  },
+  "MOVE4.B": {
+   "status": "pass",
+   "tests": 4434
+  },
+  "MOVE4.L": {
+   "status": "pass",
+   "tests": 1362
+  },
+  "MOVE4.W": {
+   "status": "pass",
+   "tests": 1368
+  },
+  "MOVE5.B": {
+   "status": "pass",
+   "tests": 18426
+  },
+  "MOVE5.L": {
+   "status": "pass",
+   "tests": 5954
+  },
+  "MOVE5.W": {
+   "status": "pass",
+   "tests": 5112
+  },
+  "MOVE6.B": {
+   "status": "pass",
+   "tests": 2806
+  },
+  "MOVE6.L": {
+   "status": "pass",
+   "tests": 958
+  },
+  "MOVE6.W": {
+   "status": "pass",
+   "tests": 1020
+  },
+  "MOVE7.B": {
+   "status": "pass",
+   "tests": 17636
+  },
+  "MOVE7.L": {
+   "status": "pass",
+   "tests": 5652
+  },
+  "MOVE7.W": {
+   "status": "pass",
+   "tests": 6074
+  },
+  "MOVE8.B": {
+   "status": "pass",
+   "tests": 2710
+  },
+  "MOVE8.L": {
+   "status": "pass",
+   "tests": 924
+  },
+  "MOVE8.W": {
+   "status": "pass",
+   "tests": 1086
+  },
+  "MOVE9.B": {
+   "status": "pass",
+   "tests": 2546
+  },
+  "MOVE9.L": {
+   "status": "pass",
+   "tests": 1086
+  },
+  "MOVE9.W": {
+   "status": "pass",
+   "tests": 1122
+  },
+  "MOVEA.L": {
+   "status": "pass",
+   "tests": 8940
+  },
+  "MOVEA.W": {
+   "status": "pass",
+   "tests": 8494
+  },
+  "MULS.W": {
+   "status": "pass",
+   "tests": 7564
+  },
+  "MULU.W": {
+   "status": "pass",
+   "tests": 7948
+  },
+  "MV2SR.B": {
+   "status": "pass",
+   "tests": 1052
+  },
+  "MV2SR.W": {
+   "status": "pass",
+   "tests": 3754
+  },
+  "MVMEL.L": {
+   "status": "pass",
+   "tests": 752
+  },
+  "MVMEL.W": {
+   "status": "pass",
+   "tests": 614
+  },
+  "MVMLE.L": {
+   "status": "pass",
+   "tests": 978
+  },
+  "MVMLE.W": {
+   "status": "pass",
+   "tests": 1038
+  },
+  "MVPMR.L": {
+   "status": "pass",
+   "tests": 3808
+  },
+  "MVPMR.W": {
+   "status": "pass",
+   "tests": 3808
+  },
+  "MVPRM.L": {
+   "status": "pass",
+   "tests": 1922
+  },
+  "MVPRM.W": {
+   "status": "pass",
+   "tests": 1942
+  },
+  "MVR2USP.L": {
+   "status": "pass",
+   "tests": 96
+  },
+  "MVSR2.W": {
+   "status": "pass",
+   "tests": 758
+  },
+  "MVUSP2R.L": {
+   "status": "pass",
+   "tests": 90
+  },
+  "NBCD.B": {
+   "status": "pass",
+   "tests": 1422
+  },
+  "NEG.B": {
+   "status": "pass",
+   "tests": 1344
+  },
+  "NEG.L": {
+   "status": "pass",
+   "tests": 744
+  },
+  "NEG.W": {
+   "status": "pass",
+   "tests": 816
+  },
+  "NEGX.B": {
+   "status": "pass",
+   "tests": 1356
+  },
+  "NEGX.L": {
+   "status": "pass",
+   "tests": 728
+  },
+  "NEGX.W": {
+   "status": "pass",
+   "tests": 750
+  },
+  "NOP": {
+   "status": "pass",
+   "tests": 2
+  },
+  "NOT.B": {
+   "status": "pass",
+   "tests": 1412
+  },
+  "NOT.L": {
+   "status": "pass",
+   "tests": 686
+  },
+  "NOT.W": {
+   "status": "pass",
+   "tests": 770
+  },
+  "OR.B": {
+   "status": "pass",
+   "tests": 22186
+  },
+  "OR.L": {
+   "status": "pass",
+   "tests": 14246
+  },
+  "OR.W": {
+   "status": "pass",
+   "tests": 12826
+  },
+  "ORSR.B": {
+   "status": "pass",
+   "tests": 131072
+  },
+  "ORSR.W": {
+   "status": "pass",
+   "tests": 262144
+  },
+  "PEA.L": {
+   "status": "pass",
+   "tests": 2178
+  },
+  "RESET": {
+   "status": "pass",
+   "tests": 2
+  },
+  "ROL.B": {
+   "status": "pass",
+   "tests": 768
+  },
+  "ROL.L": {
+   "status": "pass",
+   "tests": 768
+  },
+  "ROL.W": {
+   "status": "pass",
+   "tests": 768
+  },
+  "ROLW.W": {
+   "status": "pass",
+   "tests": 670
+  },
+  "ROR.B": {
+   "status": "pass",
+   "tests": 768
+  },
+  "ROR.L": {
+   "status": "pass",
+   "tests": 768
+  },
+  "ROR.W": {
+   "status": "pass",
+   "tests": 768
+  },
+  "RORW.W": {
+   "status": "pass",
+   "tests": 720
+  },
+  "ROXL.B": {
+   "status": "pass",
+   "tests": 768
+  },
+  "ROXL.L": {
+   "status": "pass",
+   "tests": 768
+  },
+  "ROXL.W": {
+   "status": "pass",
+   "tests": 768
+  },
+  "ROXLW.W": {
+   "status": "pass",
+   "tests": 688
+  },
+  "ROXR.B": {
+   "status": "pass",
+   "tests": 768
+  },
+  "ROXR.L": {
+   "status": "pass",
+   "tests": 768
+  },
+  "ROXR.W": {
+   "status": "pass",
+   "tests": 768
+  },
+  "ROXRW.W": {
+   "status": "pass",
+   "tests": 716
+  },
+  "RTE": {
+   "status": "pass",
+   "tests": 568
+  },
+  "RTR": {
+   "status": "pass",
+   "tests": 70
+  },
+  "RTS": {
+   "status": "pass",
+   "tests": 140
+  },
+  "SBCD.B": {
+   "status": "pass",
+   "tests": 450
+  },
+  "SCC0.B": {
+   "status": "pass",
+   "tests": 16384
+  },
+  "SCC10.B": {
+   "status": "pass",
+   "tests": 32768
+  },
+  "SCC2.B": {
+   "status": "pass",
+   "tests": 6656
+  },
+  "SCC3.B": {
+   "status": "pass",
+   "tests": 6656
+  },
+  "SCC4.B": {
+   "status": "pass",
+   "tests": 6656
+  },
+  "SCC5.B": {
+   "status": "pass",
+   "tests": 95744
+  },
+  "SCC7.B": {
+   "status": "pass",
+   "tests": 95744
+  },
+  "SCC9.B": {
+   "status": "pass",
+   "tests": 17408
+  },
+  "STOP": {
+   "status": "pass",
+   "tests": 131072
+  },
+  "SUB.B": {
+   "status": "pass",
+   "tests": 27014
+  },
+  "SUB.L": {
+   "status": "pass",
+   "tests": 17754
+  },
+  "SUB.W": {
+   "status": "pass",
+   "tests": 16106
+  },
+  "SUBA.L": {
+   "status": "pass",
+   "tests": 9258
+  },
+  "SUBA.W": {
+   "status": "pass",
+   "tests": 8548
+  },
+  "SUBX.B": {
+   "status": "pass",
+   "tests": 450
+  },
+  "SUBX.L": {
+   "status": "pass",
+   "tests": 436
+  },
+  "SUBX.W": {
+   "status": "pass",
+   "tests": 432
+  },
+  "SWAP.W": {
+   "status": "pass",
+   "tests": 48
+  },
+  "TAS.B": {
+   "status": "pass",
+   "tests": 550
+  },
+  "TRAP": {
+   "status": "pass",
+   "tests": 96
+  },
+  "TRAPV": {
+   "status": "pass",
+   "tests": 2
+  },
+  "TST.B": {
+   "status": "pass",
+   "tests": 1418
+  },
+  "TST.L": {
+   "status": "pass",
+   "tests": 724
+  },
+  "TST.W": {
+   "status": "pass",
+   "tests": 784
+  },
+  "UNLK.L": {
+   "status": "pass",
+   "tests": 12
+  }
+ },
+ "stack": {
+  "sBSR.B": {
+   "status": "pass",
+   "tests": 33280
+  },
+  "sBSR.W": {
+   "status": "pass",
+   "tests": 9792
+  },
+  "sJSR": {
+   "status": "pass",
+   "tests": 46272
+  },
+  "sLINK.W": {
+   "status": "pass",
+   "tests": 21760
+  },
+  "sPEA.L": {
+   "status": "pass",
+   "tests": 58240
+  },
+  "sRTR": {
+   "status": "pass",
+   "tests": 1312
+  },
+  "sRTS": {
+   "status": "pass",
+   "tests": 2656
+  },
+  "sUNLK.L": {
+   "status": "pass",
+   "tests": 384
+  }
+ },
+ "vector": {
+  "vCHK.W": {
+   "status": "pass",
+   "tests": 11550
+  },
+  "vDIVS.W": {
+   "status": "pass",
+   "tests": 7842
+  },
+  "vDIVU.W": {
+   "status": "pass",
+   "tests": 7808
+  },
+  "viEXT.L": {
+   "status": "pass",
+   "tests": 480
+  },
+  "viEXT.W": {
+   "status": "pass",
+   "tests": 480
+  },
+  "vILLEGAL": {
+   "status": "pass",
+   "tests": 34880
+  },
+  "viNOP": {
+   "status": "pass",
+   "tests": 30
+  },
+  "viSWAP.W": {
+   "status": "pass",
+   "tests": 480
+  },
+  "vMV2SR.W": {
+   "status": "pass",
+   "tests": 64800
+  },
+  "vMVR2USP.L": {
+   "status": "pass",
+   "tests": 1280
+  },
+  "vMVUSP2R.L": {
+   "status": "pass",
+   "tests": 1280
+  },
+  "vORSR.W": {
+   "status": "pass",
+   "tests": 2184
+  },
+  "vTRAP": {
+   "status": "pass",
+   "tests": 64
+  },
+  "vTRAPV": {
+   "status": "pass",
+   "tests": 1
+  }
+ },
+ "interrupt": {
+  "aitBCC.B": {
+   "status": "pass",
+   "tests": 399360
+  },
+  "aitBCC.W": {
+   "status": "pass",
+   "tests": 87424
+  },
+  "aitBSR.B": {
+   "status": "pass",
+   "tests": 2496
+  },
+  "aitBSR.W": {
+   "status": "pass",
+   "tests": 4168
+  },
+  "aitDBCC.W": {
+   "status": "pass",
+   "tests": 748412
+  },
+  "aitEORSR.B": {
+   "status": "pass",
+   "tests": 8968
+  },
+  "aitEORSR.W": {
+   "status": "pass",
+   "tests": 8601
+  },
+  "aitEXG.L": {
+   "status": "pass",
+   "tests": 2304
+  },
+  "aitJMP": {
+   "status": "pass",
+   "tests": 10537
+  },
+  "aitJSR": {
+   "status": "pass",
+   "tests": 10861
+  },
+  "aitMV2SR.B": {
+   "status": "fail",
+   "tests": 1607
+  },
+  "aitMV2SR.W": {
+   "status": "pass",
+   "tests": 18418
+  },
+  "aitMVSR2.W": {
+   "status": "pass",
+   "tests": 8056
+  },
+  "aitMVSR2b": {
+   "status": "pass",
+   "tests": 16511
+  },
+  "aitNOP": {
+   "status": "pass",
+   "tests": 4
+  },
+  "aitORSR.B": {
+   "status": "pass",
+   "tests": 8648
+  },
+  "aitORSR.W": {
+   "status": "pass",
+   "tests": 8736
+  },
+  "aitSWAP.W": {
+   "status": "pass",
+   "tests": 96
+  },
+  "iMVSR2.W": {
+   "status": "pass",
+   "tests": 1374
+  },
+  "iSTOP": {
+   "status": "pass",
+   "tests": 149796
+  }
+ }
+}

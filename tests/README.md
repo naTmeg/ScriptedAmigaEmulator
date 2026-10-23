@@ -1,6 +1,6 @@
 # Tests
 
-Three kinds of checks, all runnable locally and in CI (`.github/workflows/tests.yml`).
+Four kinds of checks, all runnable locally (the first three also in CI, `.github/workflows/tests.yml`).
 Downloaded test data goes to `tests/.cache/`, results to `tests/results/`; both are ignored by git.
 
 ## Lint
@@ -31,26 +31,50 @@ The first run downloads the corpus (about 193 MB). `tests/cpu/sst-baseline.json`
 failure count per file. When a fix makes tests pass, update it with
 `node tests/cpu/run-sst.mjs --write-baseline`.
 
-Address errors need care. For the cases that vAmigaTS checks against photos of a real A500
-(`CPU/Exceptions/StackFrame/addrerr1-10`), the corpus expects a different stacked PC (2 or 4
-less) and, for MOVE to -(An), a different IR word than the hardware shows; SAE follows the
-hardware. Most address-error failures are therefore not SAE bugs. To look at the rest:
+Address errors need care: for them the reference is cputester (next section), whose data is
+confirmed on real 68000s. The corpus differs from it (and from photos of a real A500) in the
+stacked PC, the I/N bit and register updates of many frames, so most remaining address-error
+failures here are not SAE bugs. To look at the rest:
 
     node tests/cpu/run-sst.mjs --ae-ignore-pc                     # leave the stacked PC out
     node tests/cpu/run-sst.mjs --ae-ignore-pc --show 5 --kind ae  # print expected and actual frames
     node tests/cpu/run-sst.mjs --limit 0 --ae-report              # stacked PC per instruction and mode
 
-The same holds for jumps to odd addresses (Bcc, BSR, DBcc, JMP, JSR, RTS, RTE, RTR): SAE
-raises the address error with the right stack layout, but the corpus expects the branch
-target minus 4 as stacked PC and the I/N bit set in the SSW, while WinUAE stacks the target
-and leaves I/N clear. Without hardware evidence SAE keeps its frame.
+Other known deviations from the corpus, all deliberate (SAE follows cputester and WinUAE):
 
-Other known deviations from the corpus, all deliberate:
-
+- DIVU/DIVS.W overflow: the corpus leaves N and Z unchanged, the 68000 sets N and clears Z.
 - ASR with a count above the operand width and a negative operand: the corpus expects C = 0,
-  WinUAE (checked on real CPUs with its cputester) and Musashi set C = X = sign. SAE follows
-  WinUAE (3736 tests).
+  WinUAE and Musashi set C = X = sign (3736 tests).
 - Two ASL.b tests expect a register value that no byte shift can produce.
+
+`tests/tools/make-write-test-adf.mjs` builds a boot disk that writes a pattern to sector 2,
+to check that floppy writes reach `sae.getDisk()`. `tests/tools/make-ae-hwtests.mjs` builds
+disks for a real A500 (vAmigaTS addrerr2 with another instruction); cputester has made them
+unnecessary for the questions they were made for.
+
+## cputester (browser)
+
+[cputester](https://github.com/tonioni/WinUAE/tree/master/cputest) by Toni Wilen checks CPU
+behaviour against data confirmed on real CPUs, for the 68000 including all undocumented
+details of address-error frames and flags. Dirk Hoffmann collected the tests as boot disks in
+the [Moira](https://github.com/dirkwhoffmann/Moira) repository (`Cputester/ADF`).
+
+    node tests/tools/fetch-cputester.mjs                 # once: sparse checkout of a pinned commit
+    node tests/run-cputester.mjs                         # the 191 address-error disks, ~30 min
+    node tests/run-cputester.mjs --filter "atCLR|atNEG" --show
+    node tests/run-cputester.mjs --check                 # exit 1 if a disk gets less far than in the baseline
+    node tests/run-cputester.mjs --set basic             # another set (fetch it with --sets "basic")
+
+Each disk boots under the AROS ROM (A500, compatible core, 512 KB chip, 512 KB slow, 8 MB fast
+RAM) and runs `cputest <instruction>`. AROS has no `SER:` handler, so the runner patches
+`s/startup-sequence` (`tests/tools/adf-ofs.mjs`) to write the output to `out.txt` on the floppy
+and reads it back through `sae.getDisk()`. cputest stops at the first difference; a disk is
+"pass" or shows that difference (expected and actual frame, registers).
+`tests/cputester-baseline.json` records how far every disk gets.
+
+State: address 191 disks, basic 189, stack 8, vector 14 and interrupt 20 (19 pass; aitMV2SR.B
+depends on interrupt timing within an instruction, which SAE does not model). The cycles set
+needs a bus-cycle exact core and is not run.
 
 ## vAmigaTS screenshot tests (browser)
 

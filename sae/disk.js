@@ -204,6 +204,7 @@ function SAEO_Disk() {
 		this.motordelay = 0; /* dskrdy needs some clock cycles before it changes after switching off motor */
 		this.state = false;
 		this.wrprot = false;
+		this.modified = false; //OWN written to since it was inserted
 		this.forcedwrprot = false;
 		this.bigmfmbuf = new Uint16Array(0x4000 * DDHDMULT);
 		this.tracktiming = new Uint16Array(0x4000 * DDHDMULT);
@@ -1143,6 +1144,7 @@ function SAEO_Disk() {
 		drv.crc32 = result[2];
 		drv.diskfile = result[3];
 
+		drv.modified = false;
 		drv.forcedwrprot = file.prot; //forcedwriteprotect;
 		if (drv.forcedwrprot)
 			drv.wrprot = true;
@@ -2327,6 +2329,15 @@ function SAEO_Disk() {
 
 	/*---------------------------------*/
 
+	/* OWN: remember that the image differs from the inserted file, tell the frontend once */
+	function drive_set_modified(drv) {
+		if (drv.modified)
+			return;
+		drv.modified = true;
+		if (typeof SAEV_config.hook.event.diskModified === "function")
+			SAEV_config.hook.event.diskModified(drv.num);
+	}
+
 	function drive_write_data(drv) {
 		var ret = -1;
 		var tr = drv.cyl * 2 + side;
@@ -2341,7 +2352,10 @@ function SAEO_Disk() {
 
 		switch (drv.filetype) {
 			case ADF_NORMAL: {
-				if (drive_write_adf_amigados(drv)) {
+				ret = drive_write_adf_amigados(drv);
+				if (!ret)
+					drive_set_modified(drv);
+				else {
 					if (SAEV_config.floppy.autoEXT2)
 						convert_adf_to_ext2(drv, SAEV_config.floppy.autoEXT2);
 					else {
@@ -2367,6 +2381,7 @@ function SAEO_Disk() {
 					SAEF_warn("disk.drive_write_data() not an amigados track %d (error %d), writing as raw track", drv.cyl * 2 + side, ret);
 					drive_write_ext2(drv.bigmfmbuf, drv.diskfile, drv.trackdata[drv.cyl * 2 + side], longwritemode ? dsklength2 * 8 : drv.tracklen);
 				}
+				drive_set_modified(drv);
 				return;
 			}
 			case ADF_SCP:
@@ -2374,6 +2389,7 @@ function SAEO_Disk() {
 			case ADF_PCDOS: {
 				ret = drive_write_pcdos(drv, drv.diskfile, 0);
 				if (ret < 0) SAEF_log("disk.drive_write_data() not a PC formatted track %d (error %d)", drv.cyl * 2 + side, ret);
+				else drive_set_modified(drv);
 				break;
 			}
 		}
@@ -2440,6 +2456,31 @@ function SAEO_Disk() {
 	}
 	this.insert_force = function(num, file) { //disk_insert_force()
 		disk_insert_2(num, file, true);
+	}
+
+	/* OWN: the current image of a drive, including everything written to it, as a copy:
+	   { name, data (Uint8Array), modified } or null if the drive is empty. ADF images
+	   (also unpacked DMS/ADZ) get an .adf name. */
+	this.getData = function(num) {
+		var drv = floppy[num];
+		if (!drv || !drv.diskfile || !drv.diskfile.data || drv.filetype == ADF_NONE)
+			return null;
+		var name = drv.diskfile.name || ("df" + num);
+		if (drv.filetype == ADF_NORMAL && !/\.adf$/i.test(name))
+			name = name.replace(/\.[^.\/]*$/, "") + ".adf";
+		return {
+			name: name,
+			data: drv.diskfile.data.slice(0, drv.diskfile.size),
+			modified: drv.modified
+		};
+	}
+	this.isModified = function(num) {
+		return floppy[num] ? floppy[num].modified && floppy[num].filetype != ADF_NONE : false;
+	}
+	/* the frontend saved the image: the next write marks it (and calls the hook) again */
+	this.clearModified = function(num) {
+		if (floppy[num])
+			floppy[num].modified = false;
 	}
 
 	this.eject = function(num) { //disk_eject()

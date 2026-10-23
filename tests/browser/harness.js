@@ -73,7 +73,8 @@ function init() {
 	cfg = sae.getConfig();
 	var modelId = { A500: SAEC_Model_A500, A500P: SAEC_Model_A500P, A600: SAEC_Model_A600, A1200: SAEC_Model_A1200 }[model];
 	sae.setModel(modelId, 0);
-	cfg.memory.z2FastSize = param("fast", "1") == "0" ? 0 : (4 << 20); /* AROS likes some fast ram */
+	var fastMB = param("fast", "1"); /* 0: none, 1: 4 MB (AROS likes some), n: n MB (up to 8) */
+	cfg.memory.z2FastSize = fastMB == "0" ? 0 : (fastMB == "1" ? 4 : +fastMB) << 20;
 	if (param("compat", "") == "1") cfg.cpu.compatible = true; /* prefetch core with address errors etc. */
 	if (param("turbo", "") == "1") cfg.debug.turbo = true;     /* frames back to back, no host clock */
 	if (param("video", "") == "canvas") cfg.video.api = SAEC_Config_Video_API_Canvas; /* 2D canvas instead of WebGL */
@@ -82,7 +83,11 @@ function init() {
 	if (param("slow", "")) cfg.memory.bogoSize = (+param("slow", "0")) << 10;  /* KB, $C00000 */
 	cfg.video.id = "myVideo";
 	cfg.video.cursor = SAEC_Config_Video_Cursor_Show; /* no pointer-lock, the canvas can be clicked and screenshotted freely */
-	cfg.audio.mode = SAEC_Config_Audio_Mode_Off;
+	cfg.video.pauseInBackground = false; /* tests often run in background tabs */
+	/* collect everything the Amiga sends to the serial port (cputester output via SER:) */
+	window.harnessSerial = "";
+	cfg.hook.serial.put = function(c) { window.harnessSerial += String.fromCharCode(c & 0xff); };
+	cfg.audio.mode = param("audio", "") == "1" ? SAEC_Config_Audio_Mode_On : SAEC_Config_Audio_Mode_Off; /* ?audio=1: sound on */
 	cfg.floppy.speed = param("speed", "orig") == "turbo" ? SAEC_Config_Floppy_Speed_Turbo : SAEC_Config_Floppy_Speed_Original;
 	cfg.floppy.drive[0].type = SAEC_Config_Floppy_Type_35_DD;
 	cfg.floppy.drive[1].type = df1 ? SAEC_Config_Floppy_Type_35_DD : SAEC_Config_Floppy_Type_None;

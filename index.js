@@ -1513,6 +1513,7 @@ function databaseStart() {
 
 function advandedStart() {
 	if (getAdvandedConfig()) {
+		settingsSave();
 		freezeButtons(true, true);
  		//delayedStart();
 		start();
@@ -1637,9 +1638,85 @@ function switchCfg(m) {
 		preSelect(0);
 
 		setAdvandedConfig();
+		settingsRestore();
 		if (page == PID_None)
 			changePage(PID_Model);
 	}
+}
+
+/*-----------------------------------------------------------------------*/
+/* remembered advanced settings (localStorage)
+ *
+ * The state of the form controls (cfg_*, without file inputs) is stored when the advanced
+ * configuration is started and restored when the advanced page is opened again, in
+ * document order and with the controls' own change handlers, as if the user set them.
+ * ROM and disk files are not stored. */
+
+const SETTINGS_KEY = "sae.advancedSettings.v1";
+
+function settingsControls() {
+	var list = document.querySelectorAll("#config_advanced input, #config_advanced select");
+	var out = [];
+	for (var i = 0; i < list.length; i++) {
+		var e = list[i];
+		var key = e.type == "radio" ? e.name : e.id;
+		if (key && key.indexOf("cfg_") == 0 && e.type != "file" && e.type != "button")
+			out.push(e);
+	}
+	return out;
+}
+
+function settingsSave() {
+	var s = {};
+	var list = settingsControls();
+	for (var i = 0; i < list.length; i++) {
+		var e = list[i];
+		if (e.type == "radio") {
+			if (e.checked) s["r:" + e.name] = e.value;
+		} else if (e.type == "checkbox")
+			s["c:" + e.id] = e.checked;
+		else
+			s["v:" + e.id] = e.value;
+	}
+	try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch (err) { /* private mode, quota */ }
+}
+
+function settingsRestore() {
+	var s = null;
+	try { s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "null"); } catch (err) { s = null; }
+	if (s === null || typeof s !== "object")
+		return false;
+	var list = settingsControls();
+	for (var i = 0; i < list.length; i++) {
+		var e = list[i], v, changed = false;
+		if (e.type == "radio") {
+			v = s["r:" + e.name];
+			if (v !== undefined && e.value == v && !e.checked) { e.checked = true; changed = true; }
+		} else if (e.type == "checkbox") {
+			v = s["c:" + e.id];
+			if (typeof v === "boolean" && e.checked != v) { e.checked = v; changed = true; }
+		} else {
+			v = s["v:" + e.id];
+			if (typeof v === "string" && e.value != v) {
+				/* a select only takes values it offers; leave it alone otherwise */
+				if (e.tagName == "SELECT") {
+					for (var j = 0; j < e.options.length; j++)
+						if (e.options[j].value == v) { e.value = v; changed = true; break; }
+				} else { e.value = v; changed = true; }
+			}
+		}
+		if (changed)
+			e.dispatchEvent(new Event("change"));
+	}
+	return true;
+}
+
+/* "Defaults" button: forget the stored settings and show the defaults again */
+function settingsReset() {
+	try { localStorage.removeItem(SETTINGS_KEY); } catch (err) { /* ignore */ }
+	sae.setDefaults();
+	preSelect(0);
+	setAdvandedConfig();
 }
 
 /*-----------------------------------------------------------------------*/
@@ -2763,6 +2840,42 @@ function dskchgEject() {
 		sae.eject(n);
 	}
 }
+
+/* download the image of the selected drive, including everything the Amiga wrote to it */
+function dskchgSave() {
+	if (dskchg) {
+		var n = getSelect("dskchg_unit");
+		var d = sae.getDisk(n);
+		if (d === null) {
+			alert("There is no disk in DF" + n + ".");
+			return;
+		}
+		saveBlob(d.data, d.name);
+		sae.markDiskSaved(n);
+	}
+}
+function saveBlob(data, name) {
+	var url = URL.createObjectURL(new Blob([data], { type: "application/octet-stream" }));
+	var a = document.createElement("a");
+	a.href = url;
+	a.download = name;
+	document.body.appendChild(a);
+	a.click();
+	document.body.removeChild(a);
+	setTimeout(function() { URL.revokeObjectURL(url); }, 10000);
+}
+/* warn before leaving the page while a written disk has not been saved */
+window.addEventListener("beforeunload", function(e) {
+	if (typeof sae === "undefined" || sae === null || !sae.running)
+		return;
+	for (var n = 0; n < 4; n++) {
+		if (sae.isDiskModified(n)) {
+			e.preventDefault();
+			e.returnValue = "";
+			return;
+		}
+	}
+});
 
 function dskchgInsert() {
 	if (dskchg) {

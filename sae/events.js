@@ -66,6 +66,11 @@ var SAEV_Events_reflowtime = 0; //OWN
 
 /*---------------------------------*/
 
+/* Microseconds (SAEF_now() units) until the next frame is due (normal speed). framewait() no longer spins
+ * until then; the main loop (m68k.js) passes it to setTimeout, so the browser thread is
+ * free in between. */
+var SAEV_Events_frameDelay = 0;
+
 function SAEO_Events() {
 	const EV_MISC = 3;
 	const EV_MAX = 4;
@@ -682,7 +687,6 @@ function SAEO_Events() {
 
 			//SAEF_info("%06d:%06d/%06d", adjust, vsynctimeperline, vstb);
 		} else {
-			const syncbase1000inv = 1.0 / (SAEC_Events_syncbase / 1000); //OWN
 			var t = reflowt_avg; //OWN
 
 			if (!SAEV_Playfield_frame_rendered && !SAEV_Playfield_picasso_on) {
@@ -690,32 +694,28 @@ function SAEO_Events() {
 				SAEV_Playfield_frame_rendered = SAER.video.render_screen(false);
 				t += SAEF_now() - start;
 			}
-			start = SAEF_now();
-			while (true) { //while (!currprefs.turbo_emulation) {
-				var v = rpt_vsync(clockadjust) * syncbase1000inv; //double
-				if (v >= -4) break;
-				//rtg_vsynccheck();
-				SAEF_sleep(2);
-			}
-			while (rpt_vsync(clockadjust) < 0) {
-				//rtg_vsynccheck();
-			}
-			curr_time = SAEF_now();
-			idletime += curr_time - start;
+			/* OWN: WinUAE spins here until the frame is due (and per scanline in
+			   framewait2_normal). In a browser that keeps the main thread busy all the
+			   time. Instead, the remaining time goes to SAEV_Events_frameDelay and the
+			   main loop waits for it with setTimeout. The next frame is planned from the
+			   due time, not from when the timer fires, so a late timer is made up by a
+			   shorter wait next time; rpt_vsync() resynchronises after a long stall. */
+			var wait = -rpt_vsync(clockadjust);
+			if (wait < 0) wait = 0;
+			SAEV_Events_frameDelay = wait;
+			idletime += wait;
+			curr_time = SAEF_now() + wait; /* when this frame is due */
 
 			vsyncmintime = curr_time;
 			vsyncmaxtime = vsyncwaittime = curr_time + vstb;
 
 			if (SAEV_Playfield_frame_rendered) {
+				var shown = SAEF_now();
 				SAER.video.show_screen(0);
-				t += SAEF_now() - curr_time;
+				t += SAEF_now() - shown;
 			}
-			t += frameskipt_avg;
-			vsynctimeperline = ~~((vstb - t) / 3);
-			if (vsynctimeperline < 0)
-				vsynctimeperline = 0;
-			else if (vsynctimeperline > vstb / 3 >>> 0)
-				vsynctimeperline = vstb / 3 >>> 0;
+			/* no per-line pacing: framewait2_normal() must not spin either */
+			vsynctimeperline = 0;
 
 			SAEV_Playfield_frame_shown = true;
 		}
