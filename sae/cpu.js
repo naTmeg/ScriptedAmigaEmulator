@@ -292,7 +292,7 @@ function SAEO_CPU() {
 			fake_tc_030 &= ~0x80000000;
 			fake_tt0_030 &= ~0x80000000;
 			fake_tt1_030 &= ~0x80000000;
-			if (hardreset || regs.halted) {
+			if (hardreset || SAER.m68k.haltedBeforeReset) { /* regs.halted was never set */
 				//fake_srp_030 = fake_crp_030 = 0;
 				fake_srp_030_hi = fake_srp_030_lo = 0;
 				fake_crp_030_hi = fake_crp_030_lo = 0;
@@ -599,7 +599,7 @@ function SAEO_CPU() {
 			// do burst fetch if cache enabled, not frozen, all slots invalid, no chip ram
 			if ((regs.cacr & (CACR030_DBE|CACR030_ED)) == (CACR030_DBE|CACR030_ED) && p1.lws == 0 &&
 				!c1.valid[1] && !c1.valid[2] && !c1.valid[3] &&
-				SAER_Memory_banktype[addr >> 16] == SAEC_Memory_banktype_FAST32
+				SAER_Memory_banktype[addr >>> 16] == SAEC_Memory_banktype_FAST32
 			) {
 				c1.data[1] = SAER_Memory_get32(addr + 4);
 				c1.data[2] = SAER_Memory_get32(addr + 8);
@@ -851,7 +851,11 @@ function SAEO_CPU() {
 	}
 
 	function syncPC() {
+		/* keep instruction_pc: setPC() also sets it, and the format $2 frames of CHK, TRAPcc,
+		   TRAPV and DIV by zero stack it as the address of the instruction */
+		var ipc = regs.instruction_pc;
 		setPC(getPC());
+		regs.instruction_pc = ipc;
 	}
 
 	/*function setPC_default(pc) {
@@ -928,13 +932,22 @@ function SAEO_CPU() {
 
 	/* Test hook: put the CPU at an instruction boundary with a given prefetch queue
 	 * (pc = address of the opcode in ir, irc = the word after it). Used by the
-	 * single-instruction tests in tests/cpu; the emulator itself never calls it. */
+	 * single-instruction tests in tests/cpu; the emulator itself never calls it.
+	 * The normal core fetches through regs.pc_p, the 68020/030 prefetch core from its
+	 * instruction cache: both read the opcode from memory at pc, ir/irc only matter
+	 * for the 68000/010 prefetch core. */
 	this.setPrefetchState = function(pc, ir, irc) {
+		regs.ir = ir & 0xffff;
+		regs.irc = irc & 0xffff;
+		if (!SAEV_config.cpu.compatible) {
+			setPC(pc >>> 0);
+			return;
+		}
 		regs.pc_p = regs.pc_oldp = 0;
 		setPCi(pc >>> 0);
 		pc_offset = PC_OFFSET;
-		regs.ir = ir & 0xffff;
-		regs.irc = irc & 0xffff;
+		if (SAEV_config.cpu.model >= SAEC_Config_CPU_Model_68020)
+			fill_prefetch();
 	}
 
 	/* condition code test for the T0 trace check in m68k.js (ccTab lives in this closure) */
@@ -1581,16 +1594,36 @@ function SAEO_CPU() {
 				regs.a[7] -= 2; corePut16(regs.a[7], ssw);
 				regs.a[7] -= 2; corePut16(regs.a[7], 0xb000 + vector_nr * 4);*/
 
-				for (var i = 0 ; i < 36; i++) stackPut16(0);
-				stackPut32(last_fault_for_exception_3);
-				stackPut16(0);
-				stackPut16(0);
-				stackPut16(0);
-				stackPut16(ssw);
-				stackPut16(0xb000 + vector_nr * 4);
+				if (SAEV_config.cpu.model == SAEC_Config_CPU_Model_68010) {
+					/* format $8, 29 words (MC68010 manual, as WinUAE): the 68010 has no format $B,
+					   and RTE takes $B there as a format error. Its SSW: IF/DF (instruction or data
+					   fetch), RW (read), FC; the data buffers are not kept, so they stack 0 */
+					var ssw010 = (sv ? 4 : 0) | (last_instructionaccess_for_exception_3 ? 2 : 1);
+					if (!last_writeaccess_for_exception_3) ssw010 |= 0x100;
+					if (last_instructionaccess_for_exception_3) ssw010 |= 0x2000;
+					else if (!last_writeaccess_for_exception_3) ssw010 |= 0x1000;
+					for (var i = 0; i < 16; i++) stackPut16(0); /* version and internal information */
+					stackPut16(regs.irc); /* instruction input buffer */
+					stackPut16(0);
+					stackPut16(0); /* data input buffer */
+					stackPut16(0);
+					stackPut16(0); /* data output buffer */
+					stackPut16(0);
+					stackPut32(last_fault_for_exception_3);
+					stackPut16(ssw010);
+					stackPut16(0x8000 + vector_nr * 4);
+				} else {
+					for (var i = 0 ; i < 36; i++) stackPut16(0);
+					stackPut32(last_fault_for_exception_3);
+					stackPut16(0);
+					stackPut16(0);
+					stackPut16(0);
+					stackPut16(ssw);
+					stackPut16(0xb000 + vector_nr * 4);
+				}
 
 				SAEF_log("cpu.exception() %d (%x) at %x -> %x!", nr, regs.instruction_pc, currpc, SAER_Memory_get32(regs.vbr + 4 * vector_nr));
-			} else if (nr == 5 || nr == 6 || nr == 7 || nr == 9) {
+			} else if ((nr == 5 || nr == 6 || nr == 7 || nr == 9) && SAEV_config.cpu.model >= SAEC_Config_CPU_Model_68020) { /* format $2; the 68010 knows only $0 and $8 */
 				//regs.a[7] -= 4; corePut32(regs.a[7], regs.instruction_pc);
 				//regs.a[7] -= 2; corePut16(regs.a[7], 0x2000 + vector_nr * 4);
 				stackPut32(regs.instruction_pc);
@@ -1669,6 +1702,10 @@ function SAEO_CPU() {
 			return;
 		}
 		setPC(newpc);
+		/* compatible core: drop the extension-word offset of the instruction that trapped
+		   (e.g. MOVEC in user mode), or the handler runs with a wrong PC. Only some paths
+		   (exception3f, address_error_fault, coreSyncPC) reset it before */
+		pc_offset = PC_OFFSET;
 		fill_prefetch();
 		exception_trace(nr);
 	}
@@ -1759,7 +1796,8 @@ function SAEO_CPU() {
 
 		if (SAEV_Memory_cloantoRom && (opcode & 0xF100) == 0x7100) {
 			regs.d[(opcode >> 9) & 7] = extByte(opcode & 0xFF);
-			SAER.cpu.incPC_normal(2);
+			/* no incPC_normal(2) as in WinUAE: coreIllegal() has synced the PC past the
+			   opcode already, adding 2 skipped the next instruction */
 			fill_prefetch();
 			return true;
 		}
@@ -1782,7 +1820,7 @@ function SAEO_CPU() {
 		if ((opcode & 0xF000) == 0xA000 && inrt) {
 			// Calltrap.
 			SAEF_log("cpu.illegal() Trap %03X at %08X, call...", opcode & 0xFFF, pc);
-			SAER.cpu.incPC_normal(2);
+			/* PC is already past the trap (see above): the RTS after it must run */
 			SAER.autoconf.m68k_handle_trap(opcode & 0xFFF);
 			fill_prefetch();
 			return true;
@@ -2148,7 +2186,7 @@ function SAEO_CPU() {
 				//SAEF_log(("put_bitfield_4 {%d:%d}, data $%08x $%08x, val $%x, out32 $%x\n", offset,width, data[0],data[1],val, out32));
 				break;
 			case 5:
-				out32 = (data[0] | (val >> (offs - 32))) >>> 0;
+				out32 = (data[0] | (val >>> (offs - 32))) >>> 0; /* unsigned: ">>" filled the bits before the field with ones */
 				out8 = ((data[1] | (val << (40 - offs))) >>> 0) & 0xff;
 				corePut32(addr, out32); //data[0] | (val >> (offs - 32)));
 				corePut8(addr + 4, out8); //data[1] | (val << (40 - offs)));
@@ -3303,21 +3341,22 @@ function SAEO_CPU() {
 			if (list && (a & 1) && model < 68020 && SAEV_config.cpu.compatible)
 				address_error(a - 2, true);
 			a -= pre;
-			/* p. 4-128: The MC68000 and MC68010 write the initial register value (not decremented). */
-			if (model >= 68020) regs.a[An] -= pre;
 		}
+		/* p. 4-128: if An itself is in the list, the MC68020/030/040 write its initial value
+		   decremented by the operand size (once), the MC68000/010 the initial value */
+		var anValue = ripr && model >= 68020 ? (regs.a[An] - 2) >>> 0 : regs.a[An];
 		for (Xn = 0; Xn < 16; Xn++) {
 			if (list & (1 << (Xn ^ inv))) {
 				if (Xn < 8)
 					corePut16(a, regs.d[Xn] & 0xffff);
 				else
-					corePut16(a, regs.a[Xn & 7] & 0xffff);
+					corePut16(a, (ripr && (Xn & 7) == An ? anValue : regs.a[Xn & 7]) & 0xffff);
 
 				a += 2;
 				n++;
 			}
 		}
-		if (ripr && model < 68020) regs.a[An] -= pre;
+		if (ripr) regs.a[An] -= pre;
 		//ccna
 		coreSyncPC();
 		return [p.cyc[0]+4*n,p.cyc[1],n];
@@ -3339,21 +3378,22 @@ function SAEO_CPU() {
 			if (list && (a & 1) && model < 68020 && SAEV_config.cpu.compatible)
 				address_error(a - 2, true);
 			a -= pre;
-			/* p. 4-128: The MC68000 and MC68010 write the initial register value (not decremented). */
-			if (model >= 68020) regs.a[An] -= pre;
 		}
+		/* p. 4-128: if An itself is in the list, the MC68020/030/040 write its initial value
+		   decremented by the operand size (once), the MC68000/010 the initial value */
+		var anValue = ripr && model >= 68020 ? (regs.a[An] - 4) >>> 0 : regs.a[An];
 		for (Xn = 0; Xn < 16; Xn++) {
 			if (list & (1 << (Xn ^ inv))) {
 				if (Xn < 8)
 					corePut32(a, regs.d[Xn]);
 				else
-					corePut32(a, regs.a[Xn & 7]);
+					corePut32(a, (ripr && (Xn & 7) == An ? anValue : regs.a[Xn & 7]));
 
 				a += 4;
 				n++;
 			}
 		}
-		if (ripr && model < 68020) regs.a[An] -= pre;
+		if (ripr) regs.a[An] -= pre;
 		//ccna
 		coreSyncPC();
 		return [p.cyc[0]+8*n,p.cyc[1],2*n];
@@ -3774,7 +3814,7 @@ function SAEO_CPU() {
 					if (productLo) productLo = -productLo + 0x100000000;
 					if (productLo == 0) { productHi++; if (productHi > 0xffffffff) productHi -= 0x100000000; }
 				}
-				regs.v = (ext & 0x400) == 0 && (productHi != 0 || (productLo & 0x80000000) != 0) && ((productHi & 0xffffffff) != 0xffffffff || (productLo & 0x80000000) != 0x80000000);
+				regs.v = (ext & 0x400) == 0 && (productHi != 0 || (productLo & 0x80000000) != 0) && (productHi != 0xffffffff || (productLo & 0x80000000) == 0); /* productHi is unsigned; "& 0xffffffff" made it -1 */
 				//SAEF_log("I_MULS64.L $%04x, %d * %d = [%08x:%08x] | v %d, PC %08x", ext, castLong(_a),castLong(_b), productHi,productLo, regs.v?1:0, getPC());
 			}
 		} else {
@@ -3793,8 +3833,13 @@ function SAEO_CPU() {
 		}
 		regs.d[Dl] = productLo;
 		if (ext & 0x400) regs.d[ext & 7] = productHi;
-		regs.n = (productHi & 0x80000000) != 0;
-		regs.z = productHi == 0 && productLo == 0;
+		if (ext & 0x400) {
+			regs.n = (productHi & 0x80000000) != 0;
+			regs.z = productHi == 0 && productLo == 0;
+		} else { /* 32-bit form: N and Z describe the 32-bit result in Dl (as Musashi and WinUAE) */
+			regs.n = (productLo & 0x80000000) != 0;
+			regs.z = productLo == 0;
+		}
 		regs.c = false;
 
 		coreSyncPC();
@@ -3918,7 +3963,7 @@ function SAEO_CPU() {
 				var result = divu64(dividendHi, dividendLo, divisor);
 				quo = result[1];
 				rem = result[2];
-				if (result[0] || sign ? quo > 0x80000000 : quo > 0x7fffffff) {
+				if (result[0] || (sign ? quo > 0x80000000 : quo > 0x7fffffff)) { /* 64-bit quotient, or too big for 32 bits signed */
 					regs.v = true;
 					//SAEF_log("I_DIVS64.L %d:%d / %d OVERFLOW", dividendHi,dividendLo,divisor);
 					coreSyncPC();
@@ -5533,9 +5578,10 @@ function SAEO_CPU() {
 			bdata[0] = (tmp & ((1 << (32 - width)) - 1)) >>> 0;
 		} else {
 			if (offset & 0x80000000) offset -= 0x100000000;
-			var addr = exEAtab[p.ea](1);
-			if (offset) addr += Math.truncate(offset / 8);
-			var bf = getBitfield(addr, Math.abs(offset), width);
+			/* the offset is signed: bit -1 is bit 0 of the byte before <ea>, so round the byte
+			   offset down and take the bit within that byte from the low three bits */
+			var addr = (exEAtab[p.ea](1) + (offset >> 3)) >>> 0;
+			var bf = getBitfield(addr, offset & 7, width);
 			tmp = bf[0];
 			bdata = bf[1];
 		}
@@ -5583,7 +5629,7 @@ function SAEO_CPU() {
 				tmp = bdata[0] | (tmp << (32 - width));
 				regs.d[p.ea & 7] = (tmp >>> offset) | (tmp << (32 - offset));
 			} else {
-				putBitfield(addr, Math.abs(offset), width, bdata, tmp);
+				putBitfield(addr, offset & 7, width, bdata, tmp);
 			}
 		}
 		/*if (p.ea >> 3 == 0)
@@ -5700,9 +5746,11 @@ function SAEO_CPU() {
 	}
 	function I_PACK_A(p) { /* >= 68020 */
 		var adj = coreNext16();
-		regs.a[p.Rx] -= aIncDec[1][p.Rx]; var s_hi = coreGet8(regs.a[p.Rx]);
+		/* big-endian word read backwards: the first byte (higher address) is the low byte.
+		   The adjustment is added to the whole word before packing its nibbles 11-8 and 3-0 */
 		regs.a[p.Rx] -= aIncDec[1][p.Rx]; var s_lo = coreGet8(regs.a[p.Rx]);
-		var s = (((s_hi & 0xf) << 8) | (s_lo & 0xf)) + adj; if (s > 0xffff) s -= 0x10000;
+		regs.a[p.Rx] -= aIncDec[1][p.Rx]; var s_hi = coreGet8(regs.a[p.Rx]);
+		var s = ((s_hi << 8) | s_lo) + adj; if (s > 0xffff) s -= 0x10000;
 		var d = (((s >> 4) & 0xf0) | (s & 0xf));
 		regs.a[p.Ry] -= aIncDec[1][p.Ry]; corePut8(regs.a[p.Ry], d);
 		//SAEF_log(("I_PACK -(A%d),-(A%d),#%04x | %04x -> %02x", p.Rx,p.Ry,adj, s,d));
@@ -5725,8 +5773,9 @@ function SAEO_CPU() {
 		var adj = coreNext16();
 		regs.a[p.Rx] -= aIncDec[1][p.Rx]; var s = coreGet8(regs.a[p.Rx]);
 		var d = (((s << 4) & 0xf00) | (s & 0xf)) + adj; if (d > 0xffff) d -= 0x10000;
-		regs.a[p.Ry] -= aIncDec[1][p.Ry]; corePut8(regs.a[p.Ry], d >> 8);
+		/* the word goes to memory backwards as well: low byte first (higher address) */
 		regs.a[p.Ry] -= aIncDec[1][p.Ry]; corePut8(regs.a[p.Ry], d & 0xff);
+		regs.a[p.Ry] -= aIncDec[1][p.Ry]; corePut8(regs.a[p.Ry], d >> 8);
 		//SAEF_log(("I_UNPK -(A%d),-(A%d),#%04x | %02x -> %04x", p.Rx,p.Ry,adj, s,d));
 		//ccna
 		coreSyncPC();
@@ -6234,11 +6283,10 @@ function SAEO_CPU() {
 	/*-----------------------------------------------------------------------*/
 	/* System Control */
 
-	function I_BKPT(p) { /* >= 68010, FIX not implemented */
-		//SAEF_log(("I_BKPT vec %d", p.v));
-		//ccna
-		coreSyncPC();
-		return p.cyc;
+	function I_BKPT(p) { /* >= 68010 */
+		/* the breakpoint acknowledge cycle gets no answer on an Amiga, so the CPU takes the
+		   illegal instruction exception (as WinUAE does); it was a NOP before */
+		return coreIllegal(p.op);
 	}
 
 	function I_CHK_16(p) {
@@ -6298,13 +6346,9 @@ function SAEO_CPU() {
 		var a = exEAtab[p.ea](4);
 		var lb = coreGet32(a);
 		var ub = coreGet32(a + 4);
-		var Rn;
-		if (ext & 0x8000)
-			Rn = regs.a[(ext >> 12) & 7];
-		else {
-			Rn = castLong(regs.d[(ext >> 12) & 7]);
-			lb = castLong(lb); ub = castLong(ub);
-		}
+		/* An or Dn, both compared as signed 32-bit values (An was compared unsigned) */
+		var Rn = castLong((ext & 0x8000 ? regs.a[(ext >> 12) & 7] : regs.d[(ext >> 12) & 7]) >>> 0);
+		lb = castLong(lb >>> 0); ub = castLong(ub >>> 0);
 		regs.z = ub == Rn || lb == Rn;
 		regs.c = lb <= ub ? Rn < lb || Rn > ub : Rn < ub || Rn > lb; // Rn > ub || Rn < lb;
 		//n v undef
@@ -6321,14 +6365,9 @@ function SAEO_CPU() {
 		var a = exEAtab[p.ea](2);
 		var lb = coreGet16(a);
 		var ub = coreGet16(a + 2);
-		var Rn;
-		if (ext & 0x8000) {
-			Rn = extWord(regs.a[(ext >> 12) & 7] & 0xffff);
-			lb = extWord(lb); ub = extWord(ub);
-		} else {
-			Rn = castWord(regs.d[(ext >> 12) & 7] & 0xffff);
-			lb = castWord(lb); ub = castWord(ub);
-		}
+		/* with An the bounds are sign-extended and compared with all 32 bits of An */
+		var Rn = ext & 0x8000 ? castLong(regs.a[(ext >> 12) & 7] >>> 0) : castWord(regs.d[(ext >> 12) & 7] & 0xffff);
+		lb = castWord(lb); ub = castWord(ub);
 		regs.z = ub == Rn || lb == Rn;
 		regs.c = lb <= ub ? Rn < lb || Rn > ub : Rn < ub || Rn > lb; // Rn > ub || Rn < lb;
 		//n v undef
@@ -6345,14 +6384,9 @@ function SAEO_CPU() {
 		var a = exEAtab[p.ea](1);
 		var lb = coreGet8(a);
 		var ub = coreGet8(a + 1);
-		var Rn;
-		if (ext & 0x8000) {
-			Rn = extByte(regs.a[(ext >> 12) & 7] & 0xff);
-			lb = extByte(lb); ub = extByte(ub);
-		} else {
-			Rn = castByte(regs.d[(ext >> 12) & 7] & 0xff);
-			lb = castByte(lb); ub = castByte(ub);
-		}
+		/* with An the bounds are sign-extended and compared with all 32 bits of An */
+		var Rn = ext & 0x8000 ? castLong(regs.a[(ext >> 12) & 7] >>> 0) : castByte(regs.d[(ext >> 12) & 7] & 0xff);
+		lb = castByte(lb); ub = castByte(ub);
 		regs.z = ub == Rn || lb == Rn;
 		regs.c = lb <= ub ? Rn < lb || Rn > ub : Rn < ub || Rn > lb; // Rn > ub || Rn < lb;
 		//n v undef
@@ -6396,6 +6430,14 @@ function SAEO_CPU() {
 				var frame = fmt >> 12;
 				var offset = 0; //8
 
+				/* the 68010 knows only the formats $0 and $8 (its bus/address error frame);
+				   $8 does not exist on the 68020/030. Any other format is a format error, taken
+				   with the stack as it was before the RTE */
+				if (model == 68010 ? frame != 0x0 && frame != 0x8 : frame == 0x8) {
+					regs.a[7] -= 8;
+					return coreException(14);
+				}
+
 				//if (frame > 1) SAEF_log("I_RTE010 fmt %04x frame %x sr $%04x newpc $%08x oldpc $%08x", fmt, frame, sr, pc, regs.pc);
 
 					  if (frame == 0x0) {}//regs.a[7] += offset;
@@ -6406,7 +6448,7 @@ function SAEO_CPU() {
 				else if (frame == 0x9) regs.a[7] += offset + 12;
 				else if (frame == 0xa) regs.a[7] += offset + 24;
 				else if (frame == 0xb) regs.a[7] += offset + 84;
-				else 						{ regs.a[7] += offset;
+				else 						{ regs.a[7] -= 8; /* format error: leave the frame on the stack */
 					//coreSyncPC();
 					return coreException(14);
 				}
@@ -6446,7 +6488,7 @@ function SAEO_CPU() {
 	function I_TRAPCC(p) { /* 68020 */
 		if (ccTab[p.cc]()) {
 			//SAEF_log(("I_TRAP%s coreException 7 -> take", ccNames(p.cc)));
-			stackPut32(coreGetPC());
+			/* the format $2 frame (with the instruction address) is built by the exception */
 			//coreSyncPC();
 			return coreException(7);
 		} //else SAEF_log(("I_TRAP%s coreException 7 -> abort", ccNames(p.cc)));
@@ -6458,7 +6500,7 @@ function SAEO_CPU() {
 		var entry = coreNext16();
 		if (ccTab[p.cc]()) {
 			//SAEF_log(("I_TRAP%s.W coreException 7 -> take", ccNames(p.cc)));
-			stackPut32(coreGetPC());
+			/* the format $2 frame (with the instruction address) is built by the exception */
 			//coreSyncPC();
 			return coreException(7);
 		} //else SAEF_log(("I_TRAP%s.W coreException 7 -> abort", ccNames(p.cc)));
@@ -6470,7 +6512,7 @@ function SAEO_CPU() {
 		var entry = coreNext32();
 		if (ccTab[p.cc]()) {
 			//SAEF_log(("I_TRAP%s.L coreException 7 -> take", ccNames(p.cc)));
-			stackPut32(coreGetPC());
+			/* the format $2 frame (with the instruction address) is built by the exception */
 			//coreSyncPC();
 			return coreException(7);
 		} //else SAEF_log(("I_TRAP%s.L coreException 7 -> abort", ccNames(p.cc)));

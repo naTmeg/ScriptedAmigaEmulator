@@ -57,7 +57,9 @@ function SAEO_M68K() {
 		SAEV_spcflags = 0;
 		SAEF_setSpcFlags(SAEC_spcflag_CHECK);
 
-		this.halted = 0;
+		/* not this: m68k_reset is a plain function, this was the global object */
+		SAER.m68k.haltedBeforeReset = SAER.m68k.halted; /* read by cpu.reset() */
+		SAER.m68k.halted = 0;
 		haltloop_prevvpos = false;
 		SAER.gui.data.cpu_halted = 0;
 		SAER.gui.led(SAEC_GUI_LED_CPU, 0, -1);
@@ -353,7 +355,7 @@ function SAEO_M68K() {
 	/*-----------------------------------------------------------------------*/
 
 	function do_interrupt(nr) {
-		this.stopped = false;
+		SAER.m68k.stopped = false; /* not this (plain function) */
 		SAEF_clrSpcFlags (SAEC_spcflag_STOP);
 		SAEF_assert(nr < 8 && nr >= 0);
 
