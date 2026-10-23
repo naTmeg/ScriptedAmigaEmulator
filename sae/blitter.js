@@ -146,6 +146,7 @@ function SAEO_Blitter() {
 
 	var blit_func_tab = null; //OWN
 	var blit_filltable = null; //u8 [256][4][2]
+	var blit_ptr = { val:0 }; /* for the (disabled) alloc_cycle_blitter calls: one object, not one per call */
 	var blit_masktable = null; //global u32 [BLITTER_MAX_WORDS]
 	//var bltstate = 0; -> SAEV_Blitter_bltstate
 	//var blit_interrupt = false; -> SAEV_Blitter_interrupt
@@ -343,7 +344,7 @@ function SAEO_Blitter() {
 
 	function blitter_dofast() {
 		var i, j;
-		var bltadatptr = 0, bltbdatptr = 0, bltcdatptr = 0, bltddatptr = 0;
+		var bltadatptr = -1, bltbdatptr = -1, bltcdatptr = -1, bltddatptr = -1; /* -1: channel off (0 is a valid address) */
 		var mt = bltcon0 & 0xff;
 
 		blit_masktable[0] = blt_info.bltafwm;
@@ -371,7 +372,7 @@ function SAEO_Blitter() {
 		} else {
 			var blitbhold = blt_info.bltbhold;
 			var preva = 0, prevb = 0;
-			var dstp = 0;
+			var dstp = -1;
 			var dodst = 0;
 
 			for (j = 0; j < blt_info.vblitsize; j++) {
@@ -379,7 +380,7 @@ function SAEO_Blitter() {
 				for (i = 0; i < blt_info.hblitsize; i++) {
 					var bltadat, blitahold;
 					var bltbdat;
-					if (bltadatptr) {
+					if (bltadatptr >= 0) {
 						//blt_info.bltadat = bltadat = SAER_Memory_chipGet16_indirect(bltadatptr);
 						blt_info.bltadat = bltadat = (SAER_Memory_chipData[bltadatptr] << 8) | SAER_Memory_chipData[bltadatptr + 1];
 						bltadatptr += 2;
@@ -389,7 +390,7 @@ function SAEO_Blitter() {
 					blitahold = (((preva << 16) | bltadat) >>> 0) >>> blt_info.blitashift;
 					preva = bltadat;
 
-					if (bltbdatptr) {
+					if (bltbdatptr >= 0) {
 						//blt_info.bltbdat = bltbdat = SAER_Memory_chipGet16_indirect(bltbdatptr);
 						blt_info.bltbdat = bltbdat = (SAER_Memory_chipData[bltbdatptr] << 8) | SAER_Memory_chipData[bltbdatptr + 1];
 						bltbdatptr += 2;
@@ -397,7 +398,7 @@ function SAEO_Blitter() {
 						prevb = bltbdat;
 					}
 
-					if (bltcdatptr) {
+					if (bltcdatptr >= 0) {
 						//blt_info.bltcdat = SAER_Memory_chipGet16_indirect(bltcdatptr);
 						blt_info.bltcdat = (SAER_Memory_chipData[bltcdatptr] << 8) | SAER_Memory_chipData[bltcdatptr + 1];
 						bltcdatptr += 2;
@@ -412,22 +413,22 @@ function SAEO_Blitter() {
 					if (blitfill) {
 						var d = blt_info.bltddat;
 						var ifemode = blitife ? 2 : 0;
-						var fc1 = blit_filltable[d & 255][ifemode + blitfc][1];
-						blt_info.bltddat = (blit_filltable[d & 255][ifemode + blitfc][0] + (blit_filltable[d >> 8][ifemode + fc1][0] << 8));
-						blitfc = blit_filltable[d >> 8][ifemode + fc1][1];
+						var fc1 = blit_filltable[(((d & 255) << 2) + ifemode + blitfc) << 1 | 1];
+						blt_info.bltddat = (blit_filltable[(((d & 255) << 2) + ifemode + blitfc) << 1 | 0] + (blit_filltable[(((d >> 8) << 2) + ifemode + fc1) << 1 | 0] << 8));
+						blitfc = blit_filltable[(((d >> 8) << 2) + ifemode + fc1) << 1 | 1];
 					}
 					if (blt_info.bltddat)
 						blt_info.blitzero = 0;
-					if (bltddatptr) {
+					if (bltddatptr >= 0) {
 						dodst = 1;
 						dstp = bltddatptr;
 						bltddatptr += 2;
 					}
 				}
-				if (bltadatptr) bltadatptr += blt_info.bltamod;
-				if (bltbdatptr) bltbdatptr += blt_info.bltbmod;
-				if (bltcdatptr) bltcdatptr += blt_info.bltcmod;
-				if (bltddatptr) bltddatptr += blt_info.bltdmod;
+				if (bltadatptr >= 0) bltadatptr += blt_info.bltamod;
+				if (bltbdatptr >= 0) bltbdatptr += blt_info.bltbmod;
+				if (bltcdatptr >= 0) bltcdatptr += blt_info.bltcmod;
+				if (bltddatptr >= 0) bltddatptr += blt_info.bltdmod;
 			}
 			//if (dodst) chipmem_agnus_wput2(dstp, blt_info.bltddat);
 			//if (dodst) SAER_Memory_chipPut16_indirect(dstp, blt_info.bltddat);
@@ -445,7 +446,7 @@ function SAEO_Blitter() {
 
 	function blitter_dofast_desc() {
 		var i, j;
-		var bltadatptr = 0, bltbdatptr = 0, bltcdatptr = 0, bltddatptr = 0;
+		var bltadatptr = -1, bltbdatptr = -1, bltcdatptr = -1, bltddatptr = -1; /* -1: channel off (0 is a valid address) */
 		var mt = bltcon0 & 0xff;
 
 		blit_masktable[0] = blt_info.bltafwm;
@@ -472,7 +473,7 @@ function SAEO_Blitter() {
 		} else {
 			var blitbhold = blt_info.bltbhold;
 			var preva = 0, prevb = 0;
-			var dstp = 0;
+			var dstp = -1;
 			var dodst = 0;
 
 			for (j = 0; j < blt_info.vblitsize; j++) {
@@ -480,7 +481,7 @@ function SAEO_Blitter() {
 				for (i = 0; i < blt_info.hblitsize; i++) {
 					var bltadat, blitahold;
 					var bltbdat;
-					if (bltadatptr) {
+					if (bltadatptr >= 0) {
 						//blt_info.bltadat = bltadat = SAER_Memory_chipGet16_indirect(bltadatptr);
 						blt_info.bltadat = bltadat = (SAER_Memory_chipData[bltadatptr] << 8) | SAER_Memory_chipData[bltadatptr + 1];
 						bltadatptr -= 2;
@@ -490,7 +491,7 @@ function SAEO_Blitter() {
 					blitahold = (((bltadat << 16) | preva) >>> 0) >>> blt_info.blitdownashift;
 					preva = bltadat;
 
-					if (bltbdatptr) {
+					if (bltbdatptr >= 0) {
 						//blt_info.bltbdat = bltbdat = SAER_Memory_chipGet16_indirect(bltbdatptr);
 						blt_info.bltbdat = bltbdat = (SAER_Memory_chipData[bltbdatptr] << 8) | SAER_Memory_chipData[bltbdatptr + 1];
 						bltbdatptr -= 2;
@@ -498,7 +499,7 @@ function SAEO_Blitter() {
 						prevb = bltbdat;
 					}
 
-					if (bltcdatptr) {
+					if (bltcdatptr >= 0) {
 						//blt_info.bltcdat = blt_info.bltbdat = SAER_Memory_chipGet16_indirect(bltcdatptr);
 						blt_info.bltcdat = (SAER_Memory_chipData[bltcdatptr] << 8) | SAER_Memory_chipData[bltcdatptr + 1];
 						bltcdatptr -= 2;
@@ -513,22 +514,22 @@ function SAEO_Blitter() {
 					if (blitfill) {
 						var d = blt_info.bltddat;
 						var ifemode = blitife ? 2 : 0;
-						var fc1 = blit_filltable[d & 255][ifemode + blitfc][1];
-						blt_info.bltddat = (blit_filltable[d & 255][ifemode + blitfc][0] + (blit_filltable[d >> 8][ifemode + fc1][0] << 8));
-						blitfc = blit_filltable[d >> 8][ifemode + fc1][1];
+						var fc1 = blit_filltable[(((d & 255) << 2) + ifemode + blitfc) << 1 | 1];
+						blt_info.bltddat = (blit_filltable[(((d & 255) << 2) + ifemode + blitfc) << 1 | 0] + (blit_filltable[(((d >> 8) << 2) + ifemode + fc1) << 1 | 0] << 8));
+						blitfc = blit_filltable[(((d >> 8) << 2) + ifemode + fc1) << 1 | 1];
 					}
 					if (blt_info.bltddat)
 						blt_info.blitzero = 0;
-					if (bltddatptr) {
+					if (bltddatptr >= 0) {
 						dstp = bltddatptr;
 						dodst = 1;
 						bltddatptr -= 2;
 					}
 				}
-				if (bltadatptr) bltadatptr -= blt_info.bltamod;
-				if (bltbdatptr) bltbdatptr -= blt_info.bltbmod;
-				if (bltcdatptr) bltcdatptr -= blt_info.bltcmod;
-				if (bltddatptr) bltddatptr -= blt_info.bltdmod;
+				if (bltadatptr >= 0) bltadatptr -= blt_info.bltamod;
+				if (bltbdatptr >= 0) bltbdatptr -= blt_info.bltbmod;
+				if (bltcdatptr >= 0) bltcdatptr -= blt_info.bltcmod;
+				if (bltddatptr >= 0) bltddatptr -= blt_info.bltdmod;
 			}
 			//if (dodst) chipmem_agnus_wput2(dstp, blt_info.bltddat);
 			//if (dodst) SAER_Memory_chipPut16_indirect(dstp, blt_info.bltddat);
@@ -681,7 +682,7 @@ function SAEO_Blitter() {
 
 	//#ifdef CPUEMU_13
 	function decide_blitter_line(hsync, hpos) {
-		var ptr = { val:0 };
+		var ptr = blit_ptr;
 
 		if (blit_final && blt_info.vblitsize)
 			blit_final = 0;
@@ -851,16 +852,16 @@ function SAEO_Blitter() {
 		if ((bltcon1 & 0x18)) {
 			var d = ddat;
 			var ifemode = blitife ? 2 : 0;
-			var fc1 = blit_filltable[d & 255][ifemode + blitfc][1];
-			ddat = (blit_filltable[d & 255][ifemode + blitfc][0] + (blit_filltable[d >> 8][ifemode + fc1][0] << 8));
-			blitfc = blit_filltable[d >> 8][ifemode + fc1][1];
+			var fc1 = blit_filltable[(((d & 255) << 2) + ifemode + blitfc) << 1 | 1];
+			ddat = (blit_filltable[(((d & 255) << 2) + ifemode + blitfc) << 1 | 0] + (blit_filltable[(((d >> 8) << 2) + ifemode + fc1) << 1 | 0] << 8));
+			blitfc = blit_filltable[(((d >> 8) << 2) + ifemode + fc1) << 1 | 1];
 		}
 		if (ddat) blt_info.blitzero = 0;
 		return ddat;
 	}
 
 	function blitter_doddma(hpos) {
-		var d, ptr = { val:0 };
+		var d, ptr = blit_ptr;
 
 		if (blit_dmacount2 == 0) {
 			d = blitter_doblit();
@@ -904,7 +905,7 @@ function SAEO_Blitter() {
 	function blitter_dodma(ch, hpos) {
 		var dat, reg;
 		var addr;
-		var ptr = { val:0 };
+		var ptr = blit_ptr;
 
 		switch (ch) {
 			case 1:
@@ -1805,13 +1806,13 @@ function SAEO_Blitter() {
 		for (var i = 0; i < blit_masktable.length; i++)
 			blit_masktable[i] = 0xFFFF;
 
-		blit_filltable = new Array(256);
+		/* one flat table, [(d * 4 + mode) * 2 + 0] = data, [... + 1] = fill carry, instead of
+		   256 x 4 small arrays: one lookup instead of three per byte in fill mode */
+		blit_filltable = new Uint8Array(256 * 4 * 2);
 		for (var d = 0; d < 256; d++) {
-			blit_filltable[d] = new Array(4);
 			for (var i = 0; i < 4; i++) {
 				var fc = i & 1;
 				var data = d; //u8
-				blit_filltable[d][i] = new Uint8Array(2);
 				for (var fillmask = 1; fillmask != 0x100; fillmask <<= 1) {
 					var tmp = data; //u16
 					if (fc) {
@@ -1822,8 +1823,8 @@ function SAEO_Blitter() {
 					}
 					if (tmp & fillmask) fc = !fc;
 				}
-				blit_filltable[d][i][0] = data;
-				blit_filltable[d][i][1] = fc;
+				blit_filltable[(d * 4 + i) * 2] = data;
+				blit_filltable[(d * 4 + i) * 2 + 1] = fc ? 1 : 0;
 			}
 		}
 	}
@@ -2168,21 +2169,21 @@ function SAEO_Blitter() {
 		var i,j;
 		var totald = 0;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = 0 & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd += 2; }
+				if (ptd >= 0) { dstp = ptd; ptd += 2; }
 			}
-			if (ptd) ptd += b.bltdmod;
+			if (ptd >= 0) ptd += b.bltdmod;
 		}
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -2193,21 +2194,21 @@ function SAEO_Blitter() {
 		var totald = 0;
 		var i,j;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = 0 & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd -= 2; }
+				if (ptd >= 0) { dstp = ptd; ptd -= 2; }
 			}
-			if (ptd) ptd -= b.bltdmod;
+			if (ptd >= 0) ptd -= b.bltdmod;
 		}
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -2220,29 +2221,29 @@ function SAEO_Blitter() {
 		var preva = 0;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((preva << 16) | bltadat) >>> 0) >>> b.blitashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (~srca & srcc) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd += 2; }
+				if (ptd >= 0) { dstp = ptd; ptd += 2; }
 			}
-			if (pta) pta += b.bltamod;
-			if (ptc) ptc += b.bltcmod;
-			if (ptd) ptd += b.bltdmod;
+			if (pta >= 0) pta += b.bltamod;
+			if (ptc >= 0) ptc += b.bltcmod;
+			if (ptd >= 0) ptd += b.bltdmod;
 		}
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -2255,29 +2256,29 @@ function SAEO_Blitter() {
 		var preva = 0;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (~srca & srcc) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd -= 2; }
+				if (ptd >= 0) { dstp = ptd; ptd -= 2; }
 			}
-			if (pta) pta -= b.bltamod;
-			if (ptc) ptc -= b.bltcmod;
-			if (ptd) ptd -= b.bltdmod;
+			if (pta >= 0) pta -= b.bltamod;
+			if (ptc >= 0) ptc -= b.bltcmod;
+			if (ptd >= 0) ptd -= b.bltdmod;
 		}
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -2291,36 +2292,36 @@ function SAEO_Blitter() {
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
-				if (ptb) {
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb += 2;
 					srcb = (((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((preva << 16) | bltadat) >>> 0) >>> b.blitashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srcc & ~(srca & srcb)) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd += 2; }
+				if (ptd >= 0) { dstp = ptd; ptd += 2; }
 			}
-			if (pta) pta += b.bltamod;
-			if (ptb) ptb += b.bltbmod;
-			if (ptc) ptc += b.bltcmod;
-			if (ptd) ptd += b.bltdmod;
+			if (pta >= 0) pta += b.bltamod;
+			if (ptb >= 0) ptb += b.bltbmod;
+			if (ptc >= 0) ptc += b.bltcmod;
+			if (ptd >= 0) ptd += b.bltdmod;
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -2334,36 +2335,36 @@ function SAEO_Blitter() {
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
-				if (ptb) {
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb -= 2;
 					srcb = (((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srcc & ~(srca & srcb)) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd -= 2; }
+				if (ptd >= 0) { dstp = ptd; ptd -= 2; }
 			}
-			if (pta) pta -= b.bltamod;
-			if (ptb) ptb -= b.bltbmod;
-			if (ptc) ptc -= b.bltcmod;
-			if (ptd) ptd -= b.bltdmod;
+			if (pta >= 0) pta -= b.bltamod;
+			if (ptb >= 0) ptb -= b.bltbmod;
+			if (ptc >= 0) ptc -= b.bltcmod;
+			if (ptd >= 0) ptd -= b.bltdmod;
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -2376,33 +2377,33 @@ function SAEO_Blitter() {
 		var preva = 0;
 		var prevb = 0, srcb = b.bltbhold;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptb) {
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb += 2;
 					srcb = (((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((preva << 16) | bltadat) >>> 0) >>> b.blitashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srca & ~srcb) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd += 2; }
+				if (ptd >= 0) { dstp = ptd; ptd += 2; }
 			}
-			if (pta) pta += b.bltamod;
-			if (ptb) ptb += b.bltbmod;
-			if (ptd) ptd += b.bltdmod;
+			if (pta >= 0) pta += b.bltamod;
+			if (ptb >= 0) ptb += b.bltbmod;
+			if (ptd >= 0) ptd += b.bltdmod;
 		}
 		b.bltbhold = srcb;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -2415,33 +2416,33 @@ function SAEO_Blitter() {
 		var preva = 0;
 		var prevb = 0, srcb = b.bltbhold;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptb) {
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb -= 2;
 					srcb = (((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srca & ~srcb) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd -= 2; }
+				if (ptd >= 0) { dstp = ptd; ptd -= 2; }
 			}
-			if (pta) pta -= b.bltamod;
-			if (ptb) ptb -= b.bltbmod;
-			if (ptd) ptd -= b.bltdmod;
+			if (pta >= 0) pta -= b.bltamod;
+			if (ptb >= 0) ptb -= b.bltbmod;
+			if (ptd >= 0) ptd -= b.bltdmod;
 		}
 		b.bltbhold = srcb;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -2455,36 +2456,36 @@ function SAEO_Blitter() {
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
-				if (ptb) {
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb += 2;
 					srcb = (((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((preva << 16) | bltadat) >>> 0) >>> b.blitashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srcb ^ (srca | (srcb ^ srcc))) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd += 2; }
+				if (ptd >= 0) { dstp = ptd; ptd += 2; }
 			}
-			if (pta) pta += b.bltamod;
-			if (ptb) ptb += b.bltbmod;
-			if (ptc) ptc += b.bltcmod;
-			if (ptd) ptd += b.bltdmod;
+			if (pta >= 0) pta += b.bltamod;
+			if (ptb >= 0) ptb += b.bltbmod;
+			if (ptc >= 0) ptc += b.bltcmod;
+			if (ptd >= 0) ptd += b.bltdmod;
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -2498,36 +2499,36 @@ function SAEO_Blitter() {
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
-				if (ptb) {
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb -= 2;
 					srcb = (((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srcb ^ (srca | (srcb ^ srcc))) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd -= 2; }
+				if (ptd >= 0) { dstp = ptd; ptd -= 2; }
 			}
-			if (pta) pta -= b.bltamod;
-			if (ptb) ptb -= b.bltbmod;
-			if (ptc) ptc -= b.bltcmod;
-			if (ptd) ptd -= b.bltdmod;
+			if (pta >= 0) pta -= b.bltamod;
+			if (ptb >= 0) ptb -= b.bltbmod;
+			if (ptc >= 0) ptc -= b.bltcmod;
+			if (ptd >= 0) ptd -= b.bltdmod;
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -2540,33 +2541,33 @@ function SAEO_Blitter() {
 		var preva = 0;
 		var prevb = 0, srcb = b.bltbhold;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptb) {
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb += 2;
 					srcb = (((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((preva << 16) | bltadat) >>> 0) >>> b.blitashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srca ^ srcb) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd += 2; }
+				if (ptd >= 0) { dstp = ptd; ptd += 2; }
 			}
-			if (pta) pta += b.bltamod;
-			if (ptb) ptb += b.bltbmod;
-			if (ptd) ptd += b.bltdmod;
+			if (pta >= 0) pta += b.bltamod;
+			if (ptb >= 0) ptb += b.bltbmod;
+			if (ptd >= 0) ptd += b.bltdmod;
 		}
 		b.bltbhold = srcb;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -2579,33 +2580,33 @@ function SAEO_Blitter() {
 		var preva = 0;
 		var prevb = 0, srcb = b.bltbhold;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptb) {
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb -= 2;
 					srcb = (((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srca ^ srcb) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd -= 2; }
+				if (ptd >= 0) { dstp = ptd; ptd -= 2; }
 			}
-			if (pta) pta -= b.bltamod;
-			if (ptb) ptb -= b.bltbmod;
-			if (ptd) ptd -= b.bltdmod;
+			if (pta >= 0) pta -= b.bltamod;
+			if (ptb >= 0) ptb -= b.bltbmod;
+			if (ptd >= 0) ptd -= b.bltdmod;
 		}
 		b.bltbhold = srcb;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -2619,36 +2620,36 @@ function SAEO_Blitter() {
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
-				if (ptb) {
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb += 2;
 					srcb = (((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((preva << 16) | bltadat) >>> 0) >>> b.blitashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srcc ^ (srca & (srcb | srcc))) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd += 2; }
+				if (ptd >= 0) { dstp = ptd; ptd += 2; }
 			}
-			if (pta) pta += b.bltamod;
-			if (ptb) ptb += b.bltbmod;
-			if (ptc) ptc += b.bltcmod;
-			if (ptd) ptd += b.bltdmod;
+			if (pta >= 0) pta += b.bltamod;
+			if (ptb >= 0) ptb += b.bltbmod;
+			if (ptc >= 0) ptc += b.bltcmod;
+			if (ptd >= 0) ptd += b.bltdmod;
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -2662,36 +2663,36 @@ function SAEO_Blitter() {
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
-				if (ptb) {
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb -= 2;
 					srcb = (((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srcc ^ (srca & (srcb | srcc))) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd -= 2; }
+				if (ptd >= 0) { dstp = ptd; ptd -= 2; }
 			}
-			if (pta) pta -= b.bltamod;
-			if (ptb) ptb -= b.bltbmod;
-			if (ptc) ptc -= b.bltcmod;
-			if (ptd) ptd -= b.bltdmod;
+			if (pta >= 0) pta -= b.bltamod;
+			if (ptb >= 0) ptb -= b.bltbmod;
+			if (ptc >= 0) ptc -= b.bltcmod;
+			if (ptd >= 0) ptd -= b.bltdmod;
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -2705,36 +2706,36 @@ function SAEO_Blitter() {
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
-				if (ptb) {
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb += 2;
 					srcb = (((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((preva << 16) | bltadat) >>> 0) >>> b.blitashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srcc ^ (srca & srcb)) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd += 2; }
+				if (ptd >= 0) { dstp = ptd; ptd += 2; }
 			}
-			if (pta) pta += b.bltamod;
-			if (ptb) ptb += b.bltbmod;
-			if (ptc) ptc += b.bltcmod;
-			if (ptd) ptd += b.bltdmod;
+			if (pta >= 0) pta += b.bltamod;
+			if (ptb >= 0) ptb += b.bltbmod;
+			if (ptc >= 0) ptc += b.bltcmod;
+			if (ptd >= 0) ptd += b.bltdmod;
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -2748,36 +2749,36 @@ function SAEO_Blitter() {
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
-				if (ptb) {
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb -= 2;
 					srcb = (((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srcc ^ (srca & srcb)) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd -= 2; }
+				if (ptd >= 0) { dstp = ptd; ptd -= 2; }
 			}
-			if (pta) pta -= b.bltamod;
-			if (ptb) ptb -= b.bltbmod;
-			if (ptc) ptc -= b.bltcmod;
-			if (ptd) ptd -= b.bltdmod;
+			if (pta >= 0) pta -= b.bltamod;
+			if (ptb >= 0) ptb -= b.bltbmod;
+			if (ptc >= 0) ptc -= b.bltcmod;
+			if (ptd >= 0) ptd -= b.bltdmod;
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -2791,36 +2792,36 @@ function SAEO_Blitter() {
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
-				if (ptb) {
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb += 2;
 					srcb = (((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((preva << 16) | bltadat) >>> 0) >>> b.blitashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srcc & (~srca | srcb)) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd += 2; }
+				if (ptd >= 0) { dstp = ptd; ptd += 2; }
 			}
-			if (pta) pta += b.bltamod;
-			if (ptb) ptb += b.bltbmod;
-			if (ptc) ptc += b.bltcmod;
-			if (ptd) ptd += b.bltdmod;
+			if (pta >= 0) pta += b.bltamod;
+			if (ptb >= 0) ptb += b.bltbmod;
+			if (ptc >= 0) ptc += b.bltcmod;
+			if (ptd >= 0) ptd += b.bltdmod;
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -2834,36 +2835,36 @@ function SAEO_Blitter() {
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
-				if (ptb) {
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb -= 2;
 					srcb = (((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srcc & (~srca | srcb)) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd -= 2; }
+				if (ptd >= 0) { dstp = ptd; ptd -= 2; }
 			}
-			if (pta) pta -= b.bltamod;
-			if (ptb) ptb -= b.bltbmod;
-			if (ptc) ptc -= b.bltcmod;
-			if (ptd) ptd -= b.bltdmod;
+			if (pta >= 0) pta -= b.bltamod;
+			if (ptb >= 0) ptb -= b.bltbmod;
+			if (ptc >= 0) ptc -= b.bltcmod;
+			if (ptd >= 0) ptd -= b.bltdmod;
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -2877,36 +2878,36 @@ function SAEO_Blitter() {
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
-				if (ptb) {
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb += 2;
 					srcb = (((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((preva << 16) | bltadat) >>> 0) >>> b.blitashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srcb & (~srca | srcc)) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd += 2; }
+				if (ptd >= 0) { dstp = ptd; ptd += 2; }
 			}
-			if (pta) pta += b.bltamod;
-			if (ptb) ptb += b.bltbmod;
-			if (ptc) ptc += b.bltcmod;
-			if (ptd) ptd += b.bltdmod;
+			if (pta >= 0) pta += b.bltamod;
+			if (ptb >= 0) ptb += b.bltbmod;
+			if (ptc >= 0) ptc += b.bltcmod;
+			if (ptd >= 0) ptd += b.bltdmod;
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -2920,36 +2921,36 @@ function SAEO_Blitter() {
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
-				if (ptb) {
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb -= 2;
 					srcb = (((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srcb & (~srca | srcc)) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd -= 2; }
+				if (ptd >= 0) { dstp = ptd; ptd -= 2; }
 			}
-			if (pta) pta -= b.bltamod;
-			if (ptb) ptb -= b.bltbmod;
-			if (ptc) ptc -= b.bltcmod;
-			if (ptd) ptd -= b.bltdmod;
+			if (pta >= 0) pta -= b.bltamod;
+			if (ptb >= 0) ptb -= b.bltbmod;
+			if (ptc >= 0) ptc -= b.bltcmod;
+			if (ptd >= 0) ptd -= b.bltdmod;
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -2963,36 +2964,36 @@ function SAEO_Blitter() {
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
-				if (ptb) {
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb += 2;
 					srcb = (((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((preva << 16) | bltadat) >>> 0) >>> b.blitashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srcc ^ (srca & ~srcb)) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd += 2; }
+				if (ptd >= 0) { dstp = ptd; ptd += 2; }
 			}
-			if (pta) pta += b.bltamod;
-			if (ptb) ptb += b.bltbmod;
-			if (ptc) ptc += b.bltcmod;
-			if (ptd) ptd += b.bltdmod;
+			if (pta >= 0) pta += b.bltamod;
+			if (ptb >= 0) ptb += b.bltbmod;
+			if (ptc >= 0) ptc += b.bltcmod;
+			if (ptd >= 0) ptd += b.bltdmod;
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -3006,36 +3007,36 @@ function SAEO_Blitter() {
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
-				if (ptb) {
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb -= 2;
 					srcb = (((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srcc ^ (srca & ~srcb)) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd -= 2; }
+				if (ptd >= 0) { dstp = ptd; ptd -= 2; }
 			}
-			if (pta) pta -= b.bltamod;
-			if (ptb) ptb -= b.bltbmod;
-			if (ptc) ptc -= b.bltcmod;
-			if (ptd) ptd -= b.bltdmod;
+			if (pta >= 0) pta -= b.bltamod;
+			if (ptb >= 0) ptb -= b.bltbmod;
+			if (ptc >= 0) ptc -= b.bltcmod;
+			if (ptd >= 0) ptd -= b.bltdmod;
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -3049,36 +3050,36 @@ function SAEO_Blitter() {
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
-				if (ptb) {
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb += 2;
 					srcb = (((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((preva << 16) | bltadat) >>> 0) >>> b.blitashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srcc & (srca | srcb)) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd += 2; }
+				if (ptd >= 0) { dstp = ptd; ptd += 2; }
 			}
-			if (pta) pta += b.bltamod;
-			if (ptb) ptb += b.bltbmod;
-			if (ptc) ptc += b.bltcmod;
-			if (ptd) ptd += b.bltdmod;
+			if (pta >= 0) pta += b.bltamod;
+			if (ptb >= 0) ptb += b.bltbmod;
+			if (ptc >= 0) ptc += b.bltcmod;
+			if (ptd >= 0) ptd += b.bltdmod;
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -3092,36 +3093,36 @@ function SAEO_Blitter() {
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
-				if (ptb) {
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb -= 2;
 					srcb = (((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srcc & (srca | srcb)) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd -= 2; }
+				if (ptd >= 0) { dstp = ptd; ptd -= 2; }
 			}
-			if (pta) pta -= b.bltamod;
-			if (ptb) ptb -= b.bltbmod;
-			if (ptc) ptc -= b.bltcmod;
-			if (ptd) ptd -= b.bltdmod;
+			if (pta >= 0) pta -= b.bltamod;
+			if (ptb >= 0) ptb -= b.bltbmod;
+			if (ptc >= 0) ptc -= b.bltcmod;
+			if (ptd >= 0) ptd -= b.bltdmod;
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -3133,24 +3134,24 @@ function SAEO_Blitter() {
 		var totald = 0;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
-				if (dstp) {
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = srcc & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd += 2; }
+				if (ptd >= 0) { dstp = ptd; ptd += 2; }
 			}
-			if (ptc) ptc += b.bltcmod;
-			if (ptd) ptd += b.bltdmod;
+			if (ptc >= 0) ptc += b.bltcmod;
+			if (ptd >= 0) ptd += b.bltdmod;
 		}
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -3162,24 +3163,24 @@ function SAEO_Blitter() {
 		var i,j;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
-				if (dstp) {
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = srcc & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd -= 2; }
+				if (ptd >= 0) { dstp = ptd; ptd -= 2; }
 			}
-			if (ptc) ptc -= b.bltcmod;
-			if (ptd) ptd -= b.bltdmod;
+			if (ptc >= 0) ptc -= b.bltcmod;
+			if (ptd >= 0) ptd -= b.bltdmod;
 		}
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -3193,36 +3194,36 @@ function SAEO_Blitter() {
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
-				if (ptb) {
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb += 2;
 					srcb = (((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((preva << 16) | bltadat) >>> 0) >>> b.blitashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = ~(srca ^ (srcc | (srca ^ srcb))) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd += 2; }
+				if (ptd >= 0) { dstp = ptd; ptd += 2; }
 			}
-			if (pta) pta += b.bltamod;
-			if (ptb) ptb += b.bltbmod;
-			if (ptc) ptc += b.bltcmod;
-			if (ptd) ptd += b.bltdmod;
+			if (pta >= 0) pta += b.bltamod;
+			if (ptb >= 0) ptb += b.bltbmod;
+			if (ptc >= 0) ptc += b.bltcmod;
+			if (ptd >= 0) ptd += b.bltdmod;
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -3236,36 +3237,36 @@ function SAEO_Blitter() {
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
-				if (ptb) {
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb -= 2;
 					srcb = (((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = ~(srca ^ (srcc | (srca ^ srcb))) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd -= 2; }
+				if (ptd >= 0) { dstp = ptd; ptd -= 2; }
 			}
-			if (pta) pta -= b.bltamod;
-			if (ptb) ptb -= b.bltbmod;
-			if (ptc) ptc -= b.bltcmod;
-			if (ptd) ptd -= b.bltdmod;
+			if (pta >= 0) pta -= b.bltamod;
+			if (ptb >= 0) ptb -= b.bltbmod;
+			if (ptc >= 0) ptc -= b.bltcmod;
+			if (ptd >= 0) ptd -= b.bltdmod;
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -3279,36 +3280,36 @@ function SAEO_Blitter() {
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
-				if (ptb) {
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb += 2;
 					srcb = (((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((preva << 16) | bltadat) >>> 0) >>> b.blitashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srcc ^ (srca & (srcb ^ srcc))) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd += 2; }
+				if (ptd >= 0) { dstp = ptd; ptd += 2; }
 			}
-			if (pta) pta += b.bltamod;
-			if (ptb) ptb += b.bltbmod;
-			if (ptc) ptc += b.bltcmod;
-			if (ptd) ptd += b.bltdmod;
+			if (pta >= 0) pta += b.bltamod;
+			if (ptb >= 0) ptb += b.bltbmod;
+			if (ptc >= 0) ptc += b.bltcmod;
+			if (ptd >= 0) ptd += b.bltdmod;
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -3322,36 +3323,36 @@ function SAEO_Blitter() {
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
-				if (ptb) {
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb -= 2;
 					srcb = (((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srcc ^ (srca & (srcb ^ srcc))) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd -= 2; }
+				if (ptd >= 0) { dstp = ptd; ptd -= 2; }
 			}
-			if (pta) pta -= b.bltamod;
-			if (ptb) ptb -= b.bltbmod;
-			if (ptc) ptc -= b.bltcmod;
-			if (ptd) ptd -= b.bltdmod;
+			if (pta >= 0) pta -= b.bltamod;
+			if (ptb >= 0) ptb -= b.bltbmod;
+			if (ptc >= 0) ptc -= b.bltcmod;
+			if (ptd >= 0) ptd -= b.bltdmod;
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -3363,28 +3364,28 @@ function SAEO_Blitter() {
 		var totald = 0;
 		var prevb = 0, srcb = b.bltbhold;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptb) {
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb += 2;
 					srcb = (((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift;
 					prevb = bltbdat;
 				}
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = srcb & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd += 2; }
+				if (ptd >= 0) { dstp = ptd; ptd += 2; }
 			}
-			if (ptb) ptb += b.bltbmod;
-			if (ptd) ptd += b.bltdmod;
+			if (ptb >= 0) ptb += b.bltbmod;
+			if (ptd >= 0) ptd += b.bltdmod;
 		}
 		b.bltbhold = srcb;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -3396,28 +3397,28 @@ function SAEO_Blitter() {
 		var i,j;
 		var prevb = 0, srcb = b.bltbhold;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptb) {
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb -= 2;
 					srcb = (((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift;
 					prevb = bltbdat;
 				}
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = srcb & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd -= 2; }
+				if (ptd >= 0) { dstp = ptd; ptd -= 2; }
 			}
-			if (ptb) ptb -= b.bltbmod;
-			if (ptd) ptd -= b.bltdmod;
+			if (ptb >= 0) ptb -= b.bltbmod;
+			if (ptd >= 0) ptd -= b.bltdmod;
 		}
 		b.bltbhold = srcb;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -3431,36 +3432,36 @@ function SAEO_Blitter() {
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
-				if (ptb) {
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb += 2;
 					srcb = (((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((preva << 16) | bltadat) >>> 0) >>> b.blitashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srca ^ (srcc & (srca ^ srcb))) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd += 2; }
+				if (ptd >= 0) { dstp = ptd; ptd += 2; }
 			}
-			if (pta) pta += b.bltamod;
-			if (ptb) ptb += b.bltbmod;
-			if (ptc) ptc += b.bltcmod;
-			if (ptd) ptd += b.bltdmod;
+			if (pta >= 0) pta += b.bltamod;
+			if (ptb >= 0) ptb += b.bltbmod;
+			if (ptc >= 0) ptc += b.bltcmod;
+			if (ptd >= 0) ptd += b.bltdmod;
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -3474,36 +3475,36 @@ function SAEO_Blitter() {
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
-				if (ptb) {
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb -= 2;
 					srcb = (((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srca ^ (srcc & (srca ^ srcb))) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd -= 2; }
+				if (ptd >= 0) { dstp = ptd; ptd -= 2; }
 			}
-			if (pta) pta -= b.bltamod;
-			if (ptb) ptb -= b.bltbmod;
-			if (ptc) ptc -= b.bltcmod;
-			if (ptd) ptd -= b.bltdmod;
+			if (pta >= 0) pta -= b.bltamod;
+			if (ptb >= 0) ptb -= b.bltbmod;
+			if (ptc >= 0) ptc -= b.bltcmod;
+			if (ptd >= 0) ptd -= b.bltdmod;
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -3517,36 +3518,36 @@ function SAEO_Blitter() {
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
-				if (ptb) {
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb += 2;
 					srcb = (((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((preva << 16) | bltadat) >>> 0) >>> b.blitashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srcc ^ (srcb & (srca ^ srcc))) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd += 2; }
+				if (ptd >= 0) { dstp = ptd; ptd += 2; }
 			}
-			if (pta) pta += b.bltamod;
-			if (ptb) ptb += b.bltbmod;
-			if (ptc) ptc += b.bltcmod;
-			if (ptd) ptd += b.bltdmod;
+			if (pta >= 0) pta += b.bltamod;
+			if (ptb >= 0) ptb += b.bltbmod;
+			if (ptc >= 0) ptc += b.bltcmod;
+			if (ptd >= 0) ptd += b.bltdmod;
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -3560,36 +3561,36 @@ function SAEO_Blitter() {
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
-				if (ptb) {
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb -= 2;
 					srcb = (((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srcc ^ (srcb & (srca ^ srcc))) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd -= 2; }
+				if (ptd >= 0) { dstp = ptd; ptd -= 2; }
 			}
-			if (pta) pta -= b.bltamod;
-			if (ptb) ptb -= b.bltbmod;
-			if (ptc) ptc -= b.bltcmod;
-			if (ptd) ptd -= b.bltdmod;
+			if (pta >= 0) pta -= b.bltamod;
+			if (ptb >= 0) ptb -= b.bltbmod;
+			if (ptc >= 0) ptc -= b.bltcmod;
+			if (ptd >= 0) ptd -= b.bltdmod;
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -3603,36 +3604,36 @@ function SAEO_Blitter() {
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
-				if (ptb) {
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb += 2;
 					srcb = (((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((preva << 16) | bltadat) >>> 0) >>> b.blitashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srcc | (srca & srcb)) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd += 2; }
+				if (ptd >= 0) { dstp = ptd; ptd += 2; }
 			}
-			if (pta) pta += b.bltamod;
-			if (ptb) ptb += b.bltbmod;
-			if (ptc) ptc += b.bltcmod;
-			if (ptd) ptd += b.bltdmod;
+			if (pta >= 0) pta += b.bltamod;
+			if (ptb >= 0) ptb += b.bltbmod;
+			if (ptc >= 0) ptc += b.bltcmod;
+			if (ptd >= 0) ptd += b.bltdmod;
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -3646,36 +3647,36 @@ function SAEO_Blitter() {
 		var prevb = 0, srcb = b.bltbhold;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
-				if (ptb) {
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb -= 2;
 					srcb = (((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srcc | (srca & srcb)) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd -= 2; }
+				if (ptd >= 0) { dstp = ptd; ptd -= 2; }
 			}
-			if (pta) pta -= b.bltamod;
-			if (ptb) ptb -= b.bltbmod;
-			if (ptc) ptc -= b.bltcmod;
-			if (ptd) ptd -= b.bltdmod;
+			if (pta >= 0) pta -= b.bltamod;
+			if (ptb >= 0) ptb -= b.bltbmod;
+			if (ptc >= 0) ptc -= b.bltcmod;
+			if (ptd >= 0) ptd -= b.bltdmod;
 		}
 		b.bltbhold = srcb;
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -3687,26 +3688,26 @@ function SAEO_Blitter() {
 		var totald = 0;
 		var preva = 0;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((preva << 16) | bltadat) >>> 0) >>> b.blitashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = srca & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd += 2; }
+				if (ptd >= 0) { dstp = ptd; ptd += 2; }
 			}
-			if (pta) pta += b.bltamod;
-			if (ptd) ptd += b.bltdmod;
+			if (pta >= 0) pta += b.bltamod;
+			if (ptd >= 0) ptd += b.bltdmod;
 		}
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -3718,26 +3719,26 @@ function SAEO_Blitter() {
 		var i,j;
 		var preva = 0;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = srca & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd -= 2; }
+				if (ptd >= 0) { dstp = ptd; ptd -= 2; }
 			}
-			if (pta) pta -= b.bltamod;
-			if (ptd) ptd -= b.bltdmod;
+			if (pta >= 0) pta -= b.bltamod;
+			if (ptd >= 0) ptd -= b.bltdmod;
 		}
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -3750,29 +3751,29 @@ function SAEO_Blitter() {
 		var preva = 0;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc += 2; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((preva << 16) | bltadat) >>> 0) >>> b.blitashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srca | srcc) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd += 2; }
+				if (ptd >= 0) { dstp = ptd; ptd += 2; }
 			}
-			if (pta) pta += b.bltamod;
-			if (ptc) ptc += b.bltcmod;
-			if (ptd) ptd += b.bltdmod;
+			if (pta >= 0) pta += b.bltamod;
+			if (ptc >= 0) ptc += b.bltcmod;
+			if (ptd >= 0) ptd += b.bltdmod;
 		}
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -3785,29 +3786,29 @@ function SAEO_Blitter() {
 		var preva = 0;
 		var srcc = b.bltcdat;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptc) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (ptc >= 0) { srcc = (SAER_Memory_chipData[ptc] << 8) | SAER_Memory_chipData[ptc + 1]; ptc -= 2; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srca | srcc) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd -= 2; }
+				if (ptd >= 0) { dstp = ptd; ptd -= 2; }
 			}
-			if (pta) pta -= b.bltamod;
-			if (ptc) ptc -= b.bltcmod;
-			if (ptd) ptd -= b.bltdmod;
+			if (pta >= 0) pta -= b.bltamod;
+			if (ptc >= 0) ptc -= b.bltcmod;
+			if (ptd >= 0) ptd -= b.bltdmod;
 		}
 		b.bltcdat = srcc;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -3820,33 +3821,33 @@ function SAEO_Blitter() {
 		var preva = 0;
 		var prevb = 0, srcb = b.bltbhold;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptb) {
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb += 2;
 					srcb = (((prevb << 16) | bltbdat) >>> 0) >>> b.blitbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta += 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((preva << 16) | bltadat) >>> 0) >>> b.blitashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srca | srcb) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd += 2; }
+				if (ptd >= 0) { dstp = ptd; ptd += 2; }
 			}
-			if (pta) pta += b.bltamod;
-			if (ptb) ptb += b.bltbmod;
-			if (ptd) ptd += b.bltdmod;
+			if (pta >= 0) pta += b.bltamod;
+			if (ptb >= 0) ptb += b.bltbmod;
+			if (ptd >= 0) ptd += b.bltdmod;
 		}
 		b.bltbhold = srcb;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}
@@ -3859,33 +3860,33 @@ function SAEO_Blitter() {
 		var preva = 0;
 		var prevb = 0, srcb = b.bltbhold;
 		var dstd = 0;
-		var dstp = 0;
+		var dstp = -1;
 		for (j = 0; j < b.vblitsize; j++) {
 			for (i = 0; i < b.hblitsize; i++) {
 				var bltadat, srca;
-				if (ptb) {
+				if (ptb >= 0) {
 					var bltbdat = blt_info.bltbdat = (SAER_Memory_chipData[ptb] << 8) | SAER_Memory_chipData[ptb + 1]; ptb -= 2;
 					srcb = (((bltbdat << 16) | prevb) >>> 0) >>> b.blitdownbshift;
 					prevb = bltbdat;
 				}
-				if (pta) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
+				if (pta >= 0) { bltadat = blt_info.bltadat = (SAER_Memory_chipData[pta] << 8) | SAER_Memory_chipData[pta + 1]; pta -= 2; } else { bltadat = blt_info.bltadat; }
 				bltadat &= blit_masktable[i];
 				srca = (((bltadat << 16) | preva) >>> 0) >>> b.blitdownashift;
 				preva = bltadat;
-				if (dstp) {
+				if (dstp >= 0) {
 					SAER_Memory_chipData[dstp] = dstd >> 8;
 					SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 				}
 				dstd = (srca | srcb) & 0xffff;
 				totald |= dstd;
-				if (ptd) { dstp = ptd; ptd -= 2; }
+				if (ptd >= 0) { dstp = ptd; ptd -= 2; }
 			}
-			if (pta) pta -= b.bltamod;
-			if (ptb) ptb -= b.bltbmod;
-			if (ptd) ptd -= b.bltdmod;
+			if (pta >= 0) pta -= b.bltamod;
+			if (ptb >= 0) ptb -= b.bltbmod;
+			if (ptd >= 0) ptd -= b.bltdmod;
 		}
 		b.bltbhold = srcb;
-		if (dstp) {
+		if (dstp >= 0) {
 			SAER_Memory_chipData[dstp] = dstd >> 8;
 			SAER_Memory_chipData[dstp + 1] = dstd & 0xff;
 		}

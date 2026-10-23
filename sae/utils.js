@@ -184,12 +184,24 @@ function SAEF_timeval_to_amiga(tv, amiga, tickcount) {
 
 /*-----------------------------------------------------------------------*/
 
+/* typed arrays use fill()/set() when the whole range fits (several times faster for track
+   and frame buffers); anything else keeps the plain loop and its behaviour (no RangeError,
+   plain Arrays may grow). set() copies overlapping ranges like memmove */
 function SAEF_memset(dst,dsto, value, length) {
+	if (ArrayBuffer.isView(dst) && dsto >= 0 && dsto + length <= dst.length) {
+		dst.fill(value, dsto, dsto + length);
+		return;
+	}
 	for (var i = dsto, j = dsto + length; i < j; i++)
 		dst[i] = value;
 }
 
 function SAEF_memcpy(dst,dsto, src,srco, length) {
+	if (ArrayBuffer.isView(dst) && ArrayBuffer.isView(src) && length > 0 && dsto >= 0 && srco >= 0 &&
+		dsto + length <= dst.length && srco + length <= src.length) {
+		dst.set(src.subarray(srco, srco + length), dsto);
+		return;
+	}
 	for (var i = 0; i < length; i++)
 		dst[dsto + i] = src[srco + i];
 }

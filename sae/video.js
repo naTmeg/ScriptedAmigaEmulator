@@ -72,6 +72,7 @@ function SAEO_Video() {
 		this.pixbytes = pixbytes;
 		this.rowbytes = this.width_allocated * this.pixbytes;
 		this.data = new ArrayBuffer(this.width_allocated * this.height_allocated * this.pixbytes);
+		this.allocated = false; /* GL texture storage and vertex quad set up for this size */
 	}
 
 	function Surface(width, height, pixbytes) {
@@ -84,6 +85,13 @@ function SAEO_Video() {
 		this.data = new ArrayBuffer(this.width_allocated * this.height_allocated * this.pixbytes);
 		this.imageData = null;
 	}
+	/* the ImageData that putImageData shows; when the sizes agree the emulator draws straight
+	   into its buffer, which saves copying the whole frame every time */
+	Surface.prototype.attach = function(ctx) {
+		this.imageData = ctx.createImageData(this.width, this.height);
+		if (this.imageData.data.byteLength == this.data.byteLength)
+			this.data = this.imageData.data.buffer;
+	};
 
 	function HWND() {
 		this.canvas = null;
@@ -233,7 +241,26 @@ function SAEO_Video() {
 				hWnd.ctx = hWnd.canvas.getContext("webgl", glParams) || hWnd.canvas.getContext("experimental-webgl", glParams);
 				//hWnd.texture = new Texture(width, height, SAEV_config.video.colorMode < 5 : 2 : 4);
 			} catch(e) {
+				hWnd.ctx = null;
+			}
+			if (!hWnd.ctx)
 				throw SAEE_Video_RequiresWegGl;
+			if (!hWnd.canvas.saeContextLost) {
+				/* the GPU process can drop the context (driver reset, too many contexts, sleep):
+				   allow the browser to restore it and set up shaders, buffers and texture again */
+				hWnd.canvas.saeContextLost = true;
+				hWnd.canvas.addEventListener("webglcontextlost", function(e) {
+					SAEF_warn("video.CreateWindow() WebGL context lost");
+					e.preventDefault();
+				}, false);
+				hWnd.canvas.addEventListener("webglcontextrestored", function() {
+					SAEF_info("video.CreateWindow() WebGL context restored");
+					if (hAmigaWnd !== null && hAmigaWnd.canvas === this && (currentmode.flags & DM_WEBGL)) {
+						setupWebGL(hAmigaWnd.ctx, currentmode.native_width, currentmode.native_height);
+						if (hAmigaWnd.texture !== null)
+							hAmigaWnd.texture.allocated = false;
+					}
+				}, false);
 			}
 		}
 		else if (SAEV_config.video.api == SAEC_Config_Video_API_Canvas) {
@@ -279,38 +306,40 @@ function SAEO_Video() {
 			SAER.input.joystick[1].enable();
 
 		if (SAEC_info.video.requestFullScreen) {
+			/* standard API first, the prefixed ones for old browsers */
 			hWnd.canvas.myRequestFullscreen =
+				hWnd.canvas.requestFullscreen ||
 				hWnd.canvas.webkitRequestFullscreen ||
 				hWnd.canvas.mozRequestFullScreen ||
 				hWnd.canvas.msRequestFullscreen ||
 				hWnd.canvas.requestFullScreen;
 
 			document.myFullscreenEnabled =
+				document.fullscreenEnabled ||
 				document.webkitFullscreenEnabled ||
 				document.mozFullScreenEnabled ||
-				document.msFullscreenEnabled ||
-				document.fullscreenEnabled;
+				document.msFullscreenEnabled;
 
 			document.myExitFullscreen =
+				document.exitFullscreen ||
 				document.webkitExitFullscreen ||
 				document.mozCancelFullScreen ||
-				document.msExitFullscreen ||
-				document.exitFullscreen;
+				document.msExitFullscreen;
 
-				  if (typeof document.onwebkitfullscreenchange != "undefined") document.addEventListener("webkitfullscreenchange", fullscreenChange, false);
+				  if (typeof document.onfullscreenchange != "undefined") document.addEventListener("fullscreenchange", fullscreenChange, false);
+			else if (typeof document.onwebkitfullscreenchange != "undefined") document.addEventListener("webkitfullscreenchange", fullscreenChange, false);
 			else if (typeof document.onmozfullscreenchange != "undefined") document.addEventListener("mozfullscreenchange", fullscreenChange, false);
 			else if (typeof document.onMSFullscreenChange != "undefined") document.addEventListener("MSFullscreenChange", fullscreenChange, false);
-			else if (typeof document.onfullscreenchange != "undefined") document.addEventListener("fullscreenchange", fullscreenChange, false);
 		}
 		return hWnd;
 	}
 
 	function DestroyWindow(hWnd) {
 		if (SAEC_info.video.requestFullScreen) {
-				  if (typeof document.onwebkitfullscreenchange != "undefined") document.removeEventListener("webkitfullscreenchange", fullscreenChange, false);
+				  if (typeof document.onfullscreenchange != "undefined") document.removeEventListener("fullscreenchange", fullscreenChange, false);
+			else if (typeof document.onwebkitfullscreenchange != "undefined") document.removeEventListener("webkitfullscreenchange", fullscreenChange, false);
 			else if (typeof document.onmozfullscreenchange != "undefined") document.removeEventListener("mozfullscreenchange", fullscreenChange, false);
 			else if (typeof document.onMSFullscreenChange != "undefined") document.removeEventListener("MSFullscreenChange", fullscreenChange, false);
-			else if (typeof document.onfullscreenchange != "undefined") document.removeEventListener("fullscreenchange", fullscreenChange, false);
 		}
 
 		if (SAEV_config.ports[0].type == SAEC_Config_Ports_Type_Joy && SAEV_config.ports[0].device != SAEC_Config_Ports_Device_None)
@@ -1104,7 +1133,7 @@ function SAEO_Video() {
 		}*/
 		if (dd) {
 			hAmigaWnd.surface = new Surface(width, height, 4);
-			hAmigaWnd.surface.imageData = hAmigaWnd.ctx.createImageData(width, height);
+			hAmigaWnd.surface.attach(hAmigaWnd.ctx);
 			currentmode.pitch = hAmigaWnd.surface.rowbytes;
 		}
 
@@ -1970,7 +1999,7 @@ function SAEO_Video() {
 		}
 		else if (currentmode.flags & DM_CANVAS) {
 			hAmigaWnd.surface = new Surface(w, h, 4);
-			hAmigaWnd.surface.imageData = hAmigaWnd.ctx.createImageData(w, h);
+			hAmigaWnd.surface.attach(hAmigaWnd.ctx);
 		}
 		/*else if (currentmode.flags & DM_D3D) {
 			if (!D3D_alloctexture(w, h)) {
@@ -2183,19 +2212,25 @@ function SAEO_Video() {
 			var y1 = 0;
 			var y2 = tex.height;
 
-			if (SAER_Playfield_gfxvidinfo.drawbuffer.pixbytes == 2)
-				ctx.texImage2D(ctx.TEXTURE_2D, 0, ctx.RGB, tex.width, tex.height, 0, ctx.RGB, ctx.UNSIGNED_SHORT_5_6_5, new Uint16Array(tex.data));
-			else
-				ctx.texImage2D(ctx.TEXTURE_2D, 0, ctx.RGBA, tex.width, tex.height, 0, ctx.RGBA, ctx.UNSIGNED_BYTE, new Uint8Array(tex.data));
-
-			ctx.bufferData(ctx.ARRAY_BUFFER, new Float32Array([x1,y1, x2,y1, x1,y2,  x1,y2, x2,y1, x2,y2]), ctx.STATIC_DRAW);
+			/* allocate the texture and upload the (constant) quad once per size, then only
+			   replace the pixels: texImage2D every frame reallocates the texture */
+			var fmt = tex.pixbytes == 2 ? ctx.RGB : ctx.RGBA;
+			var type = tex.pixbytes == 2 ? ctx.UNSIGNED_SHORT_5_6_5 : ctx.UNSIGNED_BYTE;
+			var pixels = tex.pixbytes == 2 ? new Uint16Array(tex.data) : new Uint8Array(tex.data);
+			if (!tex.allocated) {
+				ctx.texImage2D(ctx.TEXTURE_2D, 0, fmt, tex.width, tex.height, 0, fmt, type, pixels);
+				ctx.bufferData(ctx.ARRAY_BUFFER, new Float32Array([x1,y1, x2,y1, x1,y2,  x1,y2, x2,y1, x2,y2]), ctx.STATIC_DRAW);
+				tex.allocated = true;
+			} else
+				ctx.texSubImage2D(ctx.TEXTURE_2D, 0, 0, 0, tex.width, tex.height, fmt, type, pixels);
 			ctx.drawArrays(ctx.TRIANGLES, 0, 6);
 			render_ok = true;
 		}
 		else if (currentmode.flags & DM_CANVAS) {
 			var sur = hAmigaWnd.surface;
 
-			sur.imageData.data.set(new Uint8ClampedArray(sur.data));
+			if (sur.data !== sur.imageData.data.buffer)
+				sur.imageData.data.set(new Uint8ClampedArray(sur.data));
 			hAmigaWnd.ctx.putImageData(sur.imageData, 0, 0);
 			render_ok = true;
 		}

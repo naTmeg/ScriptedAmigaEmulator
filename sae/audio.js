@@ -123,9 +123,13 @@ function SAEO_Audio() {
 	/*---------------------------------*/
 
 	function cachediff(write, read) {
+		/* signed ring distance in (-frames/2, frames/2]. More than half ahead cannot be real
+		   (cachewrite stops at a quarter): the reader has overtaken the writer across the
+		   wrap, a negative distance (underrun). It was returned as frames - diff, positive,
+		   so cacheread played stale samples instead of silence */
 		var diff = write - read;
 		if (diff > cache.frames >> 1)
-			diff = cache.frames - write + read;
+			diff -= cache.frames;
 		else if (diff < -cache.frames >> 1)
 			diff = cache.frames - read + write;
 		return diff;
@@ -309,6 +313,19 @@ function SAEO_Audio() {
 		} catch (e) {
 			if (driver.context) driver.context.close().then(function() {});
 			return false;
+		}
+		/* created without a user gesture (autostart), the context starts suspended and
+		   stays silent: resume it on the first click or key press */
+		if (driver.context.state == "suspended") {
+			var context = driver.context;
+			var unlock = function() {
+				document.removeEventListener("pointerdown", unlock, true);
+				document.removeEventListener("keydown", unlock, true);
+				if (context.state == "suspended")
+					context.resume().then(function() { SAEF_log("audio.obtain() context resumed"); }, function() {});
+			};
+			document.addEventListener("pointerdown", unlock, true);
+			document.addEventListener("keydown", unlock, true);
 		}
 
 		if (SAEV_config.audio.freq == SAEC_Config_Audio_Freq_Auto)
@@ -679,8 +696,11 @@ function SAEO_Audio() {
 
 			//PUT_SOUND_WORD(w);
 			//PUT_SOUND_WORD(tmp);
-			paula.buffer[1][paula.pointer] = w;
-			paula.buffer[0][paula.pointer] = tmp;
+			/* w is mostly the left sample (lnew * mul2), tmp the right one: channel 0 is left,
+			   as in the unmixed path below. They were swapped, so any separation below 100 %
+			   or a stereo delay exchanged left and right */
+			paula.buffer[0][paula.pointer] = w;
+			paula.buffer[1][paula.pointer] = tmp;
 		} else
 			//PUT_SOUND_WORD(w);
 			paula.buffer[0][paula.pointer] = w;
@@ -740,6 +760,9 @@ function SAEO_Audio() {
 		check_sound_buffers();
 	}
 
+	/* RH interpolation: per and evtime are in cycles (period * CYCLE_UNIT), so "<< 8" of the
+	   remainder overflowed 32 bits from period 16384 on and the ratio went negative; "* 256" is
+	   exact here */
 	function sample16i_rh_mono_handler() {
 		var data0, data1, data2, data3, data0p, data1p, data2p, data3p;
 		var delta, ratio; //ulong
@@ -761,16 +784,16 @@ function SAEO_Audio() {
 		} else data3 = data3p = 0;
 
 		delta = audio_channel[0].per;
-		ratio = ~~(((audio_channel[0].evtime % delta) << 8) / delta);
+		ratio = ~~(((audio_channel[0].evtime % delta) * 256) / delta);
 		data0 = (data0 * (256 - ratio) + data0p * ratio) >> 8;
 		delta = audio_channel[1].per;
-		ratio = ~~(((audio_channel[1].evtime % delta) << 8) / delta);
+		ratio = ~~(((audio_channel[1].evtime % delta) * 256) / delta);
 		data0 += (data1 * (256 - ratio) + data1p * ratio) >> 8;
 		delta = audio_channel[2].per;
-		ratio = ~~(((audio_channel[2].evtime % delta) << 8) / delta);
+		ratio = ~~(((audio_channel[2].evtime % delta) * 256) / delta);
 		data0 += (data2 * (256 - ratio) + data2p * ratio) >> 8;
 		delta = audio_channel[3].per;
-		ratio = ~~(((audio_channel[3].evtime % delta) << 8) / delta);
+		ratio = ~~(((audio_channel[3].evtime % delta) * 256) / delta);
 		data0 += (data3 * (256 - ratio) + data3p * ratio) >> 8;
 
 		var data = data0;
@@ -913,16 +936,16 @@ function SAEO_Audio() {
 		} else data3 = data3p = 0;
 
 		delta = audio_channel[0].per;
-		ratio = ~~(((audio_channel[0].evtime % delta) << 8) / delta);
+		ratio = ~~(((audio_channel[0].evtime % delta) * 256) / delta);
 		data0 = (data0 * (256 - ratio) + data0p * ratio) >> 8;
 		delta = audio_channel[1].per;
-		ratio = ~~(((audio_channel[1].evtime % delta) << 8) / delta);
+		ratio = ~~(((audio_channel[1].evtime % delta) * 256) / delta);
 		data1 = (data1 * (256 - ratio) + data1p * ratio) >> 8;
 		delta = audio_channel[2].per;
-		ratio = ~~(((audio_channel[2].evtime % delta) << 8) / delta);
+		ratio = ~~(((audio_channel[2].evtime % delta) * 256) / delta);
 		data1 += (data2 * (256 - ratio) + data2p * ratio) >> 8;
 		delta = audio_channel[3].per;
-		ratio = ~~(((audio_channel[3].evtime % delta) << 8) / delta);
+		ratio = ~~(((audio_channel[3].evtime % delta) * 256) / delta);
 		data0 += (data3 * (256 - ratio) + data3p * ratio) >> 8;
 		data2 = data0;
 		data2 = data2 << 1;

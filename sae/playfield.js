@@ -3506,6 +3506,17 @@ function SAEO_Playfield() {
 	const dh_line = 1;
 	const dh_emerg = 2;
 
+	/* typed views on the line buffers, made once per buffer and pixel size instead of on every line */
+	var line_view_buf = [null, null], line_view_bytes = [0, 0], line_view_arr = [null, null];
+	function line_view(k, buf, pixbytes) {
+		if (line_view_buf[k] !== buf || line_view_bytes[k] != pixbytes) {
+			line_view_buf[k] = buf;
+			line_view_bytes[k] = pixbytes;
+			line_view_arr[k] = pixbytes == 2 ? new Uint16Array(buf) : new Uint32Array(buf);
+		}
+		return line_view_arr[k];
+	}
+
 	function pfield_draw_line(vb, lineno, gfx_ypos, follow_ypos) {
 		var border = 0;
 		var do_double = 0;
@@ -3573,17 +3584,11 @@ function SAEO_Playfield() {
 		xlinebuffer_pos = 0; //OWN
 		if (gfxvidinfo.drawbuffer.linemem !== null) {
 			dh = dh_line;
-			if (gfxvidinfo.drawbuffer.pixbytes == 2)
-				xlinebuffer = new Uint16Array(gfxvidinfo.drawbuffer.linemem);
-			else
-				xlinebuffer = new Uint32Array(gfxvidinfo.drawbuffer.linemem);
+			xlinebuffer = line_view(0, gfxvidinfo.drawbuffer.linemem, gfxvidinfo.drawbuffer.pixbytes);
 		}
 		if (xlinebuffer === null && gfxvidinfo.drawbuffer.emergmem !== null && do_double && (border == 0 || have_color_changes)) {
 			dh = dh_emerg;
-			if (gfxvidinfo.drawbuffer.pixbytes == 2)
-				xlinebuffer = new Uint16Array(gfxvidinfo.drawbuffer.emergmem);
-			else
-				xlinebuffer = new Uint32Array(gfxvidinfo.drawbuffer.emergmem);
+			xlinebuffer = line_view(1, gfxvidinfo.drawbuffer.emergmem, gfxvidinfo.drawbuffer.pixbytes);
 		}
 		if (xlinebuffer === null) {
 			dh = dh_buf;
@@ -6837,26 +6842,28 @@ function SAEO_Playfield() {
 	}*/
 	//#endif
 
+	/* shift the 128-bit value p[3]:p[2]:p[1]:p[0] (Uint32Array) left / right by n bits.
+	   n goes up to 63 with FMODE=3; "n &= 31" lost the word part of larger shifts. */
 	function aga_shift(p, n) {
 		if (n) {
 			//p[1] = (p[1] << n) | (p[0] >> (64 - n));
 			//p[0] <<= n;
-			n &= 31;
-			p[3] = (p[3] << n) | (p[2] >>> (32 - n));
-			p[2] = (p[2] << n) | (p[1] >>> (32 - n));
-			p[1] = (p[1] << n) | (p[0] >>> (32 - n));
-			p[0] <<= n;
+			var w = n >>> 5, b = n & 31;
+			for (var i = 3; i >= 0; i--) {
+				var hi = i - w >= 0 ? p[i - w] : 0, lo = i - w - 1 >= 0 ? p[i - w - 1] : 0;
+				p[i] = b ? (hi << b) | (lo >>> (32 - b)) : hi;
+			}
 		}
 	}
 	function aga_shift_n(p, n) {
 		if (n) {
 			//p[0] = (p[0] >> n) | (p[1] << (64 - n));
 			//p[1] >>= n;
-			n &= 31;
-			p[0] = (p[1] << (32 - n)) | (p[0] >>> n);
-			p[1] = (p[2] << (32 - n)) | (p[1] >>> n);
-			p[2] = (p[3] << (32 - n)) | (p[2] >>> n);
-			p[3] >>>= n;
+			var w = n >>> 5, b = n & 31;
+			for (var i = 0; i < 4; i++) {
+				var lo = i + w < 4 ? p[i + w] : 0, hi = i + w + 1 < 4 ? p[i + w + 1] : 0;
+				p[i] = b ? (lo >>> b) | (hi << (32 - b)) : lo;
+			}
 		}
 	}
 
@@ -6871,7 +6878,7 @@ function SAEO_Playfield() {
 		#else
 		uae_u64 shiftbuffer[2];
 		#endif*/
-		var shiftbuffer = new Uint32Array(4);
+		var shiftbuffer = fetch_shiftbuffer; /* all four words are set below before use */
 		var outval = outword[plane]; //u32
 		//var fetchval = fetched_aga[plane]; //u64
 		var fetchval_hi = fetched_aga_hi[plane];
@@ -8340,10 +8347,14 @@ function SAEO_Playfield() {
 		}
 	}
 
+	/* decide_sprites() and the AGA fetch use only the entries they have written, so they keep
+	   their buffers instead of allocating new ones on every call */
+	var decide_sprites_nrs = new Int32Array(MAX_SPRITES * 2), decide_sprites_posns = new Int32Array(MAX_SPRITES * 2);
+	var fetch_shiftbuffer = new Uint32Array(4);
 	function decide_sprites(hpos, usepointx) {
 		if (typeof usepointx == "undefined") var usepointx = false;
-		var nrs = new Int32Array(MAX_SPRITES * 2);
-		var posns = new Int32Array(MAX_SPRITES * 2);
+		var nrs = decide_sprites_nrs;
+		var posns = decide_sprites_posns;
 		var width = sprite_width;
 		var sscanmask = 0x100 << sprite_buffer_res;
 		var gotdata = false;
@@ -10734,9 +10745,10 @@ function SAEO_Playfield() {
 	this.CLXCON2 = function(v) {
 		//if (!(SAEV_config.chipset.mask & SAEC_Config_Chipset_Mask_AGA)) return;
 		clxcon2 = v;
-		clxcon_bpl_enable |= v & (0x40 | 0x80);
-		clxcon_bpl_match |= (v & (0x01 | 0x02)) << 6;
-		clxcon_bpl_match &= 0xffffffff; //OWN
+		/* bitplanes 7 and 8: replace their enable/match bits, OR-ing them in meant a later
+		   CLXCON2 write could never switch them off again (only a CLXCON write did) */
+		clxcon_bpl_enable = (clxcon_bpl_enable & 63) | (v & (0x40 | 0x80));
+		clxcon_bpl_match = (clxcon_bpl_match & 63) | ((v & (0x01 | 0x02)) << 6);
 	}
 
 	this.CLXDAT = function() {

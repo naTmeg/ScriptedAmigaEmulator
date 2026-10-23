@@ -557,8 +557,7 @@ function SAEO_CIA() {
 			docount = true;
 		}
 		if (docount) {
-			ciaatod++;
-			ciaatod &= 0x00ffffff;
+			ciaatod = tod_step(ciaatod, 0);
 			tod_hack_tod_last = ciaatod;
 			ciaa_checkalarm(false);
 		}
@@ -652,8 +651,7 @@ function SAEO_CIA() {
 		ciab_tod_event_state = 3; // done
 		if (!ciabtodon)
 			return;
-		ciabtod++;
-		ciabtod &= 0xFFFFFF;
+		ciabtod = tod_step(ciabtod, 1);
 		ciab_checkalarm(true, irq);
 	}
 
@@ -676,7 +674,7 @@ function SAEO_CIA() {
 		}
 		// Not yet, add event to guarantee exact TOD inc position
 		ciab_tod_event_state = 2; // event active
-		SAER.events.event2_newevent_xx(-1, -hpos, 0, CIAB_tod_inc_event);
+		SAER.events.event2_newevent_xx(-1, -hpos * SAEC_Events_CYCLE_UNIT, 0, CIAB_tod_inc_event);
 	}
 
 	this.b_tod_handler = function(hoffset) { //CIAB_tod_handler()
@@ -687,7 +685,7 @@ function SAEO_CIA() {
 		if (checkalarm((ciabtod + 1) & 0xffffff, ciabalarm, true, 1)) {
 			// causes interrupt on this line, add event
 			ciab_tod_event_state = 2; // event active
-			SAER.events.event2_newevent_xx (-1, ciab_tod_hoffset, 0, CIAB_tod_inc_event);
+			SAER.events.event2_newevent_xx (-1, ciab_tod_hoffset * SAEC_Events_CYCLE_UNIT, 0, CIAB_tod_inc_event);
 		}
 	}
 
@@ -798,8 +796,7 @@ function SAEO_CIA() {
 	}
 
 	function CIAA_tod_handler(v) {
-		ciaatod++;
-		ciaatod &= 0xFFFFFF;
+		ciaatod = tod_step(ciaatod, 0);
 		ciaa_checkalarm(true);
 	}
 
@@ -811,7 +808,7 @@ function SAEO_CIA() {
 		if (!ciaatodon)
 			return;
 
-		SAER.events.event2_newevent_xx(-1, cycles + TOD_INC_DELAY, 0, CIAA_tod_handler);
+		SAER.events.event2_newevent_xx(-1, (cycles + TOD_INC_DELAY) * SAEC_Events_CYCLE_UNIT, 0, CIAA_tod_handler);
 	}
 
 	function check_led() {
@@ -841,42 +838,62 @@ function SAEO_CIA() {
 		}*/
 	}
 
-	function getciatod(tod) {
-		if (SAEV_config.chipset.cia.type6526) {
-			var bcdtod = 0; //u32
-			for (var i = 0; i < 4; i++) {
-				var val = tod % 10;
-				bcdtod *= 16; if (bcdtod > 0xffffffff) bcdtod -= 0x100000000;
-				bcdtod += val; if (bcdtod > 0xffffffff) bcdtod -= 0x100000000;
-				tod = tod / 10 >>> 0;
-			}
-			return bcdtod;
-		}
-		return tod;
+	/* TOD counters. The 8520 counts binary in 24 bits. The 6526 has a real-time clock: BCD
+	   tenths ($8), seconds ($9), minutes ($A) and hours 1-12 with PM in bit 7 ($B), counted
+	   from the 50/60 Hz input through a divider of 5 (CRA bit 7 set, 50 Hz) or 6. The 6526
+	   counters are kept as the packed register bytes, so reads, writes and the alarm compare
+	   need no conversion. (The old conversion treated them as one decimal number, reversed
+	   its digits and handled only four of them.) */
+	var tod_prescale = [0, 0];
+	function bcd_inc(b) {
+		return (b & 0x0f) == 9 ? (b & 0xf0) + 0x10 : b + 1;
 	}
-
-	function calc_bintod(v) { //OWN
-		var bintod = 0;
-		for (var i = 0; i < 4; i++) {
-			var val = v / 16 >>> 0;
-			bintod *= 10; if (bintod > 0xffffffff) bintod -= 0x100000000;
-			bintod += val; if (bintod > 0xffffffff) bintod -= 0x100000000;
-			v = v / 16 >>> 0;
+	function tod6526_next(v) {
+		var t = v & 0x0f, s = (v >>> 8) & 0x7f, m = (v >>> 16) & 0x7f, h = (v >>> 24) & 0x1f, pm = (v & 0x80000000) >>> 0;
+		if (t < 9)
+			return ((v & 0xffffff00) | (t + 1)) >>> 0;
+		t = 0;
+		if (s != 0x59)
+			s = bcd_inc(s);
+		else {
+			s = 0;
+			if (m != 0x59)
+				m = bcd_inc(m);
+			else {
+				m = 0;
+				if (h == 0x11) { h = 0x12; pm = (pm ^ 0x80000000) >>> 0; }
+				else if (h == 0x12) h = 0x01;
+				else h = bcd_inc(h);
+			}
 		}
-		return bintod;
+		return (pm | (h << 24) | (m << 16) | (s << 8) | t) >>> 0;
+	}
+	function tod_step(v, unit) {
+		if (!SAEV_config.chipset.cia.type6526)
+			return (v + 1) & 0xffffff;
+		var div = ((unit ? ciabcra : ciaacra) & 0x80) ? 5 : 6;
+		if (++tod_prescale[unit] < div)
+			return v;
+		tod_prescale[unit] = 0;
+		return tod6526_next(v);
+	}
+	function getciatod(tod) {
+		return tod;
 	}
 	//function setciatod(*tod, v) {
 	function setciatod_ciaatod(v) {
-		ciaatod = SAEV_config.chipset.cia.type6526 ? calc_bintod(v) : v;
+		ciaatod = v >>> 0;
+		tod_prescale[0] = 0;
 	}
 	function setciatod_ciaaalarm(v) {
-		ciaaalarm = SAEV_config.chipset.cia.type6526 ? calc_bintod(v) : v;
+		ciaaalarm = v >>> 0;
 	}
 	function setciatod_ciabtod(v) {
-		ciabtod = SAEV_config.chipset.cia.type6526 ? calc_bintod(v) : v;
+		ciabtod = v >>> 0;
+		tod_prescale[1] = 0;
 	}
 	function setciatod_ciabalarm(v) {
-		ciabalarm = SAEV_config.chipset.cia.type6526 ? calc_bintod(v) : v;
+		ciabalarm = v >>> 0;
 	}
 
 	function ReadCIAA(addr) {
@@ -1028,6 +1045,9 @@ function SAEO_CIA() {
 					tmp |= SAER.input.handle_parport_joystick(1, ciabpra, ciabdra);*/
 			}
 			//#endif
+			/* pins set as outputs (DTR, RTS, ...) read back what was written to them;
+			   without the serial port enabled they read 0 */
+			tmp = (tmp & ~ciabdra) | (ciabpra & ciabdra);
 			tmp = SAER.dongle.cia_read(1, reg, tmp);
 			return tmp;
 		case 1:
@@ -1265,7 +1285,7 @@ function SAEO_CIA() {
 			break;
 		case 14:
 			CIA_update();
-			val &= 0x7f; /* bit 7 is unused */
+			if (!SAEV_config.chipset.cia.type6526) val &= 0x7f; /* bit 7: unused on the 8520, TODIN (50/60 Hz) on the 6526 */
 			if ((val & 1) && !(ciaacra & 1))
 				ciaastarta = CIASTARTCYCLESCRA;
 			if ((val & 0x40) == 0 && (ciaacra & 0x40) != 0) {
@@ -1427,7 +1447,7 @@ function SAEO_CIA() {
 			break;
 		case 14:
 			CIA_update();
-			val &= 0x7f; /* bit 7 is unused */
+			if (!SAEV_config.chipset.cia.type6526) val &= 0x7f; /* bit 7: unused on the 8520, TODIN (50/60 Hz) on the 6526 */
 			if ((val & 1) && !(ciabcra & 1))
 				ciabstarta = CIASTARTCYCLESCRA;
 			ciabcra = val;

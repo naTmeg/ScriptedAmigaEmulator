@@ -166,9 +166,9 @@ function SAEO_RTC() {
 					for (var i = 0; i < 13; i++)
 						data[i] = getclockreg(i, ct);
 					clock_control_d = od;
-					data[i] = clock_control_d;
-					data[i] = clock_control_e;
-					data[i] = clock_control_f;
+					data[13] = clock_control_d;
+					data[14] = clock_control_e;
+					data[15] = clock_control_f;
 					SAEF_ZFile_fwrite(data,0, 16, 1, f);
 					if (SAEV_config.chipset.rtc.type == SAEC_Config_RTC_Type_RF5C01A) {
 						SAEF_ZFile_fwrite(rtc_alarm,0, RF5C01A_RAM_SIZE, 1, f);

@@ -41,6 +41,13 @@ var SAEV_CPU_cycles = 0;
 /*---------------------------------*/
 
 function SAEO_CPU() {
+	/* instruction results (cycles, reads, writes): the run loops only read [0], at once, so the
+	   shifts, rotates and MOVEM fill one shared array instead of allocating a new one per
+	   instruction; the fixed results of the exception paths are constants */
+	var cyc_ret = [0, 0, 0];
+	function cycRet(c0, c1, c2) { cyc_ret[0] = c0; cyc_ret[1] = c1; cyc_ret[2] = c2; return cyc_ret; }
+	var CYC_NONE = [0, 0, 0], CYC_4 = [4, 0, 0];
+
 	/* Exception 2/3 error */
 	function Exception23(num) {
 		this.num = num;
@@ -500,6 +507,9 @@ function SAEO_CPU() {
 
 	/*---------------------------------*/
 
+	/* tag/longword results of getcache030(), one object per caller instead of one per access */
+	var c030_fill = { tag: 0, lws: 0 }, c030_rd1 = { tag: 0, lws: 0 }, c030_rd2 = { tag: 0, lws: 0 };
+	var c030_wr1 = { tag: 0, lws: 0 }, c030_wr2 = { tag: 0, lws: 0 };
 	function getcache030(cp, addr, p) {
 		addr = (addr & ~3) >>> 0;
 		var index = (addr >>> 4) & CACHELINE030_IM;
@@ -519,7 +529,7 @@ function SAEO_CPU() {
 		addr = (addr & ~3) >>> 0;
 		if (regs.cacheholdingaddr020 == addr)
 			return;
-		var p = {};
+		var p = c030_fill;
 		var c = getcache030(icaches030, addr, p);
 		if (c.valid[p.lws] && c.tag == p.tag) {
 			// cache hit
@@ -572,7 +582,7 @@ function SAEO_CPU() {
 		var aligned = addr & 3;
 		var v1, v2;
 
-		var p1 = {};
+		var p1 = c030_rd1;
 		var c1 = getcache030(dcaches030, addr, p1);
 		addr = (addr & ~3) >>> 0;
 		if (!c1.valid[p1.lws] || c1.tag != p1.tag) {
@@ -610,7 +620,7 @@ function SAEO_CPU() {
 		}
 		// no, need another one
 		addr += 4;
-		var p2 = {};
+		var p2 = c030_rd2;
 		var c2 = getcache030(dcaches030, addr, p2);
 		if (!c2.valid[p2.lws] || c2.tag != p2.tag) {
 			v2 = SAER_Memory_get32(addr);
@@ -642,7 +652,7 @@ function SAEO_CPU() {
 		var aligned = addr & 3;
 		var wa = (regs.cacr & CACR030_WA) != 0;
 
-		var p1 = {};
+		var p1 = c030_wr1;
 		var c1 = getcache030(dcaches030, addr, p1);
 
 		// easy one
@@ -678,7 +688,7 @@ function SAEO_CPU() {
 		if ((size == 0) || (size == 1 && aligned <= 2) || (size == 2 && aligned == 0))
 			return;
 
-		var p2 = {};
+		var p2 = c030_wr2;
 		var c2 = getcache030(dcaches030, addr + 4, p2);
 		hit = (c2.tag == p2.tag && c2.valid[p2.lws]);
 		if (hit || wa) {
@@ -1715,7 +1725,7 @@ function SAEO_CPU() {
 			coreSyncPC();
 
 		exception(nr);
-		return [0,0,0];
+		return CYC_NONE;
 	}
 
 	function exception3f(opcode, addr, writeaccess, instructionaccess, notinstruction, pc, plus2) {
@@ -1759,7 +1769,7 @@ function SAEO_CPU() {
 	}*/
 	function coreException3i(opcode, addr) {
 		exception3i(opcode, addr)
-		return [0,0,0];
+		return CYC_NONE;
 	}
 
 	this.exception2 = function(addr, read, size, fc) {
@@ -1855,9 +1865,9 @@ function SAEO_CPU() {
 		coreSyncPC();
 		regs.instruction_pc = ipc;
 		if (illegal(op))
-			return [4,0,0]; /* no exception */
+			return CYC_4; /* no exception */
 		else
-			return [0,0,0];
+			return CYC_NONE;
 	}
 
 	/*-----------------------------------------------------------------------*/
@@ -3359,7 +3369,7 @@ function SAEO_CPU() {
 		if (ripr) regs.a[An] -= pre;
 		//ccna
 		coreSyncPC();
-		return [p.cyc[0]+4*n,p.cyc[1],n];
+		return cycRet(p.cyc[0]+4*n, p.cyc[1], n);
 	}
 	function I_MOVEM_R2M_32(p) {
 		var list = coreNext16();
@@ -3396,7 +3406,7 @@ function SAEO_CPU() {
 		if (ripr) regs.a[An] -= pre;
 		//ccna
 		coreSyncPC();
-		return [p.cyc[0]+8*n,p.cyc[1],2*n];
+		return cycRet(p.cyc[0]+8*n, p.cyc[1], 2*n);
 	}
 
 	function I_MOVEM_M2R_16(p) {
@@ -3424,7 +3434,7 @@ function SAEO_CPU() {
 		if (ripo) regs.a[An] = a; /* post-increment */
 		//ccna
 		coreSyncPC();
-		return [p.cyc[0]+4*n,p.cyc[1]+n,0];
+		return cycRet(p.cyc[0]+4*n, p.cyc[1]+n, 0);
 	}
 	function I_MOVEM_M2R_32(p) {
 		var list = coreNext16();
@@ -3451,7 +3461,7 @@ function SAEO_CPU() {
 		if (ripo) regs.a[An] = a; /* post-increment */
 		//ccna
 		coreSyncPC();
-		return [p.cyc[0]+8*n,p.cyc[1]+2*n,0];
+		return cycRet(p.cyc[0]+8*n, p.cyc[1]+2*n, 0);
 	}
 
 	function I_MOVEP_R2M_16(p) {
@@ -5021,19 +5031,19 @@ function SAEO_CPU() {
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
 		regs.d[p.Dy] = asl(regs.d[p.Dy] >>> 0, n, 32);
 		coreSyncPC();
-		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
+		return cycRet(p.cyc[0]+2*n, p.cyc[1], p.cyc[2]);
 	}
 	function I_ASL_16(p) {
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
 		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | asl(regs.d[p.Dy] & 0xffff, n, 16);
 		coreSyncPC();
-		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
+		return cycRet(p.cyc[0]+2*n, p.cyc[1], p.cyc[2]);
 	}
 	function I_ASL_8(p) {
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
 		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | asl(regs.d[p.Dy] & 0xff, n, 8);
 		coreSyncPC();
-		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
+		return cycRet(p.cyc[0]+2*n, p.cyc[1], p.cyc[2]);
 	}
 	/* ASR: the sign bit is shifted in; C and X get the last bit shifted out (the sign once
 	 * the count reaches the operand width); a count of 0 clears C and keeps X */
@@ -5052,19 +5062,19 @@ function SAEO_CPU() {
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
 		regs.d[p.Dy] = asr(regs.d[p.Dy] >>> 0, n, 32);
 		coreSyncPC();
-		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
+		return cycRet(p.cyc[0]+2*n, p.cyc[1], p.cyc[2]);
 	}
 	function I_ASR_16(p) {
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
 		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | asr(regs.d[p.Dy] & 0xffff, n, 16);
 		coreSyncPC();
-		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
+		return cycRet(p.cyc[0]+2*n, p.cyc[1], p.cyc[2]);
 	}
 	function I_ASR_8(p) {
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
 		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | asr(regs.d[p.Dy] & 0xff, n, 8);
 		coreSyncPC();
-		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
+		return cycRet(p.cyc[0]+2*n, p.cyc[1], p.cyc[2]);
 	}
 	function I_ASL_M(p) {
 		var a = exEAtab[p.ea](2);
@@ -5129,37 +5139,37 @@ function SAEO_CPU() {
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
 		regs.d[p.Dy] = lsl(regs.d[p.Dy] >>> 0, n, 32);
 		coreSyncPC();
-		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
+		return cycRet(p.cyc[0]+2*n, p.cyc[1], p.cyc[2]);
 	}
 	function I_LSL_16(p) {
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
 		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | lsl(regs.d[p.Dy] & 0xffff, n, 16);
 		coreSyncPC();
-		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
+		return cycRet(p.cyc[0]+2*n, p.cyc[1], p.cyc[2]);
 	}
 	function I_LSL_8(p) {
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
 		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | lsl(regs.d[p.Dy] & 0xff, n, 8);
 		coreSyncPC();
-		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
+		return cycRet(p.cyc[0]+2*n, p.cyc[1], p.cyc[2]);
 	}
 	function I_LSR_32(p) {
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
 		regs.d[p.Dy] = lsr(regs.d[p.Dy] >>> 0, n, 32);
 		coreSyncPC();
-		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
+		return cycRet(p.cyc[0]+2*n, p.cyc[1], p.cyc[2]);
 	}
 	function I_LSR_16(p) {
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
 		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | lsr(regs.d[p.Dy] & 0xffff, n, 16);
 		coreSyncPC();
-		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
+		return cycRet(p.cyc[0]+2*n, p.cyc[1], p.cyc[2]);
 	}
 	function I_LSR_8(p) {
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
 		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | lsr(regs.d[p.Dy] & 0xff, n, 8);
 		coreSyncPC();
-		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
+		return cycRet(p.cyc[0]+2*n, p.cyc[1], p.cyc[2]);
 	}
 	function I_LSL_M(p) {
 		var a = exEAtab[p.ea](2);
@@ -5213,37 +5223,37 @@ function SAEO_CPU() {
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
 		regs.d[p.Dy] = rol(regs.d[p.Dy] >>> 0, n, 32);
 		coreSyncPC();
-		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
+		return cycRet(p.cyc[0]+2*n, p.cyc[1], p.cyc[2]);
 	}
 	function I_ROL_16(p) {
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
 		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | rol(regs.d[p.Dy] & 0xffff, n, 16);
 		coreSyncPC();
-		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
+		return cycRet(p.cyc[0]+2*n, p.cyc[1], p.cyc[2]);
 	}
 	function I_ROL_8(p) {
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
 		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | rol(regs.d[p.Dy] & 0xff, n, 8);
 		coreSyncPC();
-		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
+		return cycRet(p.cyc[0]+2*n, p.cyc[1], p.cyc[2]);
 	}
 	function I_ROR_32(p) {
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
 		regs.d[p.Dy] = ror(regs.d[p.Dy] >>> 0, n, 32);
 		coreSyncPC();
-		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
+		return cycRet(p.cyc[0]+2*n, p.cyc[1], p.cyc[2]);
 	}
 	function I_ROR_16(p) {
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
 		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | ror(regs.d[p.Dy] & 0xffff, n, 16);
 		coreSyncPC();
-		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
+		return cycRet(p.cyc[0]+2*n, p.cyc[1], p.cyc[2]);
 	}
 	function I_ROR_8(p) {
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
 		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | ror(regs.d[p.Dy] & 0xff, n, 8);
 		coreSyncPC();
-		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
+		return cycRet(p.cyc[0]+2*n, p.cyc[1], p.cyc[2]);
 	}
 	function I_ROL_M(p) {
 		var a = exEAtab[p.ea](2);
@@ -5308,37 +5318,37 @@ function SAEO_CPU() {
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
 		regs.d[p.Dy] = roxl(regs.d[p.Dy] >>> 0, n, 32);
 		coreSyncPC();
-		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
+		return cycRet(p.cyc[0]+2*n, p.cyc[1], p.cyc[2]);
 	}
 	function I_ROXL_16(p) {
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
 		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | roxl(regs.d[p.Dy] & 0xffff, n, 16);
 		coreSyncPC();
-		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
+		return cycRet(p.cyc[0]+2*n, p.cyc[1], p.cyc[2]);
 	}
 	function I_ROXL_8(p) {
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
 		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | roxl(regs.d[p.Dy] & 0xff, n, 8);
 		coreSyncPC();
-		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
+		return cycRet(p.cyc[0]+2*n, p.cyc[1], p.cyc[2]);
 	}
 	function I_ROXR_32(p) {
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
 		regs.d[p.Dy] = roxr(regs.d[p.Dy] >>> 0, n, 32);
 		coreSyncPC();
-		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
+		return cycRet(p.cyc[0]+2*n, p.cyc[1], p.cyc[2]);
 	}
 	function I_ROXR_16(p) {
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
 		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffff0000) | roxr(regs.d[p.Dy] & 0xffff, n, 16);
 		coreSyncPC();
-		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
+		return cycRet(p.cyc[0]+2*n, p.cyc[1], p.cyc[2]);
 	}
 	function I_ROXR_8(p) {
 		var n = p.ir ? regs.d[p.cr] & 63 : p.cr;
 		regs.d[p.Dy] = (regs.d[p.Dy] & 0xffffff00) | roxr(regs.d[p.Dy] & 0xff, n, 8);
 		coreSyncPC();
-		return [p.cyc[0]+2*n,p.cyc[1],p.cyc[2]];
+		return cycRet(p.cyc[0]+2*n, p.cyc[1], p.cyc[2]);
 	}
 	function I_ROXL_M(p) {
 		var a = exEAtab[p.ea](2);
@@ -5821,7 +5831,7 @@ function SAEO_CPU() {
 				   target faults even if the loop ends, Dn is not written, PC = target+2 (cputester) */
 				var t = add32(pc, extWord(dp));
 				exception3f(p.op, t, false, true, false, add32(t, 2), false);
-				return [0,0,0];
+				return CYC_NONE;
 			}
 			regs.d[p.Dn] = (regs.d[p.Dn] & 0xffff0000) | dr;
 
@@ -5887,7 +5897,7 @@ function SAEO_CPU() {
 				/* both the access address and the stacked PC are the branch target
 				   (cputester, checked on real 68000s; WinUAE gencpu i_BSR) */
 				exception3f(p.op, pc, false, true, false, pc, false);
-				return [0,0,0];
+				return CYC_NONE;
 			}
 			return coreException3i(p.op, pc);
 		}
@@ -5912,7 +5922,7 @@ function SAEO_CPU() {
 		if (pc & 1) {
 			if (model == 68000 && (p.ea == (7 << 3 | 0) || p.ea == (7 << 3 | 1))) { /* abs.W/abs.L (cputester) */
 				exception3f(p.op, pc, false, true, false, coreGetPC(), false);
-				return [0,0,0];
+				return CYC_NONE;
 			}
 			return coreException3i(p.op, pc);
 		}
