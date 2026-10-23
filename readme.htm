@@ -54,7 +54,7 @@
 			<ul id="requirements">
 				<li><span class="label">Requirements</span>
 					<ul>
-						<li>A fast computer in general and a super-computer for (most) AGA-stuff in real-time.</li>
+						<li>A fast computer or device.</li>
 						<li>A modern browser capable of HTML5 with:
 							<ul>
 								<li>WegGL/Canvas2D- and WebAudio-extensions.</li>
@@ -171,8 +171,8 @@
 							<ul>
 								<li>Supported diskimage-types
 									<ul>
-										<li>Standard ADF, read/write (*.adf)</li>
-										<li>Extended ADF (EXT1/EXT2), read/write (*.adf)</li>
+										<li>Standard ADF, read/write (*.adf, *.adz)</li>
+										<li>Extended ADF (EXT1/EXT2), read/write (*.adf, *.adz)</li>
 										<li>PCDOS, read/write (*.img)</li>
 										<li>DMS (DiskMasher), read only (*.dms)</li>
 										<li>SCP (SuperCardPro), read-only (*.scp)</li>
@@ -189,7 +189,7 @@
 							<ul>
 								<li>Supported hardfile-types
 									<ul>
-										<li>Standard, read/write (*.hdf)</li>
+										<li>Standard, read/write (*.hdf, *.hdz)</li>
 										<li>Virtual, read/write (*.vhd)</li>
 									</ul>
 								</li>
@@ -251,7 +251,6 @@
 								<li>68000/68010
 									<ul>
 										<li>Prefetch is fake.</li>
-										<li>BKPT is not implemented.</li>
 									</ul>
 								</li>
 								<li>68020
@@ -277,14 +276,12 @@
 						</li>
 						<li>Floppy
 							<ul>
-								<li>No support for compressed floppy-images like ADZ.</li>
 								<li>No FDI-/IPF-image support.</li>
 							</ul>
 						</li>
 						<li>Mount
 							<ul>
 								<li>No onboard-SCSI for the A3000/4000.</li>
-								<li>No support for compressed hardfile-images like HDZ.</li>
 							</ul>
 						</li>
 						<li>Input
@@ -411,6 +408,7 @@
 					<ul>
 						<li><a target="_blank" href="https://winuae.net">WinUAE team</a>, especially Toni Wilen.</li>
 						<li><a target="_blank" href="https://web.archive.org/web/20130812173347/http://www.amigaemulator.org/">Bernd Schmidt</a>, the father of amiga-emulation.</li>
+						<li><a target="_blank" href="https://dirkwhoffmann.github.io/vAmigaTS/index.html">Dirk W. Hoffmann</a>, vAmiga Test Suite</li>
 						<li><a target="_blank" href="https://aros.sourceforge.io">AROS team</a></li>
 						<li>All people who contributed their software or helped via github. Thanks for your support!</li>
 					</ul>
@@ -454,6 +452,181 @@
 			<ul id="history">
 				<li><span class="label">History</span>
 					<ul>
+						<li><span class="label">0.9.20 (25.10.2026):</span> (All fixes and enhancements by Claude Fable, thanks Ralf Sommer and Arnaud de Klerk)
+							<ul>
+								<li>CPU
+									<ul>
+										<li>Fix MOVEP memory-to-register reading its last byte with a write</li>
+										<li>Stack the opcode address for illegal-instruction exceptions</li>
+										<li>Set the CHK condition codes like a real 68000/68010</li>
+										<li>Recognise INTREQ/INTENA-triggered interrupts one instruction later in the compatible core</li>
+										<li>Use the brief extension word format for (d8,An,Xn) on 68000/68010</li>
+										<li>Fix NBCD and the N/V flags of ABCD, SBCD and NBCD</li>
+										<li>Fix ROXL/ROXR with register operands</li>
+										<li>Fix LSL/LSR with register operands and counts of 32 and more</li>
+										<li>Fix ASR with register operands and large counts</li>
+										<li>Fix the V flag and large counts of ASL with register operands</li>
+										<li>Fix ROL/ROR .b and .w with register operands</li>
+										<li>RTE: format errors per model, keep the frame on the stack</li>
+										<li>BKPT: take the illegal instruction exception (68010+)</li>
+										<li>Compute the TAS operand address only once</li>
+										<li>Treat branch displacement $FF as -1 on the 68000/68010</li>
+										<li>Reset the prefetch offset before an odd-target address error</li>
+										<li>Set the DIVU/DIVS.W flags on division by zero and overflow like a 68000</li>
+										<li>68000: Raise address errors for odd word accesses in the compatible core</li>
+										<li>68000: Push the BSR return address before an odd-target address error</li>
+										<li>68000: Stack the next opcode as IR when MOVE.w to -(An) faults</li>
+										<li>68000: CLR and MOVE from SR read before they write; MOVEM always reads</li>
+										<li>68000: address-error stack frames match the hardware</li>
+										<li>68000: TST with An, #imm or PC-relative operand is illegal</li>
+										<li>68000: address error frame for an odd exception vector</li>
+										<li>68000: address errors on an odd stack pointer</li>
+										<li>68000: MOVE.L faulting on an abs.L destination sets only the low-word flags</li>
+										<li>68010: CHK, TRAPV and DIV by zero stack a format $0 frame</li>
+										<li>68010: bus and address errors stack a format $8 frame</li>
+										<li>68020: MULx.L/DIVS.L: overflow and flags</li>
+										<li>68020: Fix T0 trace check for branches</li>
+										<li>68020: TRAPcc: no extra long word on the stack</li>
+										<li>68020: PACK/UNPK -(Ax),-(Ay): byte order and adjustment</li>
+										<li>68020: CHK2/CMP2 with an address register: compare all 32 bits</li>
+										<li>68020 bit fields in memory: negative offsets and 32-bit fields</li>
+										<li>68020 MOVEM to -(An) with An in the list: store An minus the size</li>
+										<li>68030 data cache: unsigned bank index for the burst fill check</li>
+										<li>68030 caches: no new object per cache access</li>
+										<li>Keep the instruction address when syncing the PC</li>
+										<li>Cloanto $71xx and emulator calltraps: no second PC increment</li>
+										<li>Reset pc_offset when entering an exception handler</li>
+										<li>No new array per shift, rotate and MOVEM for the instruction functions return</li>
+										<li>Call functions that only exist in another closure through SAER</li>
+										<li>Declare implicit globals as local variables</li>
+									</ul>
+								</li>
+								<li>CIA
+									<ul>
+										<li>Make CIA interrupts level-sensitive in INTREQ</li>
+										<li>TOD events in cycle units instead of colour clocks</li>
+										<li>CIA-B port A: output pins read back their value</li>
+										<li>6526 mode: a real-time TOD clock</li>
+									</ul>
+								</li>
+								<li>M68K
+									<ul>
+										<li>Fix the 68020 T0 trace check for branches</li>
+										<li>Wait for the next frame with a timer instead of spinning.</li>
+										<li>Clear halted/stopped on the m68k object, not on the global object</li>
+									</ul>
+								</li>
+								<li>Amiga
+									<ul>
+										<li>Pause the emulation while the page is hidden</li>
+									</ul>
+								</li>
+								<li>Custom
+									<ul>
+										<li>Remove try/catch to find unmapped registers</li>
+									</ul>
+								</li>
+								<li>ROMs
+									<ul>
+										<li>Given the AROS extended ROM an extended-ROM type</li>
+										<li>Decode ReKick images at their real offset</li>
+									</ul>
+								</li>
+								<li>RTC
+									<ul>
+										<li>Save the three control registers at their own index</li>
+									</ul>
+								</li>
+								<li>Input
+									<ul>
+										<li>Read gamepad directions from the d-pad too and keep polling</li>
+										<li>Release held keys and emulated joystick when the page loses focus</li>
+										<li>Leave keys typed into form fields alone</li>
+										<li>Click to capture, joystick keys only for the joystick</li>
+									</ul>
+								</li>
+								<li>SerPar
+									<ul>
+										<li>Serial: shift out words in real time</li>
+									</ul>
+								</li>
+								<li>Disk
+									<ul>
+										<li>Make written floppy images available: sae.getDisk(unit), sae.isDiskModified(unit), cfg.hook.event.diskModified(unit)</li>
+										<li>Close an HTML injection through the disk label</li>
+										<li>Limit the track count of extended ADF and SCP images</li>
+									</ul>
+								</li>
+								<li>DMS
+									<ul>
+										<li>Clear the fake boot block buffer before unpacking</li>
+									</ul>
+								</li>
+								<li>Hardfile
+									<ul>
+										<li>Whole cylinders for the virtual RDB</li>
+									</ul>
+								</li>
+								<li>Playfield
+									<ul>
+										<li>AGA: shift the 128-bit bitplane buffer by 32 bits and more correctly</li>
+										<li>AGA CLXCON2: replace the bitplane 7/8 collision bits instead of OR-ing</li>
+										<li>Keep buffers instead of allocating them per call</li>
+									</ul>
+								</li>
+								<li>Blitter
+									<ul>
+										<li>Use a flat fill table</li>
+										<li>Chip address 0 is a valid pointer</li>
+									</ul>
+								</li>
+								<li>Video
+									<ul>
+										<li>Detect WebGL for real, fail cleanly, survive a lost context</li>
+										<li>Upload only the pixels per frame, draw canvas frames in place</li>
+										<li>Use the standard Fullscreen API first</li>
+									</ul>
+								</li>
+								<li>Audio
+									<ul>
+										<li>Added second audio-path via AudioWorkletProcessor. Should fix distorted audio output</li>
+										<li>Cache: negative distance when the reader overtakes across the wrap</li>
+										<li>Left and right were swapped whenever stereo mixing is on</li>
+										<li>Resume a suspended AudioContext on the first click or key press</li>
+										<li>RH interpolation: no 32-bit overflow for long periods</li>
+									</ul>
+								</li>
+								<li>Utils
+									<ul>
+										<li>SAEF_memset/SAEF_memcpy with fill()/set() for typed arrays</li>
+									</ul>
+								</li>
+								<li>Common
+									<ul>
+										<li>Use a relative database URL so host port and sub-directory survive</li>
+										<li>Document the keyboard mapping in the readme</li>
+										<li>The AROS kickstart-replacement-roms are now part of the distribution</li>
+										<li>AROS ROM: build of 2026-08-20</li>
+										<li>Add cfg.debug.turbo for reproducible test runs</li>
+										<li>Add npm dev tooling (eslint, Playwright)</li>
+										<li>Add the vAmigaTS screenshot suite</li>
+										<li>Frontend downloads: report errors, retry failed files, check the CRC</li>
+										<li>Frontend: remember the advanced settings across page loads</li>
+										<li>Frontend: save button for floppy images, warn before losing changes</li>
+										<li>Frontend: rename screen() and stop() so they no longer hide window.screen</li>
+										<li>Frontend: share link keeps port and path</li>
+										<li>Frontend: mark database groups whose disk images are not on the server</li>
+										<li>Frontend: validate the hardfile geometry</li>
+										<li>Frontend: unpack gzip floppy images, refuse ZIP archives before the start</li>
+										<li>Frontend: requests for a file that is still downloading wait for it</li>
+										<li>Frontend: drop a disk image on the page to put it into DF0</li>
+										<li>Frontend: drop Kickstart ROMs and hard-files on the page too</li>
+										<li>Database: DBF_CHIP1M for entries that need 1 MB chip RAM (Deluxe Galaga)</li>
+									</ul>
+								</li>
+							</ul>
+						</li>				
+						<li style="list-style-type:none"><br/></li>
 						<li><span class="label">0.9.13 (11.11.2021):</span>
 							<ul>
 								<li>Playfield
@@ -474,7 +647,7 @@
 									</ul>
 								</li>
 							</ul>
-						</li>
+						</li>					
 						<li style="list-style-type:none"><br/></li>
 						<li><span class="label">0.9.12 (23.06.2019):</span>
 							<ul>
@@ -988,7 +1161,7 @@
 		</div>
 		<div style="height:5px"></div>
 		<div id="foot" class="foot" style="line-height:14px">
-			<span class="gray">2012-2021 Rupert Hausberger</span> |
+			<span class="gray">2012-2026 Rupert Hausberger</span> |
 			<span class="gray">Description</span> |
 			<a target="_blank" href="disass.htm">Disassembler</a> |
 			<a target="_blank" href="https://github.com/naTmeg/ScriptedAmigaEmulator">Source-code</a>

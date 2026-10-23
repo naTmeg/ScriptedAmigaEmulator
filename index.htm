@@ -64,8 +64,6 @@
 					<br />
 					Select an item to 'Start' from the database or press 'Config' for an advanced setup...<br />
 					<br />
-					<span class="info"><b>Note</b>: This project does require a <b>fast computer</b>.<br />
-					Mobile- and Tablet-devices may work, but will most likely have a too slow framerate.</span>
 					<div style="height:10px"></div>
 					<div id="config_database_hof">
 						<div class="acm">
@@ -1224,7 +1222,7 @@
 												<td></td>
 											</tr>
 											<tr>
-												<td class="arm">Mode</td>
+												<td class="arm">Method</td>
 												<td>
 													<select id="cfg_video_api" size="1" onchange="videoUpdateAPI()">
 														<option value="1">WebGL</option>
@@ -1372,6 +1370,31 @@
 												<td colspan="3"></td>
 											</tr>
 											<tr>
+												<td class="art">Method</td>
+												<td colspan="3">
+													<select id="cfg_audio_api" size="1" onchange="audioUpdateAPI()">
+														<option value="1">Audio Worklet (new)</option>
+														<option value="0">Script Processor (old)</option>
+													</select>
+												</td>
+											</tr>
+											<tr id="cfg_audio_latency_grp">
+												<td class="art">Latency</td>
+												<td colspan="3">
+													<select id="cfg_audio_latency" size="1">
+														<option value="0">Auto (half the ring buffer)</option>
+														<option value="15">15 ms</option>
+														<option value="20">20 ms</option>
+														<option value="25">25 ms</option>
+														<option value="35">35 ms</option>
+														<option value="50">50 ms</option>
+														<option value="100">100 ms</option>
+														<option value="250">250 ms</option>
+														<option value="375">375 ms</option>														
+													</select>
+												</td>
+											</tr>
+											<tr>
 												<td class="art">Buffer</td>
 												<td colspan="3">
 													<select id="cfg_audio_buffer_frames" size="1">
@@ -1379,10 +1402,9 @@
 														<option value="2048">2048</option>
 														<option value="4096">4096</option>
 														<option value="8192">8192 (highest quality, but most delay)</option>
-													</select>frames<br />
-													<span class="info">(you may experiment with this value)</span>
+													</select>frames
 												</td>
-											</tr>
+											</tr>						
 											<tr><td colspan="4"><div style="height:5px"></div></td></tr>
 											<tr>
 												<td class="arm"><span class="label">Basic</span></td>
@@ -1814,7 +1836,7 @@
 			</div>
 			<div style="height:5px"></div>
 			<div id="foot" class="foot" style="line-height:14px">
-				<span class="gray">2012-2021 Rupert Hausberger</span> |
+				<span class="gray">2012-2026 Rupert Hausberger</span> |
 				<a target="_blank" href="readme.htm">Description</a> |
 				<a target="_blank" href="disass.htm">Disassembler</a> |
 				<a target="_blank" href="https://github.com/naTmeg/ScriptedAmigaEmulator">Source-code</a>
@@ -1831,7 +1853,7 @@
 									<td><button onclick="stopEmulation()">Stop</button></td>
 									<td><button onclick="pause(1)" id="controls_pr">Pause</button></td>
 									<td><button onclick="mute(1)" id="controls_mp">Mute</button></td>
-									<td id="controls_screen"><button onclick="screenMode(1)" id="controls_sw">Screen</button></td>
+									<td id="controls_screen"><button onclick="fullscreen(1)" id="controls_sw">Screen</button></td>
 									<td id="controls_disk"><button onclick="dskchgOpen()">Disk</button></td>
 								</tr>
 							</table>

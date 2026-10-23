@@ -218,6 +218,14 @@ function SAEO_Events() {
 		this.reset_frame_rate_hack();
 		return vsynctimebase;
 	}
+	
+	/* OWN: lets audio.js's clock-drift correction (sound_setadjust()) nudge the
+	frame-pacing target without going through a full calc_vsynctimebase()
+	(which would also trigger reset_frame_rate_hack() and is meant for real
+	hz changes, not small ongoing corrections). */
+	this.set_vsynctimebase = function(v) {
+		vsynctimebase = v;
+	}
 
 	this.schedule = function() {
 		var mintime = SAEC_Events_CYCLE_MAX;

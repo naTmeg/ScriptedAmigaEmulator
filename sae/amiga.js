@@ -47,7 +47,7 @@
 
 const SAEC_Version = 0;
 const SAEC_Revision = 9;
-const SAEC_Patch = 13;
+const SAEC_Patch = 20;
 
 /*---------------------------------*/
 /* errors */
@@ -500,7 +500,7 @@ function ScriptedAmigaEmulator() {
 		}
 	}
 
-	this.start = function() {
+	this.start = async function() {
 		if (SAER.running) {
 			SAEF_warn("sae.start() emulation already running");
 			return SAEE_AlreadyRunning;
@@ -549,7 +549,7 @@ function ScriptedAmigaEmulator() {
 				//this.gui.update(); //empty
 				if ((err = this.video.setup(true)) == SAEE_None)
 				{
-					if ((err = this.audio.setup()) == SAEE_None)
+					if ((err = await this.audio.setup()) == SAEE_None)
 					{
 						this.start_program();
 						SAEF_info("sae.start() ...done");

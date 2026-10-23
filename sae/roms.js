@@ -22,16 +22,16 @@
 //const SAEC_RomType_GROUP_MASK	= 0x003fff00;
 //const SAEC_RomType_MASK			= 0x003fffff;
 
-const SAEC_RomType_KICK			= 0x00000100;
+const SAEC_RomType_KICK				= 0x00000100;
 const SAEC_RomType_KICKCD32		= 0x00000200;
-const SAEC_RomType_EXTCD32		= 0x00000400;
-const SAEC_RomType_EXTCDTV		= 0x00000800;
+const SAEC_RomType_EXTCD32			= 0x00000400;
+const SAEC_RomType_EXTCDTV			= 0x00000800;
 const SAEC_RomType_KEY				= 0x00001000;
 //const SAEC_RomType_ARCADIABIOS	= 0x00002000;
 //const SAEC_RomType_ARCADIAGAME	= 0x00004000;
 const SAEC_RomType_CD32CART		= 0x00008000;
-const SAEC_RomType_EXT				= 0x00020000; //OWN a plain extended ROM (AROS extension)
 //const SAEC_RomType_SPECIALKICK	= 0x00010000;
+const SAEC_RomType_EXTAROS			= 0x00020000;
 
 /*const SAEC_RomType_CPUBOARD	0x00040000
 const SAEC_RomType_CB_A3001S1	0x00040001
@@ -123,17 +123,17 @@ const SAEC_RomType_GOLEMFAST	0x00100038
 const SAEC_RomType_PHOENIXB	0x00100039*/
 
 const SAEC_RomType_NOT			= 0x00800000;
-const SAEC_RomType_QUAD		= 0x01000000;
-const SAEC_RomType_EVEN		= 0x02000000;
+const SAEC_RomType_QUAD			= 0x01000000;
+const SAEC_RomType_EVEN			= 0x02000000;
 const SAEC_RomType_ODD			= 0x04000000;
-const SAEC_RomType_8BIT		= 0x08000000;
+const SAEC_RomType_8BIT			= 0x08000000;
 const SAEC_RomType_BYTESWAP	= 0x10000000;
-const SAEC_RomType_CD32		= 0x20000000;
+const SAEC_RomType_CD32			= 0x20000000;
 const SAEC_RomType_SCRAMBLED	= 0x40000000;
-const SAEC_RomType_NONE		= 0x80000000;
+const SAEC_RomType_NONE			= 0x80000000;
 
 const SAEC_RomType_ALL_KICK	= (SAEC_RomType_KICK | SAEC_RomType_KICKCD32 | SAEC_RomType_CD32) >>> 0;
-const SAEC_RomType_ALL_EXT	= (SAEC_RomType_EXTCD32 | SAEC_RomType_EXTCDTV | SAEC_RomType_EXT) >>> 0;
+const SAEC_RomType_ALL_EXT	= (SAEC_RomType_EXTCD32 | SAEC_RomType_EXTCDTV | SAEC_RomType_EXTAROS) >>> 0;
 //const SAEC_RomType_ALL_CART	= (SAEC_RomType_AR | SAEC_RomType_HRTMON | SAEC_RomType_NORDIC | SAEC_RomType_XPOWER | SAEC_RomType_CD32CART) >>> 0;
 const SAEC_RomType_ALL_CART	= (SAEC_RomType_CD32CART) >>> 0;
 
@@ -203,9 +203,9 @@ function SAEO_Roms() {
 	const roms = [
 		//new romdata("AROS KS ROM (built-in)", 0, 0, 0, 0, "AROS", K512 * 2, 66, 0, 0, SAEC_RomType_KICK, 0, "", "", 0xffffffff, 0, 0, 0, 0, 0, "AROS"),
 		new romdata("AROS KS ROM (built-in)", 0, 0, 0, 0, "AROS", K512, 66, 0, 0, SAEC_RomType_KICK, 0, "", "", 0x7AE94477, 0, 0, 0, 0, 0, "AROS"), /* build of 2026-08-20 */
-		new romdata("AROS extended ROM (built-in)", 0, 0, 0, 0, "AROS", K512, 66, 0, 0, SAEC_RomType_EXT, 0, "", "", 0x6F9A4AD2, 0, 0, 0, 0, 0, "AROS"),
+		new romdata("AROS extended ROM (built-in)", 0, 0, 0, 0, "AROS", K512, 66, 0, 0, SAEC_RomType_EXTAROS, 0, "", "", 0x6F9A4AD2, 0, 0, 0, 0, 0, "AROS"),
 		new romdata("AROS KS ROM (SVN55696, 2019)", 0, 0, 0, 0, "AROS", K512, 66, 0, 0, SAEC_RomType_KICK, 0, "", "", 0x3F4FCC0A, 0, 0, 0, 0, 0, "AROS"), /* the one bundled before */
-		new romdata("AROS extended ROM (SVN55696, 2019)", 0, 0, 0, 0, "AROS", K512, 66, 0, 0, SAEC_RomType_EXT, 0, "", "", 0xF2E52B07, 0, 0, 0, 0, 0, "AROS"),
+		new romdata("AROS extended ROM (SVN55696, 2019)", 0, 0, 0, 0, "AROS", K512, 66, 0, 0, SAEC_RomType_EXTAROS, 0, "", "", 0xF2E52B07, 0, 0, 0, 0, 0, "AROS"),
 		//new romdata("ROM Disabled", 0, 0, 0, 0, "NOROM", 0, 87, 0, 0, SAEC_RomType_NONE, 0, "", "", 0xffffffff, 0, 0, 0, 0, 0, "NOROM"),
 		//new romdata("Enabled", 0, 0, 0, 0, "ENABLED", 0, 142, 0, 0, SAEC_RomType_NOT, 0, "", "", 0xffffffff, 0, 0, 0, 0, 0, "ENABLED"),
 

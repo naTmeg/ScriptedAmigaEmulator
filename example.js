@@ -326,11 +326,12 @@ function start() {
 	if (getConfig()) {
 		/* Start the emulator. This does take some time.
 		Once started, the hook SAEV_config.hook.event.started will be called. (new 0.9.1) */
-		var err = sae.start();
-		if (err == SAEE_None) {
-			/* ... */
-		} else
-			alert(saee2text(err));
+		sae.start().then(function(err) { /* send start-request */
+			if (err == SAEE_None) {
+				/* ... */
+			} else
+				alert(saee2text(err));
+		});			
 	}
 }
 
@@ -366,7 +367,7 @@ function pause(p) {
 		alert(saee2text(err));
 }
 
-function screenMode(s) { /* not "screen": that would hide window.screen */
+function fullscreen(s) { /* not "screen": that would hide window.screen */
 	/* Fullscreen or window.
 	true == fullscreen, false == window */
 	var err = sae.screen(s);

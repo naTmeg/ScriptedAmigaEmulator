@@ -341,6 +341,9 @@ function SAEO_Config_Video_FilterData() { //struct gfx_filterdata
 /*---------------------------------*/
 /* audio */
 
+const SAEC_Config_Audio_API_ScriptProcessor = 0;
+const SAEC_Config_Audio_API_AudioWorklet = 1;
+
 /* DEPRECATED
 const SAEC_Config_Audio_Mode_Emul = 0;
 const SAEC_Config_Audio_Mode_Play = 1;
@@ -632,6 +635,8 @@ function SAEO_Config() {
 	};
 
 	this.audio = {
+		api: 0,
+		latency: 0,
 		bufferFrames: 0,
 		mode: 0, //produce_sound
 		channels: 0, //sound_stereo
@@ -1175,7 +1180,9 @@ function SAEO_Configuration() {
 		p.rtg_vert_zoom_mult = 1.0;
 		p.picasso96_nocustom = 1;*/
 
-		p.audio.bufferFrames = 4096;
+		p.audio.api = SAEC_Config_Audio_API_AudioWorklet;
+		p.audio.latency = 25;
+		p.audio.bufferFrames = 2048;
 		p.audio.mode = SAEC_Config_Audio_Mode_On_Best;
 		p.audio.channels = SAEC_Config_Audio_Channels_Stereo;
 		p.audio.stereoSeparation = 10; /* 0-10 resp. 0-100%, 10 == no separation */

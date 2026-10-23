@@ -33,7 +33,8 @@ function SAEO_Audio() {
 
 	var driver = {
 		context:null,
-		processor:null,
+		processor:null, /* ScriptProcessorNode, "Legacy" path */
+		node:null,      /* AudioWorkletNode, default low-latency path */
 		connected:false
 	};
 
@@ -51,16 +52,19 @@ function SAEO_Audio() {
 		buffer:null
 	};
 
+	const WORKLET_FIFO_MULT = 8; /* ring buffer headroom in the worklet, in paula.frames units */
+
 	const SOUND_SYNC_MULTIPLIER = 1.0;
 	var scaled_sample_evtime_orig = 0.0;
+	var scaled_sample_evtime = 0.0;
 
 	var muted = false;
 	var paused = false;
 	var have_sound = false;
 	var sound_available = false;
 
-	//var avg_correct = 0.0;
-   //var cnt_correct = 0.0;
+	var avg_correct = 0.0;
+	var cnt_correct = 0.0;
 
 	var used_freq = 0; //OWN
 
@@ -76,8 +80,18 @@ function SAEO_Audio() {
 
 	/*-----------------------------------------------------------------------*/
 
-	/*const ADJUST_LIMIT = 6;
-	const ADJUST_LIMIT2 = 1;
+	/* WinUAE-style dynamic clock correction (restored, OWN adapted to this
+	port: "sndbuf" there was a raw byte count, here it's the frame-fill of
+	the AudioWorklet's ring buffer, reported back via handle_worklet_message();
+	vsynctimebase now lives in events.js so it's nudged through
+	SAER.events.set_vsynctimebase() instead of a shared global). Keeps the
+	emulated frame rate tracking the real audio-hardware clock as a slow
+	long-term trim, on top of the worklet's own ring buffer which absorbs
+	short-term main-thread jank (see sae/audio-worklet-processor.js). */
+
+	const ADJUST_LIMIT = 6; /* max vsynctimebase adjustment, promille (0.6%) */
+	const ADJUST_LIMIT2 = 1; /* max immediate contribution per correction, promille */
+	const CORRECTION_GRANULARITY = 10;
 
 	//->SAEV_Audio_vsynctimebase_orig var vsynctimebase_orig = 0; //int
 
@@ -85,42 +99,32 @@ function SAEO_Audio() {
 		if (v < -ADJUST_LIMIT) v = -ADJUST_LIMIT;
 		else if (v > ADJUST_LIMIT) v = ADJUST_LIMIT;
 
-		vsynctimebase = (SAEV_Audio_vsynctimebase_orig * (1000.0 + v) / 1000.0) >>> 0;
+		SAER.events.set_vsynctimebase((SAEV_Audio_vsynctimebase_orig * (1000.0 + v) / 1000.0) >>> 0);
 		scaled_sample_evtime = scaled_sample_evtime_orig;
 	}
 
-	var tfprev = 0; //fix reset
-	function docorrection(s, sndbuf, sync, granulaty) {
-		//static int tfprev;
-
+	var tfprev = 0; //FIX clear upon reset
+	function docorrection(sync) {
 		avg_correct += sync;
 		cnt_correct++;
 
-		if (granulaty < 10)
-			granulaty = 10;
-
 		if (tfprev != SAEV_Events_timeframes) {
-			var avg = avg_correct / cnt_correct;
-
 			var skipmode = sync / 100.0;
-			var avgskipmode = avg / (10000.0 / granulaty);
-
-			if ((tfprev % 10) == 0)
-				SAEF_log("%+05d S=%.1f AVG=%.1f (IMM=%.1f + AVG=%.1f = %.1f)", sndbuf, sync, avg, skipmode, avgskipmode, skipmode + avgskipmode);
-
-			SAER.gui.data.sndbuf = sndbuf;
-
 			if (skipmode > ADJUST_LIMIT2)
 				skipmode = ADJUST_LIMIT2;
 			if (skipmode < -ADJUST_LIMIT2)
 				skipmode = -ADJUST_LIMIT2;
 
+			var avg = avg_correct / cnt_correct;
+			var avgskipmode = avg / (10000.0 / CORRECTION_GRANULARITY);
+
 			sound_setadjust(skipmode + avgskipmode);
 			tfprev = SAEV_Events_timeframes;
 		}
-	}*/
+	}
 
 	/*---------------------------------*/
+	/* legacy path: ScriptProcessorNode ring buffer */
 
 	function cachediff(write, read) {
 		/* signed ring distance in (-frames/2, frames/2]. More than half ahead cannot be real
@@ -129,7 +133,8 @@ function SAEO_Audio() {
 		   so cacheread played stale samples instead of silence */
 		var diff = write - read;
 		if (diff > cache.frames >> 1)
-			diff -= cache.frames;
+			diff = cache.frames - write + read;
+			//diff -= cache.frames; //new, bogus
 		else if (diff < -cache.frames >> 1)
 			diff = cache.frames - read + write;
 		return diff;
@@ -146,25 +151,20 @@ function SAEO_Audio() {
 			var partsize = cache.frames - cache.writeoffset;
 			if (partsize) {
 				//SAEF_log("audio.cachewrite() write0 %d %d",  cache.writeoffset, partsize);
-				for (var j = 0; j < SAEV_config.audio.channels; j++) {
-					//for (var i = 0; i < partsize; i++) cache.buffer[j][cache.writeoffset + i] = buffer[j][i];
+				for (var j = 0; j < SAEV_config.audio.channels; j++)
 					cache.buffer[j].set(buffer[j].subarray(0, partsize), cache.writeoffset);
-				}
 			}
 			if (frames - partsize) {
 				//SAEF_log("audio.cachewrite() write1 %d %d",  0, frames - partsize);
-				for (var j = 0; j < SAEV_config.audio.channels; j++) {
-					//for (var i = 0; i < frames - partsize; i++) cache.buffer[j][i] = buffer[j][partsize + i];
+				for (var j = 0; j < SAEV_config.audio.channels; j++)
 					cache.buffer[j].set(buffer[j].subarray(partsize, partsize + (frames - partsize)));
-				}
 			}
 			cache.writeoffset = frames - partsize;
 		} else {
 			//SAEF_log("audio.cachewrite() write2 %d %d",  cache.writeoffset, frames);
-			for (var j = 0; j < SAEV_config.audio.channels; j++) {
-				//for (var i = 0; i < frames; i++) cache.buffer[j][cache.writeoffset + i] = buffer[j][i];
+			for (var j = 0; j < SAEV_config.audio.channels; j++)
 				cache.buffer[j].set(buffer[j].subarray(0, frames), cache.writeoffset);
-			}
+
 			cache.writeoffset += frames;
 		}
 		return true;
@@ -175,7 +175,6 @@ function SAEO_Audio() {
 		if (diff < 0) {
 			//SAEF_log("audio.cacheread() clr %d", frames);
 			for (var j = 0; j < SAEV_config.audio.channels; j++) {
-				//SAEF_memset(buffer[j],0, 0, frames);
 				for (var i = 0; i < frames; i++) buffer[j][i] = 0;
 			}
 			frames -= -diff;
@@ -185,25 +184,20 @@ function SAEO_Audio() {
 				var partsize = cache.frames - cache.readoffset;
 				if (partsize) {
 					//SAEF_log("audio.cacheread() read0 %d %d", cache.readoffset, partsize);
-					for (var j = 0; j < SAEV_config.audio.channels; j++) {
-						//for (var i = 0; i < partsize; i++) buffer[j][i] = cache.buffer[j][cache.readoffset + i];
+					for (var j = 0; j < SAEV_config.audio.channels; j++)
 						buffer[j].set(cache.buffer[j].subarray(cache.readoffset, cache.readoffset + partsize));
-					}
 				}
 				if (frames - partsize) {
 					//SAEF_log("audio.cacheread() read1 %d %d", 0, frames - partsize);
-					for (var j = 0; j < SAEV_config.audio.channels; j++) {
-						//for (var i = 0; i < frames - partsize; i++) buffer[j][partsize + i] = cache.buffer[j][i];
+					for (var j = 0; j < SAEV_config.audio.channels; j++)
 						buffer[j].set(cache.buffer[j].subarray(0, frames - partsize), partsize);
-					}
 				}
 				cache.readoffset = frames - partsize;
 			} else {
 				//SAEF_log("audio.cacheread() read2 %d %d", cache.readoffset, frames);
-				for (var j = 0; j < SAEV_config.audio.channels; j++) {
-					//for (var i = 0; i < frames; i++) buffer[j][i] = cache.buffer[j][cache.readoffset + i];
+				for (var j = 0; j < SAEV_config.audio.channels; j++)
 					buffer[j].set(cache.buffer[j].subarray(cache.readoffset, cache.readoffset + frames));
-				}
+
 				cache.readoffset += frames;
 			}
 			return true;
@@ -241,37 +235,70 @@ function SAEO_Audio() {
 		}
 	}
 
-	function process_sound_buffer_webaudio(e) {
+	function process_sound_buffer_scriptprocessor(e) {
 		if (paused || cache.wait || paula.currrent == 0)
 			var scale_frames = paula.frames;
 		else
 			var scale_frames = paula.average.set(paula.currrent);
 
-		//SAEF_log("audio.process_sound_buffer_webaudio() %d %d", paula.currrent, scale_frames);
+		//SAEF_log("audio.process_sound_buffer_scriptprocessor() %d %d", paula.currrent, scale_frames);
 		paula.currrent = 0;
 
 		cacheread(scale.buffer, scale_frames);
 		scaleplay(e, scale.buffer, scale_frames);
 	}
 
+	/*---------------------------------*/
+	/* worklet path (default): docorrection feeds off its periodic fill reports */
+
+	var last_underrun_log = 0;
+	var docorrection_target = 0; /* frames; kept equal to the worklet's own prebufferTarget, set in open_sound() */
+
+	function handle_worklet_message(e) {
+		var msg = e.data;
+		if (msg.type === "fill") {
+			if (msg.underruns && SAEF_now() - last_underrun_log > 1000000) { /* throttle: at most once/sec */
+				SAEF_warn("audio.worklet() %d underrun(s)", msg.underruns);
+				last_underrun_log = SAEF_now();
+			}
+			if (!paused && have_sound && docorrection_target > 0) {
+				/* buffer fill relative to the worklet's own prebuffer target,
+				scaled to +-100 at the extremes (empty / twice the target).
+				Positive = filling up faster than it drains (emulation running
+				ahead of the audio clock) -> slow the emulated frame rate down
+				a touch. Negative = draining towards underrun -> speed it up a touch. */
+				docorrection((msg.frames - docorrection_target) * 100 / docorrection_target);
+			}
+		}
+	}
+
 	function finish_sound_buffer_webaudio(buffer, frames) {
-		if (!paused && have_sound) {
+		if (paused || !have_sound)
+			return;
+
+		if (SAEV_config.audio.api == SAEC_Config_Audio_API_ScriptProcessor) {
 			cachewrite(buffer, frames);
 			cache.wait = false;
+		}
+		else if (SAEV_config.audio.api == SAEC_Config_Audio_API_AudioWorklet && driver.node) {
+			var chn = SAEV_config.audio.channels;
+			var channels = new Array(chn);
+			var transferList = new Array(chn);
+			for (var ch = 0; ch < chn; ch++) {
+				channels[ch] = buffer[ch].slice(0, frames); /* fresh, exact-length, transferable copy */
+				transferList[ch] = channels[ch].buffer;
+			}
+			driver.node.port.postMessage({ type: "data", frames: frames, channels: channels }, transferList);
 		}
 	}
 
 	/*-----------------------------------------------------------------------*/
 
 	function pause_sound() {
-		//SAER.gui.data.sndbuf_status = 0;
-		//SAER.gui.data.sndbuf = 0;
 		if (!paused && have_sound) {
 			SAEF_log("audio.pause_sound()");
 
 			paused = true;
-			//disconnect_sound();
-			//driver.context.suspend().then(function() { SAEF_log("audio.pause_sound() ...done"); });
 		}
 	}
 
@@ -279,39 +306,57 @@ function SAEO_Audio() {
 		if (paused && have_sound) {
 			SAEF_log("audio.resume_sound()");
 
-			//connect_sound();
-			//driver.context.resume().then(function() { SAEF_log("audio.resume_sound() ...done"); });
 			paused = false;
-			cache.wait = true;
+			if (SAEV_config.audio.api == SAEC_Config_Audio_API_ScriptProcessor)
+				cache.wait = true;
 		}
 	}
 
 	/*-----------------------------------------------------------------------*/
 
 	function connect_sound() {
-		if (!driver.connected) {
-			driver.processor.onaudioprocess = process_sound_buffer_webaudio;
+		if (driver.connected)
+			return;
+
+		if (SAEV_config.audio.api == SAEC_Config_Audio_API_ScriptProcessor && driver.processor) {
+			driver.processor.onaudioprocess = process_sound_buffer_scriptprocessor;
 			driver.processor.connect(driver.context.destination);
+			driver.connected = true;
+		}
+		else if (SAEV_config.audio.api == SAEC_Config_Audio_API_AudioWorklet && driver.node) {
+			driver.node.connect(driver.context.destination);
 			driver.connected = true;
 		}
 	}
 
 	function disconnect_sound() {
-		if (driver.connected) {
+		if (!driver.connected)
+			return;
+
+		if (SAEV_config.audio.api == SAEC_Config_Audio_API_ScriptProcessor && driver.processor) {
 			driver.processor.disconnect(driver.context.destination);
 			driver.processor.onaudioprocess = function(e) {};
-			driver.connected = false;
 		}
+		else if (SAEV_config.audio.api == SAEC_Config_Audio_API_AudioWorklet && driver.node) {
+			driver.node.disconnect(driver.context.destination);
+		}
+		driver.connected = false;
 	}
 
-	function open_sound() {
+	async function open_sound() {
 		driver.context = null;
+		driver.processor = null;
+		driver.node = null;
+
 		try {
 			var AudioContextDriver = window.webkitAudioContext || window.AudioContext;
 			driver.context = new AudioContextDriver();
-			driver.processor = driver.context.createScriptProcessor(paula.frames, SAEV_config.audio.channels, SAEV_config.audio.channels);
+			if (SAEV_config.audio.api == SAEC_Config_Audio_API_AudioWorklet)
+				await driver.context.audioWorklet.addModule("sae/audio_worklet.js");
 		} catch (e) {
+			SAEF_warn("audio.open_sound() %s", e && e.message);
 			if (driver.context) driver.context.close().then(function() {});
+			driver.context = null;
 			return false;
 		}
 		/* created without a user gesture (autostart), the context starts suspended and
@@ -333,29 +378,71 @@ function SAEO_Audio() {
 		else
 			used_freq = SAEV_config.audio.freq;
 
-		if (cache.buffer === null) {
-			cache.frames = paula.frames * CACHE_FRAMES_MULT;
-			cache.buffer = new Array(2);
-			for (var j = 0; j < cache.buffer.length; j++)
-				cache.buffer[j] = new Int16Array(cache.frames);
+		if (SAEV_config.audio.api == SAEC_Config_Audio_API_ScriptProcessor) {
+			try {
+				driver.processor = driver.context.createScriptProcessor(paula.frames, SAEV_config.audio.channels, SAEV_config.audio.channels);
+			} catch (e) {
+				SAEF_warn("audio.open_sound() ScriptProcessorNode failed: %s", e && e.message);
+				driver.context.close().then(function() {});
+				driver.context = null;
+				return false;
+			}
+
+			if (cache.buffer === null) {
+				cache.frames = paula.frames * CACHE_FRAMES_MULT;
+				cache.buffer = new Array(2);
+				for (var j = 0; j < cache.buffer.length; j++)
+					cache.buffer[j] = new Int16Array(cache.frames);
+			}
+			if (scale.buffer === null) {
+				scale.frames = paula.frames * SCALE_FRAMES_MULT;
+				scale.buffer = new Array(2);
+				for (var j = 0; j < scale.buffer.length; j++)
+					scale.buffer[j] = new Int16Array(scale.frames);
+			}
 		}
-		if (scale.buffer === null) {
-			scale.frames = paula.frames * SCALE_FRAMES_MULT;
-			scale.buffer = new Array(2);
-			for (var j = 0; j < scale.buffer.length; j++)
-				scale.buffer[j] = new Int16Array(scale.frames);
+		else if (SAEV_config.audio.api == SAEC_Config_Audio_API_AudioWorklet) {
+			var fifoFrames = paula.frames * WORKLET_FIFO_MULT;
+			
+			if (SAEV_config.audio.latency == 0) {
+				docorrection_target = Math.floor(fifoFrames / 2);
+			} else {
+				var latencyFrames = Math.round(SAEV_config.audio.latency * used_freq / 1000);
+				docorrection_target = latencyFrames;
+			}
+
+			try {
+				driver.node = new AudioWorkletNode(driver.context, "sae-paula-processor", {
+					numberOfInputs: 0,
+					numberOfOutputs: 1,
+					outputChannelCount: [SAEV_config.audio.channels],
+					processorOptions: {
+						channels: SAEV_config.audio.channels,
+						fifoFrames: fifoFrames,
+						prebufferTarget: docorrection_target,
+						resampleRatio: used_freq / driver.context.sampleRate
+					}
+				});
+			} catch (e) {
+				SAEF_warn("audio.open_sound() AudioWorkletNode failed: %s", e && e.message);
+				driver.context.close().then(function() {});
+				driver.context = null;
+				return false;
+			}
+			driver.node.port.onmessage = handle_worklet_message;
 		}
 
 		connect_sound();
 		have_sound = true;
 
-		SAEF_info("sae.audio() %d channels, frequency %d/%d Hz, %d frames", SAEV_config.audio.channels, used_freq, driver.context.sampleRate, paula.frames);
+		SAEF_info("sae.audio() %s, %d channels, frequency %d/%d Hz, %d frames",
+			SAEV_config.audio.api == SAEC_Config_Audio_API_ScriptProcessor ? "script processor" : "worklet",
+			SAEV_config.audio.channels, used_freq, driver.context.sampleRate, paula.frames
+		);
 		return true;
 	}
 
 	function close_sound() {
-		//SAER.gui.data.sndbuf_status = 3;
-		//SAER.gui.data.sndbuf = 0;
 		if (have_sound) {
 			SAEF_log("audio.close_sound() initialised...");
 
@@ -387,12 +474,10 @@ function SAEO_Audio() {
 		return SAEE_None;
 	}
 
-	function setup_sound() { //init_sound()
+	async function setup_sound() { //init_sound()
 		muted = paused = false;
-		//SAER.gui.data.sndbuf_status = 3;
-		//SAER.gui.data.sndbuf = 0;
 		if (!have_sound)
-			return open_sound();
+			return await open_sound();
 
 		return true;
 	}
@@ -402,15 +487,21 @@ function SAEO_Audio() {
 	}
 
 	function reset_sound() { //reset_sound()
-		cache.readoffset = 0;
-		cache.writeoffset = 0;
-		cache.wait = true;
+		if (SAEV_config.audio.api == SAEC_Config_Audio_API_ScriptProcessor) {
+			cache.readoffset = 0;
+			cache.writeoffset = 0;
+			cache.wait = true;
+		}
+		else if (SAEV_config.audio.api == SAEC_Config_Audio_API_AudioWorklet && driver.node)
+			driver.node.port.postMessage({ type: "reset" });
 
 		paula.average.clr();
 	}
 
 	function mute_sound(mute) { //OWN
 		muted = mute;
+		if (SAEV_config.audio.api == SAEC_Config_Audio_API_AudioWorklet && driver.node)
+			driver.node.port.postMessage({ type: "mute", value: mute });
 	}
 
 	/*-----------------------------------------------------------------------*/
@@ -501,7 +592,6 @@ function SAEO_Audio() {
 	var sample_prehandler = null;
 
 	var sample_evtime = 0.0; //global
-	var scaled_sample_evtime = 0.0;
 
 	var last_cycles = 0;
 	var next_sample_evtime = 0.0;
@@ -524,7 +614,7 @@ function SAEO_Audio() {
 	var saved_ptr = 0;
 	var mixed_on = 0, mixed_stereo_size = 0, mixed_mul1 = 0, mixed_mul2 = 0;
 
-	var usehacks = false;
+	var usehacks = true;
 
 	/*-----------------------------------------------------------------------*/
 
@@ -1089,8 +1179,6 @@ function SAEO_Audio() {
 		if (audio_work_to_do == 0) {
 			//restart_sound_buffer();
 			audio_event_reset();
-
-			cache.wait = true;
 			ret = true;
 		}
 		audio_work_to_do = 4 * SAER.playfield.get_maxvpos_nom() * 50;
@@ -1390,11 +1478,11 @@ function SAEO_Audio() {
 		}
 	}*/
 
-	this.setup = function() { //set_audio()
+	this.setup = async function() { //set_audio()
 		usehacks = SAEV_config.cpu.model >= SAEC_Config_CPU_Model_68020 || SAEV_config.cpu.speed != SAEC_Config_CPU_Speed_Original;// || (currprefs.cs_hacks & 4);
 
 		//used_freq = SAEV_config.chipset.ntsc ? PAULA_FREQ_NTSC : PAULA_FREQ_PAL;
-		used_freq = SAEC_Config_Audio_Freq_44100;
+		used_freq = SAEC_Config_Audio_Freq_48000;
 
 		paula.frames = SAEV_config.audio.bufferFrames;
 		paula.buffer = new Array(2); //max channels
@@ -1407,7 +1495,7 @@ function SAEO_Audio() {
 		paula.currrent = 0;
 
 		if (SAEV_config.audio.mode >= SAEC_Config_Audio_Mode_On) {
-			if (!setup_sound())
+			if (!(await setup_sound()))
 				return SAEE_Audio_RequiresWebAudio; //can't happen cos we fail on audio.obtain()
 		}
 
