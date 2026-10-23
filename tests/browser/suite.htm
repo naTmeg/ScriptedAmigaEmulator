@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><title>SAE suite runner</title>
+<style>
+body{background:#222;color:#ddd;font:13px monospace;margin:8px}
+#status{white-space:pre-wrap;margin-bottom:8px}
+table{border-collapse:collapse} td,th{border:1px solid #444;padding:2px 6px;text-align:left}
+.ok{color:#6c6} .bad{color:#e66} .meh{color:#ec6}
+#frame{width:240px;height:190px;border:1px solid #444;background:#000}
+#sae,#ref,#diff{border:1px solid #444;image-rendering:pixelated;width:250px;height:199px}
+</style>
+<script src="suite.js"></script>
+</head><body>
+<div id="status">loading…</div>
+<iframe id="frame" title="SAE under test"></iframe>
+<div style="display:flex;gap:6px;align-items:flex-start;margin-top:6px">
+  <div>SAE<br><canvas id="sae" width="358" height="285"></canvas></div>
+  <div>vAmiga<br><canvas id="ref" width="358" height="285"></canvas></div>
+  <div>diff<br><canvas id="diff" width="358" height="285"></canvas></div>
+</div>
+<table id="results"><thead><tr><th>#</th><th>test</th><th>score</th><th>dx</th><th>dy</th><th>bad rows (vAmiga y)</th><th>note</th></tr></thead><tbody></tbody></table>
+</body></html>

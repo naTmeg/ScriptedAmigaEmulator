@@ -752,7 +752,11 @@ function SAEO_Config() {
 	};
 
 	this.debug = {
-		level: 0
+		level: 0,
+		/* Run frames back to back instead of in real time, and drop everything that reads the
+		 * host clock (TOD hack). Emulated time then depends only on emulated cycles, so a run
+		 * is reproducible and as fast as the host allows. Meant for automated tests. */
+		turbo: false
 	};
 
 	this.chipset.refresh = new Array(SAEC_Config_Chipset_CR_TOTAL);

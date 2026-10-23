@@ -506,6 +506,7 @@ function SAEO_Events() {
 	/* synchronization */
 
 	this.framewait2_maximum = function(ll) {
+		if (SAEV_config.debug.turbo) { is_syncline = 0; return; }
 		//static int sleeps_remaining;
 		//if (is_last_line()) {
 		if (ll) {
@@ -567,6 +568,7 @@ function SAEO_Events() {
 		}
 	}
 	this.framewait2_normal = function() {
+		if (SAEV_config.debug.turbo) { is_syncline = 0; return; }
 		vsyncmintime += vsynctimeperline;
 		//if (!vsync_isdone() && !currprefs.turbo_emulation)
 		{
@@ -615,6 +617,21 @@ function SAEO_Events() {
 		var status = 0;
 
 		is_syncline = 0;
+
+		if (SAEV_config.debug.turbo) {
+			/* no pacing: show the frame and go on with the next one */
+			SAEV_Events_frameskiptime = 0;
+			if (!SAEV_Playfield_frame_rendered && !SAEV_Playfield_picasso_on)
+				SAEV_Playfield_frame_rendered = SAER.video.render_screen(false);
+			if (SAEV_Playfield_frame_rendered) {
+				SAER.video.show_screen(0);
+				SAEV_Playfield_frame_shown = true;
+			}
+			curr_time = SAEF_now();
+			vsyncmintime = vsyncmaxtime = vsyncwaittime = curr_time;
+			vsynctimeperline = 0;
+			return true;
+		}
 
 		//static struct mavg_data ma_frameskipt;
 		var frameskipt_avg = ~~ma_frameskipt.set(SAEV_Events_frameskiptime); SAEV_Events_frameskiptime = 0;

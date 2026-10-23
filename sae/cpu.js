@@ -926,6 +926,17 @@ function SAEO_CPU() {
 			setPC(pc);
 	}
 
+	/* Test hook: put the CPU at an instruction boundary with a given prefetch queue
+	 * (pc = address of the opcode in ir, irc = the word after it). Used by the
+	 * single-instruction tests in tests/cpu; the emulator itself never calls it. */
+	this.setPrefetchState = function(pc, ir, irc) {
+		regs.pc_p = regs.pc_oldp = 0;
+		setPCi(pc >>> 0);
+		pc_offset = PC_OFFSET;
+		regs.ir = ir & 0xffff;
+		regs.irc = irc & 0xffff;
+	}
+
 	this.getPC_normal = function() { //m68k_getpc_normal()
 		if (SAEV_config.cpu.compatible)
 			return getPCi();

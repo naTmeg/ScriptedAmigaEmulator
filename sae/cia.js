@@ -494,7 +494,7 @@ function SAEO_CIA() {
 		var rate;
 		var docount = false;
 
-		if (tod_hack_enabled == 0)
+		if (tod_hack_enabled == 0 || SAEV_config.debug.turbo)
 			return;
 		/*OWN
 		if (!heartbeat_cnt) {
